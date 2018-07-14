@@ -1,0 +1,29 @@
+{
+  "name": "simple-server",
+  "version": "1.0.0",
+  "description": "Simple server is a lightweight, extensible node.js server with inbuilt request routing, enabled static file serving including default document configurations, middleware support, request body parsing including form data, and lots more",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harrison-ifeanyichukwu/simple-server.git"
+  },
+  "keywords": [
+    "server",
+    "routing",
+    "static",
+    "file",
+    "middleware",
+    "rest",
+    "api",
+    "body-parser"
+  ],
+  "author": "Harrison Ifeanyichukwu <Harrisonifeanyichukwu@gmail.com> (http://fjsfoundations.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/harrison-ifeanyichukwu/simple-server/issues"
+  },
+  "homepage": "https://github.com/harrison-ifeanyichukwu/simple-server#readme"
+}
