@@ -1,7 +1,7 @@
 {
-  "name": "simple-server",
+  "name": "r-server",
   "version": "1.0.0",
-  "description": "Simple server is a lightweight, extensible node.js server with inbuilt request routing, enabled static file serving including default document configurations, middleware support, request body parsing including form data, and lots more",
+  "description": "R-Server is a lightweight, extensible web server for node.js with inbuilt request router, configurable static file server, middleware support, request body parser and lots more",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -12,7 +12,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/harrison-ifeanyichukwu/simple-server.git"
+    "url": "git+https://github.com/harrison-ifeanyichukwu/r-server.git"
   },
   "keywords": [
     "server",
@@ -27,9 +27,9 @@
   "author": "Harrison Ifeanyichukwu <Harrisonifeanyichukwu@gmail.com> (http://fjsfoundations.com/)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/harrison-ifeanyichukwu/simple-server/issues"
+    "url": "https://github.com/harrison-ifeanyichukwu/r-server/issues"
   },
-  "homepage": "https://github.com/harrison-ifeanyichukwu/simple-server#readme",
+  "homepage": "https://github.com/harrison-ifeanyichukwu/r-server#readme",
   "devDependencies": {
     "babel-plugin-external-helpers": "6.22.0",
     "babel-preset-env": "1.7.0",

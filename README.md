@@ -1,2 +1,3 @@
-# simple-server
-Simple server is a lightweight, extensible node.js server with inbuilt request routing, enabled static file serving including default document configurations, middleware support, request body parsing including form data, and lots more  
+# R-Server
+
+R-Server is a lightweight, extensible web server for node.js with inbuilt request router, configurable static file server, middleware support, request body parser and lots more.
