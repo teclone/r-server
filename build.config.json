@@ -1,0 +1,14 @@
+{
+    "mainModuleName": "SimpleServer",
+    "externalModules": ["fs", "http", "crypto", "path"],
+    "copyAssets": true,
+    "distConfig": {
+        "disabled": true,
+        "exclude": [],
+        "format": "iife",
+        "uglify": true
+    },
+    "libConfig": {
+        "disabled": false
+    }
+}
