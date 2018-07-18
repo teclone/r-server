@@ -119,6 +119,51 @@ describe('Util module', function() {
         });
     });
 
+    describe('.runSafe(executable, scope?, parameters?, runAfter?)', function() {
+        it('should run the callback function safely by surpressing any runtime error', function() {
+            expect(function() {
+                Util.runSafe(function() {
+                    throw new Error('this error should be surpressed');
+                });
+            }).to.not.throw();
+        });
+
+        it('should throw error if argument one is not a function', function() {
+            expect(function() {
+                Util.runSafe(null);
+            }).to.throw('argument one is not a function');
+        });
+
+        it('should accept an optional execution scope object as a second argument', function() {
+            let scope = {
+                name: 'ForensicJS'
+            },
+            result = Util.runSafe(function() {
+                return this.name;
+            }, scope);
+            expect(result).to.equals('ForensicJS');
+        });
+
+        it('should accept an optional parameter or array of parameters to pass in to executable during execution as a third argument', function() {
+            let parameters = ['1.0.0', 'ForensicJS'],
+            result = Util.runSafe(function(version, name) {
+                return {version, name};
+            }, null, parameters);
+            expect(result.version).to.equals('1.0.0');
+        });
+
+        it('should accept an optional wait before execution parameter in milliseconds as a fourth parameter', function() {
+            let startTime = Date.now();
+
+            return Util.runSafe(() => Date.now() - startTime, null, null, 1000)
+                .then(result => expect(result).to.be.at.least(999));
+        });
+
+        it('should return a promise if given a wait parameter as fourth argument', function() {
+            expect(Util.runSafe(function() {}, null, null, 1000)).to.be.a('promise');
+        });
+    });
+
     describe('.camelCase(value, delimiter?)', function() {
 
         it('should apply camel like casing on the argument and return the result. default delimiter used is dash or underscore characters', function() {

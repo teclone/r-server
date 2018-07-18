@@ -107,6 +107,29 @@ export default {
     },
 
     /**
+     * runs the executable and supresses all runtime errors
+     *@param {Function} executable - function to execute
+     *@param {Scope} [scope] - runtime scope object - defaults to the host object
+     *@param {Array} [parameters=null] - array of parameters to pass in to executable
+     *@param {number} [runAfter=0] - least number of time in milliseconds to wait before
+     * starting the execution
+     *@throws {TypeError} if argument one is not a function
+     *@returns {mixed} this will return a promise if runAfter parameter is given else it will
+     * return the execution control
+    */
+    runSafe(executable, scope, parameters, runAfter) {
+        let callback = this.generateCallback(executable, scope, parameters);
+        if (runAfter) {
+            return new Promise(function(resolve) {
+                setTimeout(() => {
+                    resolve(callback()); // pass in the return value to the resolve method
+                }, runAfter);
+            });
+        }
+        return callback();
+    },
+
+    /**
      * converts the letters into camel like cases
      *@param {string} value - the string word to convert
      *@param {string|RegExp} [delimiter=/[-_]/] - a delimiter string or regex pattern used in
