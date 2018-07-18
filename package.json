@@ -4,7 +4,9 @@
   "description": "R-Server is a lightweight, extensible web server for node.js with inbuilt request router, configurable static file server, middleware support, request body parser and lots more",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "BABEL_ENV=test nyc mocha --recursive",
+    "test-watch": "BABEL_ENV=test nyc mocha --recursive -w",
+    "report-coverage": "nyc report --reporter=text-lcov | coveralls",
     "lint": "eslint ./src --fix",
     "commit": "git-cz",
     "prebuild": "rimraf dist && rimraf lib",
@@ -34,15 +36,30 @@
     "babel-plugin-external-helpers": "6.22.0",
     "babel-preset-env": "1.7.0",
     "babel-register": "6.26.0",
+    "chai": "4.1.2",
     "commitizen": "2.10.1",
     "cz-conventional-changelog": "2.1.0",
     "eslint": "5.1.0",
+    "istanbul": "0.4.5",
+    "mocha": "5.2.0",
+    "nyc": "12.0.2",
+    "rimraf": "2.6.2",
     "rollup": "0.59.1",
+    "rollup-all": "1.1.0",
     "rollup-plugin-babel": "3.0.4",
     "rollup-plugin-node-resolve": "3.3.0",
     "rollup-plugin-uglify": "4.0.0"
   },
   "czConfig": {
     "path": "node_modules/cz-conventional-changelog"
+  },
+  "nyc": {
+    "require": [
+      "babel-register",
+      "./test/setup.js"
+    ],
+    "include": [
+      "src/modules/*.js"
+    ]
   }
 }
