@@ -55,4 +55,33 @@ export default class {
         }
         return body;
     }
+
+    /**
+     * parse url encoded request body
+     *@param {string} string - the request body string
+     *@returns {Object}
+    */
+    parseUrlEncoded(string) {
+        let body = {};
+        if (string) {
+            let pairs = string.split('&');
+            for (let pair of pairs) {
+                let [name, value] = pair.split('=');
+                this.assignValue(body, decodeURIComponent(name), decodeURIComponent(value));
+            }
+        }
+        return body;
+    }
+
+    /**
+     * parse the query parameters in the url given
+     *@param {string} url - the request url
+     *@return {Object}
+    */
+    parseQueryString(url) {
+        if (url.indexOf('?') > -1)
+            return this.parseUrlEncoded(url.split('?')[1]);
+        else
+            return {};
+    }
 }
