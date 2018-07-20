@@ -1,6 +1,7 @@
 /**
  * Request body parser module
 */
+import Util from './Util.js';
 
 export default class {
 
@@ -86,6 +87,46 @@ export default class {
     }
 
     /**
+     * parses a multipart part headers.
+     *@param {Array} headers - array of headers.
+     *@returns {Object}
+    */
+    parsePartHeaders(headers) {
+        //assume a default value if there are no headers sent
+        if (headers.length === 0)
+            return {isFile: false, mimeType: 'text/plain', fileName: '',
+                fieldName: Util.getRandomText(6), encoding: this.encoding};
+
+        let result = {isFile: false, mimeType: '', fileName: '', fieldName: '', encoding: this.encoding};
+        for(let header of headers) {
+            let [headerName, headerValue] = header.split(/\s*:\s*/);
+            switch(headerName.toLowerCase()) {
+                case 'content-disposition':
+                    if (/filename="([^"]+)"/.exec(headerValue))
+                        result.fileName = RegExp.$1;
+
+                    headerValue = headerValue.replace(/filename="([^"]+)"/, '');
+
+                    if (/name="([^"]+)"/.exec(headerValue))
+                        result.fieldName = RegExp.$1;
+                    else
+                        result.fieldName = Util.getRandomText(6);
+                    break;
+
+                case 'content-type':
+                    result.isFile = true;
+                    result.mimeType = headerValue.split(/;\s*/)[0];
+                    break;
+
+                case 'content-transfer-encoding':
+                    result.encoding = headerValue;
+                    break;
+            }
+        }
+        return result;
+    }
+
+    /**
      * parse multipart form data
      *@param {string} string - the request body string
      *@param {string} [boundary] - the multipart boundary token
@@ -127,6 +168,9 @@ export default class {
                 headers = lines.slice(0, separatorLineIndex);
                 content = lines.slice(separatorLineIndex + 1).join('\r\n');
             }
+
+            //parse through the headers
+            let parsedHeaders = this.parsePartHeaders(headers);
         }
         return {body, files};
     }
