@@ -1,6 +1,8 @@
 /**
  * Request body parser module
 */
+import fs from 'fs';
+import path from 'path';
 import Util from './Util.js';
 
 export default class {
@@ -84,6 +86,33 @@ export default class {
             return this.parseUrlEncoded(url.split('?')[1]);
         else
             return {};
+    }
+
+    /**
+     * processes and stores file
+     *@param {Object} parsedHeaders - the parsed headers
+     *@param {string} parsedHeaders.fileName - the file name as captured from the form data
+     *@param {string} parsedHeaders.mimeType - file mime type as captured from the form data
+     *@param {string} parsedHeaders.encoding - file content transfer encoding type
+     *@param {string} content - the file content
+     *@returns {Object}
+    */
+    processFile(parsedHeaders, content) {
+
+        let tempFileName = Util.getRandomText(8) + '.tmp',
+        filePath = path.join(this.tempDir, '/', tempFileName);
+
+        Util.mkDirSync(this.tempDir);
+
+        fs.writeFileSync(filePath, content, parsedHeaders.encoding);
+
+        return {
+            name: decodeURIComponent(parsedHeaders.fileName).replace(/\.\./g, ''),
+            tempName: tempFileName,
+            path: filePath,
+            mimeType: parsedHeaders.mimeType,
+            size: fs.statSync(filePath).size
+        };
     }
 
     /**
@@ -171,6 +200,13 @@ export default class {
 
             //parse through the headers
             let parsedHeaders = this.parsePartHeaders(headers);
+
+            //resolve and assign value
+            let fieldName = parsedHeaders.fieldName,
+            value = parsedHeaders.isFile? this.processFile(parsedHeaders, content) : content,
+            target = parsedHeaders.isFile? files : body;
+
+            this.assignValue(target, fieldName, value);
         }
         return {body, files};
     }
