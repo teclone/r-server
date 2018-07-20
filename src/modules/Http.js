@@ -13,6 +13,6 @@ http.ServerResponse.prototype.json = function() {
 */
 http.ServerResponse.prototype.download = function() {
 
-}
+};
 
 export default http;
