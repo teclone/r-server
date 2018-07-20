@@ -35,6 +35,36 @@ export default class Router {
     }
 
     /**
+     * runs the routes template callback function
+     *@param {Function} - route callback function
+    */
+    run(callback) {
+        let cont = false,
+        next = function () {
+            cont = true;
+        };
+
+        for (const middleware of this.middlewares) {
+            cont = false;
+            Util.runSafe(middleware, null, [this.request, this.response, next]);
+
+            if (cont && !this.response.finished)
+                continue;
+            //if middleware failed to end the response, end it
+            else if (!this.response.finished)
+                this.response.end();
+
+            return;
+        }
+
+        let values = [];
+        for (const [, value] of this.params)
+            values.push(value);
+
+        Util.runSafe(callback, null, [this.request, this.response, ...values]);
+    }
+
+    /**
      * decomposes the template token into data type and name
      *@param {string} routeToken - the route template token to be decomposed
      *@param {string} pathToken - the corresponding path token for this route template token
@@ -174,6 +204,7 @@ export default class Router {
         }
 
         this.resolved = true;
+        this.run(callback);
     }
 
     /**
