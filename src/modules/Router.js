@@ -2,6 +2,7 @@
  * mini Router module.
  * Handles Routing. supports parameter catching and allows data type enforcement
 */
+import Util from './Util.js';
 
 export default class Router {
 
@@ -34,6 +35,17 @@ export default class Router {
     }
 
     /**
+     *@description - checks if the request method is ok and that callback is a function
+     *@param {Function} callback - the callback function
+     *@param {string} [overrideMethod] - method to use
+     *@returns {boolean}
+    */
+    validateRoute(callback, overrideMethod) {
+        return Util.isCallable(callback) && (!overrideMethod ||
+            this.method === overrideMethod.toUpperCase());
+    }
+
+    /**
      * processes the route
      *@param {string} routeUrl - the route's url
      *@param {Function} callback - callback function
@@ -44,6 +56,12 @@ export default class Router {
     */
     process(routeUrl, callback, options, overrideMethod) {
         if (this.resolved)
+            return;
+
+        this.params = []; //reset the params tuple
+        routeUrl = routeUrl.toLowerCase().replace(/^\/+/, '').replace(/\/+$/, '');
+
+        if (!this.validateRoute(callback, overrideMethod))
             return;
     }
 
