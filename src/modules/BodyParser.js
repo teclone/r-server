@@ -39,4 +39,20 @@ export default class {
             target[name] = value;
         }
     }
+
+    /**
+     * parse json content
+     *@param {string} string - the request body string
+     *@returns {Object}
+    */
+    parseJSON(string) {
+        let body = null;
+        try {
+            body = JSON.parse(string);
+        }
+        catch(ex) {
+            body = {};
+        }
+        return body;
+    }
 }
