@@ -35,6 +35,35 @@ export default class Router {
     }
 
     /**
+     * analyses base url and creates a regex for it. then matches and returns the result
+     *@param {string} routeUrl - a route's url
+     *@returns {boolean}
+    */
+    matchUrl(routeUrl) {
+        /**create matching regular expression*/
+        let tokens = routeUrl? routeUrl.split('/') : [],
+        pattern = tokens.map(function(token) {
+            let pattern = '';
+            if (/^\{[\w:-]+\}$/.exec(token))
+                pattern = '[^/]+';
+
+            else if (/^\{[\w:-]+\}\?$/.exec(token))
+                pattern = '([^/]+)?';
+
+            else if (token === '*')
+                pattern = '.*';
+
+            else
+                pattern = token.replace(/\\-/g, '-').replace(/-/g, '\\-');
+
+            return pattern;
+        }).join('/');
+
+        let regex = new RegExp('^' + pattern + '$', 'i'); //regex is case insensitive
+        return regex.test(this.url);
+    }
+
+    /**
      *@param {Object} [options] - optional configuration options
      *@param {Array} [options.methods] - array of methods allowed
      *@returns {boolean}
@@ -80,7 +109,8 @@ export default class Router {
         this.params = []; //reset the params tuple
         routeUrl = routeUrl.toLowerCase().replace(/^\/+/, '').replace(/\/+$/, '');
 
-        if (!this.validateRoute(callback, overrideMethod) || !this.validateOptions(options))
+        if (!this.validateRoute(callback, overrideMethod) || !this.validateOptions(options) ||
+            !this.matchUrl(routeUrl))
             return;
     }
 
