@@ -35,6 +35,50 @@ export default class Router {
     }
 
     /**
+     * decomposes the template token into data type and name
+     *@param {string} routeToken - the route template token to be decomposed
+     *@param {string} pathToken - the corresponding path token for this route template token
+     *@returns {Object} returns object containing dataType and name
+     * keys
+    */
+    deComposeRouteToken(routeToken, pathToken) {
+        let storeAsParam = false;
+
+        if (/\{([-\w:]+)\}/.exec(routeToken)) {
+            storeAsParam = true;
+            routeToken = RegExp.$1;
+        }
+
+        let [dataType, name] = routeToken.indexOf(':') > -1? routeToken.split(':') : ['', routeToken],
+        value = pathToken;
+
+        switch(dataType.toLowerCase()) {
+            case 'int':
+            case 'integer':
+                value = Number.parseInt(pathToken);
+                break;
+            case 'float':
+            case 'double':
+            case 'number':
+                value = Number.parseFloat(pathToken);
+                break;
+            case 'bool':
+            case 'boolean':
+                value = ['0', 'false', ''].includes(pathToken.toString().toLowerCase())?
+                    false : true;
+                break;
+        }
+
+        if (Number.isNaN(value))
+            value = 0;
+
+        if (storeAsParam)
+            this.params.push([name, value]);
+
+        return {name, value, dataType};
+    }
+
+    /**
      * analyses base url and creates a regex for it. then matches and returns the result
      *@param {string} routeUrl - a route's url
      *@returns {boolean}
@@ -112,6 +156,24 @@ export default class Router {
         if (!this.validateRoute(callback, overrideMethod) || !this.validateOptions(options) ||
             !this.matchUrl(routeUrl))
             return;
+
+        let pathTokens = this.url !== ''? this.url.split('/') : [],
+        routeTokens = routeUrl !== ''? routeUrl.split('/') : [];
+
+        let i = -1;
+        while (++i < routeTokens.length) {
+            let pathToken = pathTokens[i],
+            routeToken = routeTokens[i];
+
+            if (routeToken === '*') {
+                //final route token. add remaining url and pass it to the callback
+                this.params.push(['asterisk', pathTokens.slice(i).join('/')]);
+                break;
+            }
+            this.deComposeRouteToken(routeToken, pathToken);
+        }
+
+        this.resolved = true;
     }
 
     /**
