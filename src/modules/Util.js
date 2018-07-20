@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 /**
  * Utility module
  * this module defines a bunch of utility functions that will be relevant to most other modules
@@ -92,7 +95,7 @@ export default {
         if (!this.isCallable(callback)) {
             throw new TypeError('argument one is not a function');
         }
-        scope = this.isObject(scope) ? scope : this;
+        scope = this.isObject(scope) ? scope : null;
         parameters = this.makeArray(parameters);
 
         return (...args) => {
@@ -198,5 +201,34 @@ export default {
             dest = run.call(this, dest, object);
         }
         return dest;
+    },
+
+    /**
+     * creates a directory recursively and synchronously
+     *@param {string} dir - the directory to create
+     *@returns {boolean}
+    */
+    mkDirSync(dir) {
+        if (typeof dir !== 'string')
+            throw new TypeError('argument one is not a string');
+        if (dir === '/' || dir === '' || fs.existsSync(dir))
+            return false;
+
+        //search backwards
+        dir = dir.replace(/\/+$/, '');
+        let existingPath = '',
+        testPath = dir;
+        while (existingPath === '' && testPath !== '/') {
+            testPath = path.join(testPath, '../');
+            if (fs.existsSync(testPath))
+                existingPath = testPath;
+        }
+
+        let pathTokens = dir.split(existingPath)[1].split('/');
+        for (let pathToken of pathTokens) {
+            existingPath = path.join(existingPath, '/', pathToken);
+            fs.mkdirSync(existingPath);
+        }
+        return true;
     }
 };
