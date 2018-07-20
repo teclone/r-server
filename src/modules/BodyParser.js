@@ -231,4 +231,32 @@ export default class {
         }
         return {body, files};
     }
+
+    /**
+     *@param {Buffer} buffer - the buffer data
+     *@param {string} contentType - the request content type
+    */
+    parse(buffer, contentType) {
+        let content = buffer.toString(this.encoding),
+        tokens = contentType.split(/;\s*/),
+        boundary = '';
+
+        switch(tokens[0].toLowerCase()) {
+            case 'text/json':
+            case 'application/json':
+                return {files: {}, body: this.parseJSON(content)};
+
+            case 'text/plain':
+            case 'application/x-www-form-urlencoded':
+                return {files: {}, body: this.parseUrlEncoded(content)};
+
+            case 'multipart/form-data':
+                if (tokens.length === 2 && /boundary\s*=\s*/.test(tokens[1]))
+                    boundary = tokens[1].split('=')[1];
+                return this.parseMultiPart(content, boundary);
+
+            default:
+                return {body: {}, files: {}};
+        }
+    }
 }
