@@ -84,4 +84,50 @@ export default class {
         else
             return {};
     }
+
+    /**
+     * parse multipart form data
+     *@param {string} string - the request body string
+     *@param {string} [boundary] - the multipart boundary token
+     *@returns {Object}
+     *@see https://www.w3.org/Protocols/rfc1341/7_2_Multipart.html
+    */
+    parseMultiPart(string, boundary) {
+        let body = {}, files = {};
+
+        /* istanbul ignore else */
+        if (boundary)
+            boundary = '--' + boundary;
+        else if (/(-{2,}[a-z0-9]+)\r\n/i.exec(string))
+            boundary = RegExp.$1;
+        else
+            return {body, files};
+
+        //obtain the body parts, discard multipart preamble and epilogue
+        let parts = string.split(boundary).slice(1, -1);
+
+        for (let part of parts) {
+            //remove the first and last CRLF
+            part = part.replace(/^\r\n/, '').replace(/\r\n$/, '');
+
+            let headers = [], content = '';
+
+            //if there are no headers, assume default values according to the spec
+            /* istanbul ignore if */
+            if (/^\r\n/.test(part)) {
+                content = part.replace(/^\r\n/, '');
+            }
+            else {
+                let lines = part.split(/\r\n/);
+
+                //a blank line separates the part headers from the part content
+                let separatorLineIndex = lines.indexOf('');
+
+                //slice out the headers and the content
+                headers = lines.slice(0, separatorLineIndex);
+                content = lines.slice(separatorLineIndex + 1).join('\r\n');
+            }
+        }
+        return {body, files};
+    }
 }
