@@ -35,6 +35,25 @@ export default class Router {
     }
 
     /**
+     *@param {Object} [options] - optional configuration options
+     *@param {Array} [options.methods] - array of methods allowed
+     *@returns {boolean}
+    */
+    validateOptions(options) {
+        options = Util.isPlainObject(options)? options : {};
+        let result = true;
+
+        //validate request method. the request method should be among the options.methods item.
+        if (Util.isArray(options.methods)) {
+            let method = this.method;
+            result = options.methods.some((testMethod) => {
+                return typeof testMethod === 'string' && testMethod.toUpperCase() === method;
+            });
+        }
+        return result;
+    }
+
+    /**
      *@description - checks if the request method is ok and that callback is a function
      *@param {Function} callback - the callback function
      *@param {string} [overrideMethod] - method to use
@@ -61,7 +80,7 @@ export default class Router {
         this.params = []; //reset the params tuple
         routeUrl = routeUrl.toLowerCase().replace(/^\/+/, '').replace(/\/+$/, '');
 
-        if (!this.validateRoute(callback, overrideMethod))
+        if (!this.validateRoute(callback, overrideMethod) || !this.validateOptions(options))
             return;
     }
 
