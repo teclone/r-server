@@ -19,4 +19,24 @@ export default class {
     get [Symbol.toStringTag]() {
         return 'BodyParser';
     }
+
+    /**
+     * assigns value to the given target with the key name
+     *@param {Object} target - the target object
+     *@param {string} name - the field name
+     *@param {string} value - the field value
+    */
+    assignValue(target, name, value) {
+        //field names that end with [] take multiple values
+        if (/\[\]$/.test(name)) {
+            name = name.replace(/\[\]$/, '');
+            if (typeof target[name] === 'undefined')
+                target[name] = [value];
+            else
+                target[name].push(value);
+        }
+        else {
+            target[name] = value;
+        }
+    }
 }
