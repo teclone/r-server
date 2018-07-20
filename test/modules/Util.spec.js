@@ -1,4 +1,7 @@
 import Util from '../../src/modules/Util.js';
+import fs from 'fs';
+import path from 'path';
+import rimraf from 'rimraf';
 
 describe('Util module', function() {
     describe('.isNumber(variable)', function() {
@@ -217,6 +220,30 @@ describe('Util module', function() {
                 name: 'house1', nickName: 'Finest House', oldName: 'Fine House',
                 details: {height: 35, width: 40, rooms: 40}
             });
+        });
+    });
+
+    describe('.mkDirSync(dir)', function() {
+        it(`should create the directory recursively if it does not exist`, function() {
+            let dir = path.join(__dirname, '../../storage/media/images');
+            Util.mkDirSync(dir);
+
+            let result = fs.existsSync(dir);
+            rimraf.sync(path.join(__dirname, '../../storage'));
+            expect(result).to.be.true;
+        });
+
+        it(`should throw error if argument is not a string`, function() {
+            expect(function() {
+                Util.mkDirSync(null);
+            }).to.throw(TypeError);
+        });
+
+        it(`should do nothing if the directory exists, or if the directory given is an empty
+        string or the backward slash. it returns false`, function() {
+            expect(Util.mkDirSync(path.resolve(__dirname))).to.be.false;
+            expect(Util.mkDirSync('/')).to.be.false;
+            expect(Util.mkDirSync('')).to.be.false;
         });
     });
 });
