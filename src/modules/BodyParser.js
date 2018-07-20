@@ -89,6 +89,27 @@ export default class {
     }
 
     /**
+     * clean up temp files
+     *@param {Object} files - the files object
+    */
+    cleanUpTempFiles(files) {
+        /**
+         * performs the unlink operation asynchronously
+        */
+        let unlink = function(file) {
+            fs.unlinkSync(file.path);
+        };
+
+        /**iterate through and run the unlink process */
+        for (let [, file] of Object.entries(files)) {
+            if (Util.isArray(file))
+                file.forEach(unlink);
+            else
+                unlink(file);
+        }
+    }
+
+    /**
      * processes and stores file
      *@param {Object} parsedHeaders - the parsed headers
      *@param {string} parsedHeaders.fileName - the file name as captured from the form data
