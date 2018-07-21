@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <base href="http;//localhost:8131/" />
+    </head>
+    <style type="text/css">
+        body {
+            padding: 0;
+            margin: 0;
+            background: #f2f2f2;
+        }
+
+        .grid {
+            margin: 30px auto;
+            width: 70%;
+            background: #fff;
+            -webkit-display: flex;
+            display: flex;
+            padding: 40px;
+        }
+
+        .grid > div:first-child {
+            width: 50%;
+        }
+
+        .grid > div:first-child + div {
+            width: 60%;
+        }
+
+        form > div + div {
+            margin-top: 15px;
+        }
+
+        label {
+            display: block;
+        }
+
+        .result-pan {
+            max-height: 100%;
+            overflow: auto;
+            background: #222;
+            color: #fff;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        .result-pan > h1, .result-pan > code, .result-pan > span {
+            padding: 10px 20px;
+            display: block;
+        }
+        header {
+            width: 70%;
+            margin: auto;
+            text-align: center;
+        }
+    </style>
+    <body>
+        <header>
+            <h1>Interacting with File Uploads and Form Processing</h1>
+            <p>Simply interact with the form fields, and the result of the server processing will be
+                displayed to you on the fly. it uses
+                <a href="https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest" target="_blank">XMLHttpRequest</a> to send the request.
+
+            </p>
+        </header>
+        <div class="grid">
+            <div>
+                <form action="/process-upload" method="POST" name="frm-test" id="frm-test">
+                    <div>
+                        <label for="username">Username:</label>
+                        <input type="text" name="username" id="username" value="harrison" />
+                    </div>
+                    <div>
+                        <label for="password1">Password:</label>
+                        <input type="password" name="password1" id="password1" value="random_243" />
+                    </div>
+                    <div>
+                        <label for="password2">Confirm Password:</label>
+                        <input type="password" name="password2" id="password2" value="random_243" />
+                    </div>
+                    <div>
+                        <p>Select Programming languages</p>
+                        <div>
+                            <label>
+                                <input type="checkbox" name="languages[]" value="Java" /> Java
+                            </label>
+                            <label>
+                                <input type="checkbox" name="languages[]" value="PHP" /> PHP
+                            </label>
+                            <label>
+                                <input type="checkbox" name="languages[]" value="JavaScript" /> JavaScript
+                            </label>
+                            <label>
+                                <input type="checkbox" name="languages[]" value="Ruby" /> Ruby
+                            </label>
+                            <label>
+                                <input type="checkbox" name="languages[]" value="Python" /> Python
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <p>Pick Music Files</p>
+                        <div>
+                            <input type="file" name="file-musics[]" accept="audio/*" />
+                        </div>
+                        <div>
+                            <input type="file" name="file-musics[]" accept="audio/*" />
+                        </div>
+                        <div>
+                            <input type="file" name="file-musics[]" accept="audio/*" />
+                        </div>
+                    </div>
+                    <div>
+                        <p>Choose Cv</p>
+                        <div>
+                            <input type="file" name="file-cv" accept="application/pdf" />
+                        </div>
+                    </div>
+                    <div>
+                        <button type="submit">Submit</button>
+                    </div>
+                </form>
+            </div>
+            <div>
+                <pre class="result-pan" id="result"></pre>
+            </div>
+        </div>
+    </body>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function() {
+            document.forms['frm-test'].addEventListener('submit', function(e) {
+                e.preventDefault();
+                let xhr = new XMLHttpRequest();
+
+                xhr.onloadend = function() {
+                    document.getElementById('result').innerHTML =
+                    `<h1>Result as Processed</h1><span>Note: note that multi field values are stored in array</span><code id="result">${xhr.responseText}</code>`;
+                };
+
+                xhr.open('POST', '/process-upload', true);
+
+                let formData = new FormData(this);
+                xhr.send(formData);
+            });
+        });
+    </script>
+</html>
