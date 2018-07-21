@@ -43,4 +43,19 @@ export default class {
             response.end();
         return true;
     }
+
+    /**
+     * negotiates the content
+    */
+    negotiateContent(headers, eTag, fileMTime) {
+        if (typeof headers['if-none-match'] !== 'undefined' &&
+            headers['if-none-match'] === eTag)
+            return true;
+
+        if (typeof headers['if-modified-since'] !== 'undefined' &&
+            headers['if-modified-since'].replace(/GMT.*/i, 'GMT') === fileMTime)
+            return true;
+
+        return false;
+    }
 }
