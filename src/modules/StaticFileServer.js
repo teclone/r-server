@@ -2,6 +2,7 @@
  * static file server module
 */
 import path from 'path';
+import fs from 'fs';
 import crypto from 'crypto';
 
 export default class {
@@ -71,5 +72,18 @@ export default class {
         hash.update(fileMTime.toString());
 
         return hash.digest('hex').substring(0, length || 16);
+    }
+
+    /**
+     * returns the directories default document if any
+     *@param {string} dir - dir or file path.
+     *@returns {string}
+    */
+    getDefaultDocument(dir) {
+        for(let file of this.defaultDocuments)
+            if (fs.existsSync(path.join(dir, '/', file)))
+                return file;
+
+        return '';
     }
 }
