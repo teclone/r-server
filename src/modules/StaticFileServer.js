@@ -177,7 +177,7 @@ export default class {
     */
     serveHttpErrorFile(response, status, baseDir, filePath) {
         if (!filePath)
-            filePath = '../httpErrors/' + status + '.html';
+            filePath = path.join(__dirname, '../httpErrors/' + status + '.html');
         else
             filePath = path.join(this.rootDir, '/', baseDir, '/', filePath);
 
