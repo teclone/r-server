@@ -86,4 +86,42 @@ export default class {
 
         return '';
     }
+
+    /**
+     * validates the request method and returns the public file or directory path that
+     * matches the request url
+     *@param {string} method - the request method
+     *@returns {string}
+    */
+    validateRequest(url, method) {
+        let validPath = '';
+        //sanitize the url
+        url = decodeURIComponent(url).replace(/[#?].*/, '').replace(/\.\./g, '');
+
+        if (['GET', 'OPTIONS', 'HEAD'].includes(method.toUpperCase())) {
+            for (let publicPath of this.publicPaths) {
+                let testPath = path.join(publicPath, url);
+
+                if (fs.existsSync(testPath)) {
+
+                    if (fs.statSync(testPath).isFile()) {
+                        validPath = testPath;
+                        break;
+                    }
+
+                    let defaultDocument = this.getDefaultDocument(testPath);
+                    if (defaultDocument) {
+                        validPath = path.join(testPath + '/' + defaultDocument);
+                        break;
+                    }
+                }
+            }
+        }
+
+        //do not serve files that starts with .
+        if (validPath && path.basename(validPath).indexOf('.') !== 0)
+            return validPath;
+        else
+            return '';
+    }
 }
