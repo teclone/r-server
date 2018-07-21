@@ -26,4 +26,21 @@ export default class {
     get [Symbol.toStringTag]() {
         return 'StaticFileServer';
     }
+
+    /**
+     * ends the response.
+     *@param {http.ServerResponse} response - the response object
+     *@param {number} status - response status code
+     *@param {Object} headers - the response headers to write
+     *@param {string|Buffer} [data] - response data to send
+     *@returns {boolean}
+    */
+    endResponse(response, status, headers, data) {
+        response.writeHead(status, headers || {});
+        if (data)
+            response.end(data);
+        else
+            response.end();
+        return true;
+    }
 }
