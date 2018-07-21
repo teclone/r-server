@@ -237,4 +237,40 @@ describe('StaticFileServer', function() {
             expect(response.data).to.be.null;
         });
     });
+
+    describe('#serveHttpErrorFile(response, status, baseDir?, filePath?)', function() {
+        it(`should asynchronously server the user defined http error file that is mapped for the given
+            status error code, and return a promise, passing in the response object`, function() {
+            return staticFileServer.serveHttpErrorFile(response, 404, '', 'test/helpers/404.html')
+                .then((response) => {
+                    expect(response.ended).to.be.true;
+                });
+        });
+
+        it(`should asynchronously server the internal error file that is mapped for the given
+            status error code, if user did not specify any file in the config file`, function() {
+            return staticFileServer.serveHttpErrorFile(response, 404)
+                .then((response) => {
+                    expect(response.ended).to.be.true;
+                });
+        });
+
+        it(`should send an empty content with the appropriate error status header if user
+            defined error file does not exists`, function() {
+            return staticFileServer.serveHttpErrorFile(response, 404, '', 'test/helpers/401.html')
+                .then((response) => {
+                    expect(response.ended).to.be.true;
+                    expect(response.data).to.be.null;
+                });
+        });
+
+        it(`should send an file with content type set to text/plain if user defined file has
+            no extension part.`, function() {
+            return staticFileServer.serveHttpErrorFile(response, 404, '', 'LICENSE')
+                .then((response) => {
+                    expect(response.ended).to.be.true;
+                    expect(response.headers['Content-Type']).to.equals('text/plain');
+                });
+        });
+    });
 });
