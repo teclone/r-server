@@ -124,4 +124,46 @@ export default class {
         else
             return '';
     }
+
+    /**
+     * serves a static file response back to the client
+     *@param {string} url - the request url
+     *@param {string} method - the request method
+     *@param {Object} headers - the request headers
+     *@param {http.ServerResponse} response - the response object
+    */
+    serve(url, method, headers, response) {
+        method = method.toUpperCase();
+
+        let filePath = this.validateRequest(url, method);
+        if (filePath === '')
+            return false;
+
+        if (method === 'OPTIONS')
+            return this.endResponse(response, 200, {'Allow': 'OPTIONS, HEAD, GET, POST'}, null);
+
+        let stat = fs.statSync(filePath),
+        eTag = this.getFileTag(stat.mtime);
+
+        if (this.negotiateContent(headers, eTag, stat.mtime))
+            return this.endResponse(response, 304, {}, null);
+
+        let resHeaders = {
+            'Content-Type': this.mimeTypes[path.parse(filePath).ext.substring(1)] || 'text/plain',
+            'Last-Modified': stat.mtime,
+            'Content-Length': stat.size,
+            'ETag': eTag,
+            'Cache-Control': this.cacheControl
+        };
+
+        switch(method) {
+            case 'HEAD':
+                resHeaders['Accept-Ranges'] = 'bytes';
+                return this.endResponse(response, 200, resHeaders);
+
+            case 'GET':
+                return this.endResponse(response, 200, resHeaders,
+                    fs.readFileSync(filePath));
+        }
+    }
 }
