@@ -14,6 +14,7 @@ export default class {
      *@param {string} cacheControl - cache control header for static files
     */
     constructor(rootDir, publicPaths, mimeTypes, defaultDocuments, cacheControl) {
+        this.rootDir = rootDir;
         this.publicPaths = publicPaths.map(publicPath =>  {
             return path.join(rootDir, publicPath, '/');
         });
@@ -165,5 +166,32 @@ export default class {
                 return this.endResponse(response, 200, resHeaders,
                     fs.readFileSync(filePath));
         }
+    }
+
+    /**
+     * servers server http error files. such as 504, 404, etc
+     *@param {http.ServerResponse} response - the response object
+     *@param {number} status - the response status code
+     *@param {string} baseDir - the user defined httErors base directory relative to root.
+     *@param {string} filePath - the file path that is mapped to the error code
+    */
+    serveHttpErrorFile(response, status, baseDir, filePath) {
+        if (!filePath)
+            filePath = '../httpErrors/' + status + '.html';
+        else
+            filePath = path.join(this.rootDir, '/', baseDir, '/', filePath);
+
+        let contentType = this.mimeTypes[path.parse(filePath).ext.substring(1)] || 'text/plain';
+        return new Promise((resolve) => {
+            fs.readFile(filePath, (err, buffer) => {
+                if (err)
+                    buffer = null;
+
+                response.writeHead(status, {'Content-Type': contentType});
+                response.end(buffer);
+
+                resolve(response);
+            });
+        });
     }
 }
