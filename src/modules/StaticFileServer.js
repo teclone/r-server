@@ -2,6 +2,7 @@
  * static file server module
 */
 import path from 'path';
+import crypto from 'crypto';
 
 export default class {
     /**
@@ -57,5 +58,18 @@ export default class {
             return true;
 
         return false;
+    }
+
+    /**
+     * computes and returns a files eTag
+     *@param {number} fileMTime - the files last modification time
+     *@param {string} [length=16] - the hash tag length to generate
+     *@returns {string}
+    */
+    getFileTag(fileMTime, length) {
+        let hash = crypto.createHash('sha256');
+        hash.update(fileMTime.toString());
+
+        return hash.digest('hex').substring(0, length || 16);
     }
 }
