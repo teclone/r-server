@@ -121,7 +121,7 @@ export default class {
     processFile(parsedHeaders, content) {
 
         let tempFileName = Util.getRandomText(8) + '.tmp',
-        filePath = path.join(this.tempDir, '/', tempFileName);
+            filePath = path.join(this.tempDir, '/', tempFileName);
 
         Util.mkDirSync(this.tempDir);
 
@@ -224,8 +224,8 @@ export default class {
 
             //resolve and assign value
             let fieldName = parsedHeaders.fieldName,
-            value = parsedHeaders.isFile? this.processFile(parsedHeaders, content) : content,
-            target = parsedHeaders.isFile? files : body;
+                value = parsedHeaders.isFile? this.processFile(parsedHeaders, content) : content,
+                target = parsedHeaders.isFile? files : body;
 
             this.assignValue(target, fieldName, value);
         }
@@ -238,8 +238,8 @@ export default class {
     */
     parse(buffer, contentType) {
         let content = buffer.toString(this.encoding),
-        tokens = contentType.split(/;\s*/),
-        boundary = '';
+            tokens = contentType.split(/;\s*/),
+            boundary = '';
 
         switch(tokens[0].toLowerCase()) {
             case 'text/json':
