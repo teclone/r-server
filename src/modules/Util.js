@@ -154,7 +154,7 @@ export default {
     */
     getRandomText(length) {
         let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
-        rands = [], i = -1;
+            rands = [], i = -1;
 
         length = length? length : 4;
         while (++i < length)
@@ -217,7 +217,7 @@ export default {
         //search backwards
         dir = dir.replace(/\/+$/, '');
         let existingPath = '',
-        testPath = dir;
+            testPath = dir;
         while (existingPath === '' && testPath !== '/') {
             testPath = path.join(testPath, '../');
             if (fs.existsSync(testPath))
