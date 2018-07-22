@@ -10,7 +10,7 @@ export default class Router {
      *@param {string} url - the request url
      *@param {string} method - the request method
      *@param {http.IncomingMessage} request - the request instance
-     *@param {http.ServerResponse} response - the response instance
+     *@param {RServerResponse} response - the response instance
      *@param {Array} middlewares - Array of middlewares
      *@returns {Router}
     */
@@ -40,9 +40,9 @@ export default class Router {
     */
     run(callback) {
         let cont = false,
-        next = function () {
-            cont = true;
-        };
+            next = function () {
+                cont = true;
+            };
 
         for (const middleware of this.middlewares) {
             cont = false;
@@ -80,7 +80,7 @@ export default class Router {
         }
 
         let [dataType, name] = routeToken.indexOf(':') > -1? routeToken.split(':') : ['', routeToken],
-        value = pathToken;
+            value = pathToken;
 
         switch(dataType.toLowerCase()) {
             case 'int':
@@ -116,22 +116,22 @@ export default class Router {
     matchUrl(routeUrl) {
         /**create matching regular expression*/
         let tokens = routeUrl? routeUrl.split('/') : [],
-        pattern = tokens.map(function(token) {
-            let pattern = '';
-            if (/^\{[\w:-]+\}$/.exec(token))
-                pattern = '[^/]+';
+            pattern = tokens.map(function(token) {
+                let pattern = '';
+                if (/^\{[\w:-]+\}$/.exec(token))
+                    pattern = '[^/]+';
 
-            else if (/^\{[\w:-]+\}\?$/.exec(token))
-                pattern = '([^/]+)?';
+                else if (/^\{[\w:-]+\}\?$/.exec(token))
+                    pattern = '([^/]+)?';
 
-            else if (token === '*')
-                pattern = '.*';
+                else if (token === '*')
+                    pattern = '.*';
 
-            else
-                pattern = token.replace(/\\-/g, '-').replace(/-/g, '\\-');
+                else
+                    pattern = token.replace(/\\-/g, '-').replace(/-/g, '\\-');
 
-            return pattern;
-        }).join('/');
+                return pattern;
+            }).join('/');
 
         let regex = new RegExp('^' + pattern + '$', 'i'); //regex is case insensitive
         return regex.test(this.url);
@@ -188,12 +188,12 @@ export default class Router {
             return;
 
         let pathTokens = this.url !== ''? this.url.split('/') : [],
-        routeTokens = routeUrl !== ''? routeUrl.split('/') : [];
+            routeTokens = routeUrl !== ''? routeUrl.split('/') : [];
 
         let i = -1;
         while (++i < routeTokens.length) {
             let pathToken = pathTokens[i],
-            routeToken = routeTokens[i];
+                routeToken = routeTokens[i];
 
             if (routeToken === '*') {
                 //final route token. add remaining url and pass it to the callback
