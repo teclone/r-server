@@ -116,6 +116,30 @@ export default class {
     }
 
     /**
+     * handle request data event
+    */
+    onRequestData(chunk, request, response, bufferDetails) {
+        bufferDetails.size += chunk.length;
+
+        if (bufferDetails.size <= this.config.maxBufferSize)
+            bufferDetails.buffers.push(chunk);
+        else
+            request.destroy(new Error('Payload too large'));
+    }
+
+    /**
+     * handles request events
+    */
+    onRequest(request, response) {
+        let bufferDetails = {buffers: [], size: 0};
+
+        //handle on data event
+        request.on('data', Util.generateCallback(this.onRequestData, this,
+            [request, response, bufferDetails]
+        ));
+    }
+
+    /**
      * handle server close event
     */
     onClose() {
@@ -139,6 +163,9 @@ export default class {
         this.server.on('close', this.onClose)
 
         //handle server client error
-            .on('clientError', this.onClientError);
+            .on('clientError', this.onClientError)
+
+        //handle server request
+            .on('request', Util.generateCallback(this.onRequest, this));
     }
 }
