@@ -41,6 +41,8 @@ export default class {
         this.server = http.createServer({
             ServerResponse: RServerResponse.getClass(this.staticfileServer)
         });
+
+        this.initServer();
     }
 
     /**
@@ -56,6 +58,23 @@ export default class {
     */
     get listening() {
         return this.server.listening;
+    }
+
+    /**
+     * starts the serve to listen on a given port
+     *@param {number} port - the port to listen on.
+    */
+    listen(port) {
+        port = port || 8131;
+        this.server.listen(port);
+        console.info('\x1b[32m%s\x1b[0m', 'Server started on port: ' + port);
+    }
+
+    /**
+     * closes the connection
+    */
+    close() {
+        this.server.close();
     }
 
     /**
@@ -94,5 +113,32 @@ export default class {
             config = _config;
 
         return config;
+    }
+
+    /**
+     * handle server close event
+    */
+    onClose() {
+        console.log('connection closed successfully');
+    }
+
+    /**
+     * handles client error events
+     *@param {Error} err - client error
+     *@param {net.Socket} socket - the socket object
+    */
+    onClientError(err, socket) {
+        socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+    }
+
+    /**
+     * binds all event handlers on the server.
+    */
+    initServer() {
+        //handle server close event
+        this.server.on('close', this.onClose)
+
+        //handle server client error
+            .on('clientError', this.onClientError);
     }
 }
