@@ -4,8 +4,10 @@
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import Util from './Util.js';
 
-export default class {
+export default class StaticFileServer {
+
     /**
      *@param {string} rootDir - the project root directory
      *@param {Array} publicPaths - array of public paths to serve static files from
@@ -31,19 +33,71 @@ export default class {
     }
 
     /**
+     * returns default response headers
+     *@param {string} filePath - the file path
+     *@returns {Object}
+    */
+    getDefaultHeaders(filePath) {
+        let stat = fs.statSync(filePath);
+
+        return {
+            'Content-Type': this.mimeTypes[path.parse(filePath).ext.substring(1)] ||
+                'application/octet-stream',
+            'Last-Modified': stat.mtime.toString(),
+            'Content-Length': stat.size,
+            'ETag': this.getFileTag(stat.mtime),
+            'Cache-Control': this.cacheControl
+        };
+    }
+
+    /**
      * ends the response.
-     *@param {http.ServerResponse} response - the response object
+     *@param {RServerResponse} response - the response object
      *@param {number} status - response status code
      *@param {Object} headers - the response headers to write
      *@param {string|Buffer} [data] - response data to send
+     *@param {function} [callback] - a callback method
      *@returns {boolean}
     */
-    endResponse(response, status, headers, data) {
+    endResponse(response, status, headers, data, callback) {
+        callback = Util.isCallable(callback)? callback : () => {};
         response.writeHead(status, headers || {});
+
         if (data)
             response.end(data);
         else
             response.end();
+        setTimeout(function() {
+            callback();
+        }, 1);
+        return true;
+    }
+
+    /**
+     * ends the streaming response
+     *@param {string} filePath - the file path to serve.
+     *@param {RServerResponse} - the response object
+     *@param {number} status - the status code
+     *@param {Object} headers - the request headers
+     *@param {function} [callback] - a callback method
+     *@returns {boolean}
+    */
+    endStream(filePath, response, status, headers, callback) {
+        callback = Util.isCallable(callback)? callback : () => {};
+
+        response.writeHead(status, headers);
+
+        let readStream = fs.createReadStream(filePath);
+
+        readStream.on('end', () => {
+            response.end(callback);
+        })
+            .on('error', () => {
+                /* istanbul ignore next */
+                readStream.end();
+            });
+
+        readStream.pipe(response, {end: false});
         return true;
     }
 
@@ -56,7 +110,7 @@ export default class {
             return true;
 
         if (typeof headers['if-modified-since'] !== 'undefined' &&
-            headers['if-modified-since'].replace(/GMT.*/i, 'GMT') === fileMTime)
+            headers['if-modified-since'] === fileMTime)
             return true;
 
         return false;
@@ -131,9 +185,11 @@ export default class {
      *@param {string} url - the request url
      *@param {string} method - the request method
      *@param {Object} headers - the request headers
-     *@param {http.ServerResponse} response - the response object
+     *@param {RServerResponse} response - the response object
+     *@param {Function} [callback] - a callback function that will be called once the operation
+     * fails or completes
     */
-    serve(url, method, headers, response) {
+    serve(url, method, headers, response, callback) {
         method = method.toUpperCase();
 
         let filePath = this.validateRequest(url, method);
@@ -141,57 +197,70 @@ export default class {
             return false;
 
         if (method === 'OPTIONS')
-            return this.endResponse(response, 200, {'Allow': 'OPTIONS, HEAD, GET, POST'}, null);
+            return this.endResponse(response, 200, {'Allow': 'OPTIONS, HEAD, GET, POST'}, null, callback);
 
-        let stat = fs.statSync(filePath),
-        eTag = this.getFileTag(stat.mtime);
+        let resHeaders = this.getDefaultHeaders(filePath);
 
-        if (this.negotiateContent(headers, eTag, stat.mtime))
-            return this.endResponse(response, 304, {}, null);
-
-        let resHeaders = {
-            'Content-Type': this.mimeTypes[path.parse(filePath).ext.substring(1)] || 'text/plain',
-            'Last-Modified': stat.mtime,
-            'Content-Length': stat.size,
-            'ETag': eTag,
-            'Cache-Control': this.cacheControl
-        };
+        if (this.negotiateContent(headers, resHeaders['ETag'], resHeaders['Last-Modified']))
+            return this.endResponse(response, 304, {}, null, callback);
 
         switch(method) {
             case 'HEAD':
                 resHeaders['Accept-Ranges'] = 'bytes';
-                return this.endResponse(response, 200, resHeaders);
+                return this.endResponse(response, 200, resHeaders, null, callback);
 
             case 'GET':
-                return this.endResponse(response, 200, resHeaders,
-                    fs.readFileSync(filePath));
+                return this.endStream(filePath, response, 200, resHeaders, callback);
         }
     }
 
     /**
      * servers server http error files. such as 504, 404, etc
-     *@param {http.ServerResponse} response - the response object
+     *@param {RServerResponse} response - the response object
      *@param {number} status - the response status code
      *@param {string} baseDir - the user defined httErors base directory relative to root.
      *@param {string} filePath - the file path that is mapped to the error code
+     *@param {Function} [callback] - a callback function that will be called once the operation
+     * fails or completes
     */
-    serveHttpErrorFile(response, status, baseDir, filePath) {
+    serveHttpErrorFile(response, status, baseDir, filePath, callback) {
         if (!filePath)
             filePath = path.join(__dirname, '../httpErrors/' + status + '.html');
         else
-            filePath = path.join(this.rootDir, '/', baseDir, '/', filePath);
+            filePath = path.join(this.rootDir, baseDir, filePath);
 
-        let contentType = this.mimeTypes[path.parse(filePath).ext.substring(1)] || 'text/plain';
-        return new Promise((resolve) => {
-            fs.readFile(filePath, (err, buffer) => {
-                if (err)
-                    buffer = null;
+        if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+            response.statusCode = status;
+            response.end(callback);
+            return true;
+        }
 
-                response.writeHead(status, {'Content-Type': contentType});
-                response.end(buffer);
+        let headers = this.getDefaultHeaders(filePath);
+        this.endStream(filePath, response, status, headers, callback);
+        return true;
+    }
 
-                resolve(response);
-            });
-        });
+    /**
+     * serves file intended for download to the client
+     *@param {RServerResponse} response - the response object
+     *@param {string} filePath - the file path
+     *@param {string} [filename] - suggested file that the browser will use in saving the file
+     *@param {Function} [callback] - a callback function that will be called once the operation
+     * fails or completes
+    */
+    serveDownload(response, filePath, filename, callback) {
+        let absPath = path.join(this.rootDir, filePath);
+        if (!fs.existsSync(absPath) || fs.statSync(absPath).isDirectory()) {
+            response.end(callback);
+            return;
+        }
+
+        let resHeaders = this.getDefaultHeaders(filePath);
+        filename = typeof filename === 'string' && filename?
+            filename : path.parse(absPath).base;
+
+        resHeaders['Content-Disposition'] = 'attachment; filename="' + filename + '"';
+
+        this.endStream(absPath, response, 200, resHeaders, callback);
     }
 }
