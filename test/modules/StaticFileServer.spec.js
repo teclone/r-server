@@ -21,17 +21,65 @@ describe('StaticFileServer', function() {
         }, ['index.html', 'main.js']);
 
         response = {
+            buffer: [],
             ended: false,
             data: null,
             headers: null,
             status: 0,
-            end: function(data) {
-                this.data = data? data : null;
-                this.ended = true;
+
+            set statusCode(code) {
+                this.status = code;
             },
+
+            get statusCode() {
+                return this.status;
+            },
+
+            eventListeners: {},
+
+            end: function(data) {
+                this.data = this.buffer.length > 0? Buffer.concat(this.buffer) : null;
+                if (typeof data === 'string')
+                    this.data = data;
+                else if (data instanceof Function)
+                    data();
+
+                this.emit('end');
+            },
+
+            write(chunk) {
+                this.buffer.push(chunk);
+            },
+
             writeHead: function(status, headers) {
                 this.status = status;
                 this.headers = headers;
+            },
+
+            on(event, callback) {
+                if (typeof this.eventListeners[event] !== 'undefined')
+                    this.eventListeners[event].push(callback);
+                else
+                    this.eventListeners[event] = [callback];
+            },
+
+            once(event, callback) {
+                if (typeof this.eventListeners[event] !== 'undefined')
+                    this.eventListeners[event].push(callback);
+                else
+                    this.eventListeners[event] = [callback];
+            },
+
+            emit(event) {
+                let eventListeners = this.eventListeners[event] || [];
+                for (let eventListener of eventListeners) {
+                    try {
+                        eventListener();
+                    }
+                    catch(ex){
+                        //
+                    }
+                }
             }
         };
     });
@@ -39,6 +87,45 @@ describe('StaticFileServer', function() {
     describe('#constructor(rootDir, publicPaths, mimeTypes, defaultDocuments)', function() {
         it(`should create a static file server instance`, function() {
             expect(staticFileServer).to.be.a('StaticFileServer');
+        });
+    });
+
+    describe('#getDefaultHeaders(filePath)', function() {
+        it('should return the default response headers for the given file', function() {
+            let filePath = path.resolve(__dirname, '../../package.json'),
+            stat = fs.statSync(filePath),
+            resHeaders = staticFileServer.getDefaultHeaders(
+                path.resolve(__dirname, '../../package.json'));
+
+            expect(resHeaders).to.deep.equals({
+                'Content-Type': 'application/json',
+                'Content-Length': stat.size,
+                'Last-Modified': stat.mtime.toString(),
+                'ETag': staticFileServer.getFileTag(stat.mtime),
+                'Cache-Control': 'no-cache, max-age=86400'
+            });
+        });
+
+        it('should use set the Content-Type to application/octet-stream if file has no extension', function() {
+            let filePath = path.resolve(__dirname, '../../LICENSE'),
+            resHeaders = staticFileServer.getDefaultHeaders(filePath);
+
+            expect(resHeaders['Content-Type']).to.equals('application/octet-stream');
+        });
+    });
+
+    describe('#endStream(filePath, response, status, headers, callback)', function() {
+        it(`should end the response by sending a file using node.js inbuild steam functionality.
+            It should call the callback once the process completes`, function(done) {
+            let filePath = path.resolve(__dirname, '../../package.json');
+            staticFileServer.endStream(filePath, response, 200, {}, function() {
+                done();
+            });
+        });
+
+        it(`should use a dummy callback function if no callback is specified.`, function() {
+            let filePath = path.resolve(__dirname, '../../package.json');
+            staticFileServer.endStream(filePath, response, 200, {});
         });
     });
 
@@ -69,7 +156,7 @@ describe('StaticFileServer', function() {
             it tallies with the file's last modified time. It should return true if it tallies`, function() {
             expect(staticFileServer.negotiateContent({
                 'if-modified-since': 'Wed Jul 18 2018 14:37:47 GMT+0100 (West Africa Standard Time)'
-            }, 'blablabla', 'Wed Jul 18 2018 14:37:47 GMT')).to.be.true;
+            }, 'blablabla', 'Wed Jul 18 2018 14:37:47 GMT+0100 (West Africa Standard Time)')).to.be.true;
         });
 
         it (`It should return false if otherwise`, function() {
@@ -155,122 +242,195 @@ describe('StaticFileServer', function() {
         });
     });
 
-    describe('#serve(url, method, headers, response)', function() {
+    describe('#serve(url, method, headers, response, callback?)', function() {
         it(`should run an integrated process, serving the file if all conditions are met, responding
-        to head, options, and get request as appropriate or decline the request. It
-            returns a boolean`, function() {
-            let status = staticFileServer.serve('package.json', 'GET', {}, response);
-            expect(status).to.be.true;
-            expect(response.data).to.deep.equals(
-                fs.readFileSync(path.resolve(__dirname, '../../package.json')));
+        to head, options, and get requests as appropriate or decline the request. It
+        return a boolean`, function(done) {
+            let filePath = path.resolve(__dirname, '../../package.json');
 
-            expect(response.status).to.equals(200);
+            let status = staticFileServer.serve(
+                'package.json', 'GET', {}, response, function() {
+                    if (status !== true)
+                        done(new Error('#serve sent incorrect return type'));
 
-            expect(response.headers['Content-Type']).to.equals('application/json');
-            expect(response.ended).to.be.true;
+                    else if (response.status !== 200)
+                        done(new Error('#serve sent incorrect status code'));
+
+                    else if (response.headers['Content-Type'] !== 'application/json')
+                        done(new Error('#serve sent incorrect content-type'));
+
+                    else if (response.data.toString() !== fs.readFileSync(filePath).toString())
+                        done(new Error('#serve sent incorrect file content buffer'));
+
+                    else
+                        done();
+                }
+            );
         });
 
-        it(`should return content type text/plain if files mime type is not found within the
-            list of mime types`, function() {
-            let status = staticFileServer.serve('LICENSE', 'GET', {}, response);
-            expect(status).to.be.true;
-            expect(response.data).to.deep.equals(
-                fs.readFileSync(path.resolve(__dirname, '../../LICENSE')));
+        it(`should return content type application/octet-stream if files mime type is not found within the
+        list of mime types`, function(done) {
+            staticFileServer.serve(
+                'LICENSE', 'GET', {}, response, function() {
+                    if (response.headers['Content-Type'] !== 'application/octet-stream')
+                        done(new Error('#serve sent incorrect content-type'));
 
-            expect(response.status).to.equals(200);
-
-            expect(response.headers['Content-Type']).to.equals('text/plain');
-            expect(response.ended).to.be.true;
+                    else
+                        done();
+                }
+            );
         });
 
         it(`should run an integrated process, and return false if the request fails validation`, function() {
             let status = staticFileServer.serve('package.json', 'POST', {}, response);
             expect(status).to.be.false;
-            expect(response.ended).to.be.false;
         });
 
         it(`should run an integrated process, and respond to OPTIONS requests, letting the client
-            know which request methods are allowed without sending any data`, function() {
-            let status = staticFileServer.serve('package.json', 'OPTIONS', {}, response);
-            expect(status).to.be.true;
-            expect(response.ended).to.be.true;
-            expect(response.headers).to.deep.equals({
-                Allow: 'OPTIONS, HEAD, GET, POST'
-            });
-            expect(response.data).to.be.null;
+        know which request methods are allowed without sending any data`, function(done) {
+            staticFileServer.serve(
+                'package.json', 'OPTIONS', {}, response, function() {
+                    if (response.headers['Allow'] !== 'OPTIONS, HEAD, GET, POST')
+                        done(new Error('#serve sent incorrect server allow head for options request'));
+
+                    else
+                        done();
+                }
+            );
         });
 
         it(`should run an integrated process, and respond to HEAD requests, sending resource
-            meta headers without sending the content`, function() {
+        meta headers without sending the content`, function(done) {
             let filePath = path.resolve(__dirname, '../../package.json'),
             stat = fs.statSync(filePath);
 
-            let status = staticFileServer.serve('package.json', 'HEAD', {}, response);
-            expect(status).to.be.true;
-            expect(response.ended).to.be.true;
+            staticFileServer.serve(
+                'package.json', 'HEAD', {}, response, function() {
+                    let headers = response.headers;
 
-            expect(response.headers['Content-Type']).to.equals('application/json');
-            expect(response.headers['Last-Modified']).to.deep.equals(stat.mtime);
-            expect(response.headers['ETag']).to.equals(
-                staticFileServer.getFileTag(stat.mtime));
+                    if (response.data !== null)
+                        done(new Error('#serve sent data for a head request when it should not'));
 
-            expect(response.headers['Cache-Control']).to.equals('no-cache, max-age=86400');
-            expect(response.data).to.be.null;
+                    else if (response.status !== 200)
+                        done(new Error('#serve sent incorrect status code'));
+
+                    else if (headers['Content-Type'] !== 'application/json')
+                        done(new Error('#serve sent incorrect content-type'));
+
+                    else if (headers['Last-Modified'].toString() !== stat.mtime.toString())
+                        done(new Error('#serve sent incorrect file Last-Modified date'));
+
+                    else if (headers['ETag'] !== staticFileServer.getFileTag(stat.mtime))
+                        done(new Error('#serve sent incorrect file ETag computed hash'));
+
+                    else if (headers['Cache-Control'] !== 'no-cache, max-age=86400')
+                        done(new Error('#serve sent incorrect cache-control header'));
+
+                    else
+                        done();
+                }
+            );
         });
 
         it(`should run an integrated process, negotiate content and respond with a 304 response
-        header status if content negotiation succeeds`, function() {
+        header status if content negotiation succeeds`, function(done) {
+
             //serve the first file.
-            let status = staticFileServer.serve('package.json', 'HEAD', {}, response);
+            staticFileServer.serve(
+                'package.json', 'GET', {}, response, function() {
+                    //serve the same file the second time
+                    let headers = {};
+                    response.buffer = []; //empty buffer
+                    for(let [key, value] of Object.entries(response.headers)) {
+                        key = key.toLowerCase();
+                        if (key === 'last-modified')
+                            headers['if-modified-since'] = value;
+                        else if (key === 'etag')
+                            headers['etag'] = value;
+                        else
+                            headers[key] = value;
+                    }
 
-            expect(status).to.be.true;
-            expect(response.ended).to.be.true;
-            expect(response.status).to.equals(200);
+                    staticFileServer.serve('package.json', 'GET', headers, response, function() {
+                        if (response.status !== 304)
+                            done(new Error(`#serve sent incorrect response status code, when
+                                it suppose to negotiate content`));
 
-            //
-            status = staticFileServer.serve('package.json', 'HEAD', {
-                'if-none-match': response.headers['ETag']}, response);
+                        else if (response.data !== null)
+                            done(new Error('#serve sent data for a 304 response when it should not'));
 
-            expect(status).to.be.true;
-            expect(response.ended).to.be.true;
-            expect(response.status).to.equals(304);
-            expect(response.data).to.be.null;
+                        else
+                            done();
+                    });
+                }
+            );
         });
     });
 
-    describe('#serveHttpErrorFile(response, status, baseDir?, filePath?)', function() {
+    describe('#serveHttpErrorFile(response, status, baseDir?, filePath?, callback?)', function() {
         it(`should asynchronously server the user defined http error file that is mapped for the given
-            status error code, and return a promise, passing in the response object`, function() {
-            return staticFileServer.serveHttpErrorFile(response, 404, '', 'test/helpers/404.html')
-                .then((response) => {
-                    expect(response.ended).to.be.true;
-                });
+            status error code`, function(done) {
+            staticFileServer.serveHttpErrorFile(response, 404, '',
+                'test/helpers/404.html', function() {
+                    done();
+                }
+            );
         });
 
-        it(`should asynchronously server the internal error file that is mapped for the given
-            status error code, if user did not specify any file in the config file`, function() {
-            return staticFileServer.serveHttpErrorFile(response, 404)
-                .then((response) => {
-                    expect(response.ended).to.be.true;
-                });
+        it(`should asynchronously server the default internal error file that is mapped for the given
+            status error code, if none is defined by the web master`, function(done) {
+            staticFileServer.serveHttpErrorFile(response, 404, '', '', function() {
+                done();
+            });
         });
 
         it(`should send an empty content with the appropriate error status header if user
-            defined error file does not exists`, function() {
-            return staticFileServer.serveHttpErrorFile(response, 404, '', 'test/helpers/401.html')
-                .then((response) => {
-                    expect(response.ended).to.be.true;
-                    expect(response.data).to.be.null;
-                });
+            defined error file does not exist`, function(done) {
+            staticFileServer.serveHttpErrorFile(response, 404, '', 'test/helpers/401.html', function() {
+                if (response.status === 404)
+                    done();
+                else
+                    done(new Error('incorrect response status code sent'));
+            });
+        });
+    });
+
+    describe('#serveDownload(response, filePath, filename?, callback?)', function() {
+        it(`should serve the file referred to by the relative filePath as download attachment to the
+        client, suggesting the given filename as what the client should use in saving the
+        file. `, function(done) {
+            staticFileServer.serveDownload(response, 'package.json', 'node-config.json',
+                function() {
+                    if (response.headers['Content-Disposition'] ===
+                        'attachment; filename="node-config.json"')
+                        done();
+                    else
+                        done(new Error('wrong content-disposition header sent'));
+                }
+            );
         });
 
-        it(`should send an file with content type set to text/plain if user defined file has
-            no extension part.`, function() {
-            return staticFileServer.serveHttpErrorFile(response, 404, '', 'LICENSE')
-                .then((response) => {
-                    expect(response.ended).to.be.true;
-                    expect(response.headers['Content-Type']).to.equals('text/plain');
-                });
+        it(`should default to the files base name if no filename is provided.`, function(done) {
+            staticFileServer.serveDownload(response, 'package.json', '',
+                function() {
+                    if (response.headers['Content-Disposition'] ===
+                        'attachment; filename="package.json"')
+                        done();
+                    else
+                        done(new Error('wrong content-disposition header sent'));
+                }
+            );
+        });
+
+        it(`should simply end the response if the specified file does not exist.`, function(done) {
+            staticFileServer.serveDownload(response, 'packag.json', 'node-config.json',
+                function() {
+                    if (response.data !== null)
+                        done(new Error('#serveDownload sent data when file does not actually exist'));
+                    else
+                        done();
+                }
+            );
         });
     });
 });
