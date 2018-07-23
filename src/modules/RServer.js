@@ -264,6 +264,11 @@ export default class {
         request.on('data', Util.generateCallback(this.onRequestData, this,
             [request, response, bufferDetails]
         ));
+
+        //handle on data event
+        request.on('end', Util.generateCallback(this.onRequestEnd, this,
+            [request, response, bufferDetails]
+        ));
     }
 
     /**
