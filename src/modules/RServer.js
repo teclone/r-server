@@ -180,6 +180,69 @@ export default class {
     }
 
     /**
+     * parse all request data
+    */
+    parseRequestData(request, url, buffers) {
+        //parse query
+        request.query = this.bodyParser.parseQueryString(url);
+
+        //parse the request body
+        if (buffers.length > 0) {
+            let result = this.bodyParser.parse(Buffer.concat(buffers),
+                request.headers['content-type']);
+
+            request.body = result.body;
+            request.files = result.files;
+        }
+
+        //combine the body and query into a data property
+        request.data = Object.assign({}, request.query, request.body);
+    }
+
+    /**
+     * perform house keeping
+     *@param {http.IncomingMessage} request - the request object
+    */
+    onResponseFinish(request) {
+        this.bodyParser.cleanUpTempFiles(request.files);
+    }
+
+    /**
+     * handle request data event
+     *@param {http.IncomingMessage} request - the request object
+     *@param {RServerResponse} response - the response object
+     *@param {Object} bufferDetails - the buffer details
+     *@param {number} bufferDetails.size - the buffer size
+     *@param {Array} bufferDetails.buffers - array containing chunks of buffer data
+    */
+    onRequestEnd(request, response, bufferDetails) {
+        let {url, method, headers} = request;
+
+        request.files = {};
+        request.query = {};
+        request.body = {};
+
+        //clean up resources once the response has been sent out
+        response.on('finish', Util.generateCallback(this.onResponseFinish, this,
+            [request]
+        ));
+
+        if (this.staticfileServer.serve(url, method, headers, response))
+            return;
+
+        this.parseRequestData(request, url, bufferDetails.buffers);
+
+        if (this.runRoutes(url, method, request, response))
+            return;
+
+        //send 404 response if router did not resolved
+        let httpErrors = this.config.httpErrors;
+        this.staticfileServer.serveHttpErrorFile(
+            response, 404, httpErrors.baseDir, httpErrors['404']
+        );
+    }
+
+    /**
      * handle request data event
     */
     onRequestData(chunk, request, response, bufferDetails) {
