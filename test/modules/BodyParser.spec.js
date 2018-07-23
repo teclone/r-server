@@ -35,7 +35,7 @@ describe('BodyParser', function() {
         it(`should delete all temporarily files from the temp folder once the
             response finishes`, function() {
             let dir = path.resolve(__dirname, '../../'),
-            filePath = path.join(dir + '/' + 'file1.txt');
+                filePath = path.join(dir + '/' + 'file1.txt');
 
             fs.writeFileSync(filePath, 'my name is harrison');
             expect(fs.existsSync(filePath)).to.be.true;
@@ -50,8 +50,8 @@ describe('BodyParser', function() {
 
         it(`should iterate through an array of multi files and delete all files`, function() {
             let dir = path.resolve(__dirname, '../../'),
-            filePath1 = path.join(dir + '/' + 'file1.txt'),
-            filePath2 = path.join(dir + '/' + 'file2.txt');
+                filePath1 = path.join(dir + '/' + 'file1.txt'),
+                filePath2 = path.join(dir + '/' + 'file2.txt');
 
             fs.writeFileSync(filePath1, 'my name is harrison');
             fs.writeFileSync(filePath2, 'my name is harrison');
@@ -73,7 +73,7 @@ describe('BodyParser', function() {
         it(`should create a temporary file in the temp directory writing the content into the
         file`, function() {
             let bodyParser = new BodyParser(path.resolve(__dirname, '../../storage/temp')),
-            parsedHeaders = {fileName: 'my-file.txt', mimeType: 'text/plain'};
+                parsedHeaders = {fileName: 'my-file.txt', mimeType: 'text/plain'};
 
             let tempFileDetails = bodyParser.processFile(parsedHeaders, 'my name is harrison');
 
@@ -92,9 +92,9 @@ describe('BodyParser', function() {
 
             //taken from a live chrome network console
             let headers = [
-                'Content-Disposition: form-data; name="username"'
-            ],
-            result = bodyParser.parsePartHeaders(headers);
+                    'Content-Disposition: form-data; name="username"'
+                ],
+                result = bodyParser.parsePartHeaders(headers);
 
             expect(result).to.deep.equals({
                 fileName: '',
@@ -111,10 +111,10 @@ describe('BodyParser', function() {
 
             //taken from a live chrome network console
             let headers = [
-                'Content-Disposition: form-data; name="file-music"; filename="Tiwa_Savage_Sugar_Cane_9jaflaver.com_.mp3"',
-                'Content-Type: audio/mp3'
-            ],
-            result = bodyParser.parsePartHeaders(headers);
+                    'Content-Disposition: form-data; name="file-music"; filename="Tiwa_Savage_Sugar_Cane_9jaflaver.com_.mp3"',
+                    'Content-Type: audio/mp3'
+                ],
+                result = bodyParser.parsePartHeaders(headers);
 
             expect(result).to.deep.equals({
                 fileName: 'Tiwa_Savage_Sugar_Cane_9jaflaver.com_.mp3',
@@ -131,10 +131,10 @@ describe('BodyParser', function() {
 
             //taken from a live chrome network console
             let headers = [
-                'Content-Disposition: form-data; filename="Tiwa_Savage_Sugar_Cane_9jaflaver.com_.mp3"',
-                'Content-Type: audio/mp3'
-            ],
-            result = bodyParser.parsePartHeaders(headers);
+                    'Content-Disposition: form-data; filename="Tiwa_Savage_Sugar_Cane_9jaflaver.com_.mp3"',
+                    'Content-Type: audio/mp3'
+                ],
+                result = bodyParser.parsePartHeaders(headers);
 
             expect(result.fieldName).to.be.a('string').and.not.equals('');
         });
@@ -176,7 +176,7 @@ describe('BodyParser', function() {
         file entry is specifically for file fields`, function() {
             let filePath = path.resolve(__dirname, '../helpers/multipart.log'),
 
-            boundary = '----WebKitFormBoundaryAw0u9Lykfr41KdqS';
+                boundary = '----WebKitFormBoundaryAw0u9Lykfr41KdqS';
 
             let result = bodyParser.parseMultiPart(fs.readFileSync(filePath, 'latin1'), boundary);
 
@@ -268,15 +268,15 @@ describe('BodyParser', function() {
             argument, returning an object containing files and body objects.
             should run json parse if content type is either text/json or application/json.`, function(){
             let myJson = [
-                ['name', 'Harrison Ifeanyichukwu'],
-                ['email', 'harrisonifeanyichukwu@gmail.com'],
-                ['username', '_vespar'],
-                ['languages[]', 'javaScript'],
-                ['languages[]', 'node.js'],
-                ['languages[]', 'php'],
-                ['languages[]', 'ruby']
-            ],
-            buffer = Buffer.from(JSON.stringify(myJson));
+                    ['name', 'Harrison Ifeanyichukwu'],
+                    ['email', 'harrisonifeanyichukwu@gmail.com'],
+                    ['username', '_vespar'],
+                    ['languages[]', 'javaScript'],
+                    ['languages[]', 'node.js'],
+                    ['languages[]', 'php'],
+                    ['languages[]', 'ruby']
+                ],
+                buffer = Buffer.from(JSON.stringify(myJson));
 
             let result = bodyParser.parse(buffer, 'application/json');
             expect(result.body).to.deep.equals(myJson);
@@ -296,10 +296,10 @@ describe('BodyParser', function() {
             ];
 
             let encodedString = data.map(([name, value]) => {
-                return encodeURIComponent(name) + '=' + encodeURIComponent(value);
-            }).join('&'),
+                    return encodeURIComponent(name) + '=' + encodeURIComponent(value);
+                }).join('&'),
 
-            buffer = Buffer.from(encodedString);
+                buffer = Buffer.from(encodedString);
 
             let parsedData = bodyParser.parse(buffer, 'application/x-www-form-urlencoded');
             expect(parsedData.body).to.deep.equals({
@@ -313,7 +313,7 @@ describe('BodyParser', function() {
         it(`should run mulipart parse if content type is multipart/form-data`, function(){
             let filePath = path.resolve(__dirname, '../helpers/multipart.log'),
 
-            boundary = '----WebKitFormBoundaryAw0u9Lykfr41KdqS';
+                boundary = '----WebKitFormBoundaryAw0u9Lykfr41KdqS';
 
             let result = bodyParser.parse(
                 Buffer.from(fs.readFileSync(filePath, 'latin1'), 'latin1'),

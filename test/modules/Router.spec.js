@@ -208,15 +208,15 @@ describe('Router', function() {
         it(`should pass in request, response object and comma separated list of captured data to
             the controller as defined in the route`, function(done) {
             let request = {
-                method: 'GET',
-                headers: {
-                    'user-agent': '',
-                    'if-none-match': 'dhdhd9ed'
-                }
-            },
-            response = {
-                end: () => {}
-            };
+                    method: 'GET',
+                    headers: {
+                        'user-agent': '',
+                        'if-none-match': 'dhdhd9ed'
+                    }
+                },
+                response = {
+                    end: () => {}
+                };
             router = new Router('/users/200/profile', 'GET', request, response, []);
 
             router.process('users/{int:id}/profile', function(req, res, userId) {

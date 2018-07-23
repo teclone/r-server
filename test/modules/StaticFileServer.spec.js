@@ -4,7 +4,7 @@ import fs from 'fs';
 
 describe('StaticFileServer', function() {
     let staticFileServer = null,
-    response = null;
+        response = null;
 
     beforeEach(function() {
         staticFileServer = new StaticFileServer(path.resolve(__dirname, '../../'), [
@@ -93,9 +93,9 @@ describe('StaticFileServer', function() {
     describe('#getDefaultHeaders(filePath)', function() {
         it('should return the default response headers for the given file', function() {
             let filePath = path.resolve(__dirname, '../../package.json'),
-            stat = fs.statSync(filePath),
-            resHeaders = staticFileServer.getDefaultHeaders(
-                path.resolve(__dirname, '../../package.json'));
+                stat = fs.statSync(filePath),
+                resHeaders = staticFileServer.getDefaultHeaders(
+                    path.resolve(__dirname, '../../package.json'));
 
             expect(resHeaders).to.deep.equals({
                 'Content-Type': 'application/json',
@@ -108,7 +108,7 @@ describe('StaticFileServer', function() {
 
         it('should use set the Content-Type to application/octet-stream if file has no extension', function() {
             let filePath = path.resolve(__dirname, '../../LICENSE'),
-            resHeaders = staticFileServer.getDefaultHeaders(filePath);
+                resHeaders = staticFileServer.getDefaultHeaders(filePath);
 
             expect(resHeaders['Content-Type']).to.equals('application/octet-stream');
         });
@@ -302,7 +302,7 @@ describe('StaticFileServer', function() {
         it(`should run an integrated process, and respond to HEAD requests, sending resource
         meta headers without sending the content`, function(done) {
             let filePath = path.resolve(__dirname, '../../package.json'),
-            stat = fs.statSync(filePath);
+                stat = fs.statSync(filePath);
 
             staticFileServer.serve(
                 'package.json', 'HEAD', {}, response, function() {
