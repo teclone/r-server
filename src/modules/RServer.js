@@ -137,6 +137,49 @@ export default class {
     }
 
     /**
+     * runs all request routes
+     *@param {string} url - request url
+     *@param {string} method - request method
+     *@param {http.IncomingMessage} request - the request object
+     *@param {RServerResponse} response - the response object
+     *@returns {boolean}
+    */
+    runRoutes(url, method, request, response) {
+        //create router and run routes
+        let router = new Router(url, method, request, response, this.middlewares);
+        //run routes
+        for (const route of this.routes) {
+            switch(route.api.toLowerCase()) {
+                case 'get':
+                    router.get(...route.parameters);
+                    break;
+                case 'post':
+                    router.post(...route.parameters);
+                    break;
+                case 'delete':
+                    router.delete(...route.parameters);
+                    break;
+                case 'put':
+                    router.put(...route.parameters);
+                    break;
+                case 'route':
+                    router.route(...route.parameters);
+                    break;
+                case 'head':
+                    router.head(...route.parameters);
+                    break;
+                case 'options':
+                    router.options(...route.parameters);
+                    break;
+            }
+
+            if(router.resolved)
+                return true;
+        }
+        return false;
+    }
+
+    /**
      * handle request data event
     */
     onRequestData(chunk, request, response, bufferDetails) {
