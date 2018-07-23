@@ -4,6 +4,7 @@ import path from 'path';
 import Util from './Util.js';
 import http from 'http';
 import StaticFileServer from './StaticFileServer.js';
+import Router from './Router.js';
 import BodyParser from './BodyParser.js';
 import _config from '../.rsvrc.json';
 import RServerResponse from './RServerResponse.js';
@@ -113,6 +114,26 @@ export default class {
             config = _config;
 
         return config;
+    }
+
+    /**
+     * adds the given route to the routes array
+     *@param {string} api - the route api
+     *@param {string} baseUrl - the base url
+     *@param {Function} callback - callback function
+     *@param {Object} [options] - optional configuration options
+    */
+    addRoute(api, ...parameters) {
+        this.routes.push({api, parameters});
+    }
+
+    /**
+     * use a middleware
+     *@param {Function} middleware - the middleware function
+    */
+    use(middleware) {
+        if (Util.isCallable(middleware))
+            this.middlewares.push(middleware);
     }
 
     /**
