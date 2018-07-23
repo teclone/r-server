@@ -5,12 +5,13 @@
   "main": "index.js",
   "scripts": {
     "test": "BABEL_ENV=test nyc mocha --recursive",
-    "test-watch": "BABEL_ENV=test nyc mocha --recursive -w",
+    "watch-test": "npm run test -- -w",
     "report-coverage": "nyc report --reporter=text-lcov | coveralls",
     "lint": "eslint ./src --fix",
     "commit": "git-cz",
     "prebuild": "rimraf dist && rimraf lib",
-    "build": "BABEL_ENV=build rollup --config"
+    "build": "BABEL_ENV=build rollup --config",
+    "watch-build": "npm run build -- --watch"
   },
   "repository": {
     "type": "git",
