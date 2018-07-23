@@ -180,16 +180,16 @@ export default {
             for (let key of keys) {
                 let value = src[key];
 
-                if (typeof dest[key] === 'undefined')
-                    dest[key] = this.isPlainObject(value)?
-                        run.call(this, {}, value) : value;
-
-                else if (this.isPlainObject(value) && !this.isPlainObject(dest[key]))
-                    continue;
-
-                else
-                    dest[key] = this.isPlainObject(value)?
-                        run.call(this, dest[key], value) : value;
+                if (typeof dest[key] === 'undefined') {
+                    dest[key] = this.isPlainObject(value)? run.call(this, {}, value) : value;
+                }
+                else if (this.isPlainObject(value)) {
+                    dest[key] = this.isPlainObject(dest[key])?
+                        run.call(this, dest[key], value) : run.call(this, {}, value);
+                }
+                else {
+                    dest[key] = value;
+                }
             }
             return dest;
         }

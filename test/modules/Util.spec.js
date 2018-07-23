@@ -190,12 +190,12 @@ describe('Util module', function() {
         it(`should deeply merge all the comma separated list of object arguments and return
         the new object`, function() {
             let obj1 = {name: 'house1', details: {height: 30, width: 40}};
-            let obj2 = {nickName: 'Finest House', details: {rooms: 40}};
-            let obj3 = {oldName: 'Fine House', details: {height: 35}};
+            let obj2 = {nickName: 'Finest House', details: {rooms: 40}, name: {value: 'house2'}};
+            let obj3 = {oldName: 'Fine House', details: 'no details'};
 
             expect(Util.mergeObjects(obj1, obj2, obj3)).to.deep.equals({
-                name: 'house1', nickName: 'Finest House', oldName: 'Fine House',
-                details: {height: 35, width: 40, rooms: 40}
+                name: {value: 'house2'}, nickName: 'Finest House', oldName: 'Fine House',
+                details: 'no details'
             });
         });
 
@@ -205,18 +205,6 @@ describe('Util module', function() {
             let obj3 = {oldName: 'Fine House', details: {height: 35}};
 
             expect(Util.mergeObjects(obj1, obj2, obj3, null)).to.deep.equals({
-                name: 'house1', nickName: 'Finest House', oldName: 'Fine House',
-                details: {height: 35, width: 40, rooms: 40}
-            });
-        });
-
-        it(`should not override non object field with an object field`, function() {
-            let obj1 = {name: 'house1', details: {height: 30, width: 40}};
-            let obj2 = {nickName: 'Finest House', details: {rooms: 40}};
-            let obj3 = {oldName: 'Fine House', details: {height: 35}};
-            let obj4 = {name: {value: 'house2'}};
-
-            expect(Util.mergeObjects(obj1, obj2, obj3, obj4)).to.deep.equals({
                 name: 'house1', nickName: 'Finest House', oldName: 'Fine House',
                 details: {height: 35, width: 40, rooms: 40}
             });
