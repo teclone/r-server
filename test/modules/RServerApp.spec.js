@@ -13,49 +13,49 @@ describe('RServerApp', function() {
         });
     });
 
-    describe('#all(baseUrl, callback, options)', function() {
+    describe('#all(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
             rServerApp.all('/', () => {}, {});
             expect(rServerApp.server.routes[0].api).to.equals('all');
         });
     });
 
-    describe('#get(baseUrl, callback, options)', function() {
+    describe('#get(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
             rServerApp.get('/', () => {}, {});
             expect(rServerApp.server.routes[0].api).to.equals('get');
         });
     });
 
-    describe('#post(baseUrl, callback, options)', function() {
+    describe('#post(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
             rServerApp.post('/', () => {}, {});
             expect(rServerApp.server.routes[0].api).to.equals('post');
         });
     });
 
-    describe('#head(baseUrl, callback, options)', function() {
+    describe('#head(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
             rServerApp.head('/', () => {}, {});
             expect(rServerApp.server.routes[0].api).to.equals('head');
         });
     });
 
-    describe('#put(baseUrl, callback, options)', function() {
+    describe('#put(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
             rServerApp.put('/', () => {}, {});
             expect(rServerApp.server.routes[0].api).to.equals('put');
         });
     });
 
-    describe('#delete(baseUrl, callback, options)', function() {
+    describe('#delete(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
             rServerApp.delete('/', () => {}, {});
             expect(rServerApp.server.routes[0].api).to.equals('delete');
         });
     });
 
-    describe('#head(baseUrl, callback, options)', function() {
+    describe('#head(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
             rServerApp.options('/', () => {}, {});
             expect(rServerApp.server.routes[0].api).to.equals('options');

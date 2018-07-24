@@ -119,7 +119,7 @@ export default class {
     /**
      * adds the given route to the routes array
      *@param {string} api - the route api
-     *@param {string} baseUrl - the base url
+     *@param {string} url - the route url
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
     */

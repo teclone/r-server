@@ -18,72 +18,72 @@ export default class RServerApp {
 
     /**
      * performs route rules for all http method verbs
-     *@param {string} baseUrl - the base url
+     *@param {string} url - the route url
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
     */
-    all(baseUrl, callback, options) {
-        this.server.addRoute('all', baseUrl, callback, options);
+    all(url, callback, options) {
+        this.server.addRoute('all', url, callback, options);
     }
 
     /**
-     * performs route rules for all http GET method verbs
-     *@param {string} baseUrl - the base url
+     * performs route rules for http GET method verb
+     *@param {string} url - the route url
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
     */
-    get(baseUrl, callback, options) {
-        this.server.addRoute('get', baseUrl, callback, options);
+    get(url, callback, options) {
+        this.server.addRoute('get', url, callback, options);
     }
 
     /**
-     * performs route rules for all http OPTIONS method verbs
-     *@param {string} baseUrl - the base url
+     * performs route rules for http OPTIONS method verb
+     *@param {string} url - the route url
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
     */
-    options(baseUrl, callback, options) {
-        this.server.addRoute('options', baseUrl, callback, options);
+    options(url, callback, options) {
+        this.server.addRoute('options', url, callback, options);
     }
 
     /**
-     * performs route rules for all http POST method verbs
-     *@param {string} baseUrl - the base url
+     * performs route rules for http POST method verb
+     *@param {string} url - the route url
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
     */
-    post(baseUrl, callback, options) {
-        this.server.addRoute('post', baseUrl, callback, options);
+    post(url, callback, options) {
+        this.server.addRoute('post', url, callback, options);
     }
 
     /**
-     * performs route rules for all http PUT method verbs
-     *@param {string} baseUrl - the base url
+     * performs route rules for http PUT method verb
+     *@param {string} url - the route url
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
     */
-    put(baseUrl, callback, options) {
-        this.server.addRoute('put', baseUrl, callback, options);
+    put(url, callback, options) {
+        this.server.addRoute('put', url, callback, options);
     }
 
     /**
-     * performs route rules for all http HEAD method verbs
-     *@param {string} baseUrl - the base url
+     * performs route rules for http HEAD method verb
+     *@param {string} url - the route url
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
     */
-    head(baseUrl, callback, options) {
-        this.server.addRoute('head', baseUrl, callback, options);
+    head(url, callback, options) {
+        this.server.addRoute('head', url, callback, options);
     }
 
     /**
-     * performs route rules for all http DELETE method verbs
-     *@param {string} baseUrl - the base url
+     * performs route rules for http DELETE method verb
+     *@param {string} url - the route url
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
     */
-    delete(baseUrl, callback, options) {
-        this.server.addRoute('delete', baseUrl, callback, options);
+    delete(url, callback, options) {
+        this.server.addRoute('delete', url, callback, options);
     }
 
     /**
