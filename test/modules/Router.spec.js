@@ -270,10 +270,10 @@ describe('Router', function() {
         });
     });
 
-    describe('#route(routeUrl, callback, options?)', function() {
+    describe('#all(routeUrl, callback, options?)', function() {
         it(`should process the given route for all method verbs`, function() {
             let called = false;
-            router.route('/', function(req, res) {
+            router.all('/', function(req, res) {
                 called = true;
                 res.end();
             });
@@ -283,7 +283,7 @@ describe('Router', function() {
         it(`should process the given route for all method verbs except when user specifies the methods
         using options.methods parameters`, function() {
             let called = false;
-            router.route('/', function(req, res) {
+            router.all('/', function(req, res) {
                 called = true;
                 res.end();
             }, {

@@ -162,8 +162,8 @@ export default class {
                 case 'put':
                     router.put(...route.parameters);
                     break;
-                case 'route':
-                    router.route(...route.parameters);
+                case 'all':
+                    router.all(...route.parameters);
                     break;
                 case 'head':
                     router.head(...route.parameters);

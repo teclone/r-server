@@ -13,10 +13,10 @@ describe('RServerApp', function() {
         });
     });
 
-    describe('#route(baseUrl, callback, options)', function() {
+    describe('#all(baseUrl, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
-            rServerApp.route('/', () => {}, {});
-            expect(rServerApp.server.routes[0].api).to.equals('route');
+            rServerApp.all('/', () => {}, {});
+            expect(rServerApp.server.routes[0].api).to.equals('all');
         });
     });
 

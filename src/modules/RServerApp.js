@@ -22,8 +22,8 @@ export default class RServerApp {
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
     */
-    route(baseUrl, callback, options) {
-        this.server.addRoute('route', baseUrl, callback, options);
+    all(baseUrl, callback, options) {
+        this.server.addRoute('all', baseUrl, callback, options);
     }
 
     /**

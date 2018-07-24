@@ -110,21 +110,7 @@ describe('RServer', function() {
             rServer.addRoute('options', '/', callback);
             rServer.addRoute('head', '/', callback);
             rServer.addRoute('put', '/', callback);
-            rServer.addRoute('route', '/', callback);
-
-            let result = rServer.runRoutes('/index.js', 'GET', {}, {});
-            expect(result).to.equals(false);
-        });
-
-        it(`should run the all the routes until the router resolves`, function() {
-            let callback = function() {};
-            rServer.addRoute('get', '/', callback);
-            rServer.addRoute('post', '/', callback);
-            rServer.addRoute('delete', '/', callback);
-            rServer.addRoute('options', '/', callback);
-            rServer.addRoute('head', '/', callback);
-            rServer.addRoute('put', '/', callback);
-            rServer.addRoute('route', '/', callback);
+            rServer.addRoute('all', '/', callback);
 
             let result = rServer.runRoutes('/index.js', 'GET', {}, {});
             expect(result).to.equals(false);
@@ -142,7 +128,7 @@ describe('RServer', function() {
             rServer.addRoute('head', '/', callback);
             rServer.addRoute('put', '/', callback);
 
-            rServer.addRoute('route', '/', callback);
+            rServer.addRoute('all', '/', callback);
 
             let result = rServer.runRoutes('/index.js', 'GET', {}, {});
             expect(result).to.equals(false);
@@ -160,7 +146,7 @@ describe('RServer', function() {
             rServer.addRoute('head', '/', callback);
             rServer.addRoute('put', '/', callback);
 
-            rServer.addRoute('route', '/', callback);
+            rServer.addRoute('all', '/', callback);
 
             let result = rServer.runRoutes('/', 'GET', {}, {});
             expect(result).to.equals(true);

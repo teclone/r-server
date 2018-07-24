@@ -214,7 +214,7 @@ export default class Router {
      *@param {Object} [options] - optional configuration options
      *@param {Array} [options.methods] - array of methods allowed
     */
-    route(routeUrl, callback, options) {
+    all(routeUrl, callback, options) {
         this.process(routeUrl, callback, options, '');
     }
 
