@@ -33,7 +33,7 @@ describe('Router', function() {
     });
 
     describe('#options(url, callback, options?)', function() {
-        it(`should push to the given route url, callback and optional options object to the
+        it(`should push the given route url, callback and optional options object to the
         routes options api store`, function() {
             let callback = function() {}, options = {};
             router.options('/', callback, options);
@@ -45,7 +45,7 @@ describe('Router', function() {
     });
 
     describe('#head(url, callback, options?)', function() {
-        it(`should push to the given route url, callback and optional options object to the
+        it(`should push the given route url, callback and optional options object to the
         routes head api store`, function() {
             let callback = function() {}, options = {};
             router.head('/', callback, options);
@@ -57,7 +57,7 @@ describe('Router', function() {
     });
 
     describe('#get(url, callback, options?)', function() {
-        it(`should push to the given route url, callback and optional options object to the
+        it(`should push the given route url, callback and optional options object to the
         routes get api store`, function() {
             let callback = function() {}, options = {};
             router.get('/', callback, options);
@@ -69,7 +69,7 @@ describe('Router', function() {
     });
 
     describe('#post(url, callback, options?)', function() {
-        it(`should push to the given route url, callback and optional options object to the
+        it(`should push the given route url, callback and optional options object to the
         routes post api store`, function() {
             let callback = function() {}, options = {};
             router.post('/', callback, options);
@@ -81,7 +81,7 @@ describe('Router', function() {
     });
 
     describe('#put(url, callback, options?)', function() {
-        it(`should push to the given route url, callback and optional options object to the
+        it(`should push the given route url, callback and optional options object to the
         routes put api store`, function() {
             let callback = function() {}, options = {};
             router.put('/', callback, options);
@@ -93,7 +93,7 @@ describe('Router', function() {
     });
 
     describe('#delete(url, callback, options?)', function() {
-        it(`should push to the given route url, callback and optional options object to the
+        it(`should push the given route url, callback and optional options object to the
         routes delete api store`, function() {
             let callback = function() {}, options = {};
             router.delete('/', callback, options);
@@ -105,7 +105,7 @@ describe('Router', function() {
     });
 
     describe('#all(url, callback, options?)', function() {
-        it(`should push to the given route url, callback and optional options object to the
+        it(`should push the given route url, callback and optional options object to the
         routes all api store`, function() {
             let callback = function() {}, options = {};
             router.all('/', callback, options);
