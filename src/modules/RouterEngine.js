@@ -1,10 +1,10 @@
 /**
- * mini Router module.
+ * Routing engine module.
  * Handles Routing. supports parameter catching and allows data type enforcement
 */
 import Util from './Util.js';
 
-export default class Router {
+export default class RouterEngine {
 
     /**
      *@param {string} url - the request url
@@ -30,7 +30,7 @@ export default class Router {
      * return class identifier
     */
     get [Symbol.toStringTag]() {
-        return 'Router';
+        return 'RouterEngine';
     }
 
     /**
