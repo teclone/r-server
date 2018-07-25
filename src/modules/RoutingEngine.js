@@ -34,6 +34,15 @@ export default class RoutingEngine {
     }
 
     /**
+     * sets or overrides the existing middlewares
+     *@param {Array} middlewares - array of middlewares
+    */
+    use(middlewares) {
+        if (Util.isArray(middlewares))
+            this.middlewares = middlewares;
+    }
+
+    /**
      * runs the routes template callback function
      *@param {Function} - route callback function
     */
