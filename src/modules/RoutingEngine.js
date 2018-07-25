@@ -4,7 +4,7 @@
 */
 import Util from './Util.js';
 
-export default class RouterEngine {
+export default class RoutingEngine {
 
     /**
      *@param {string} url - the request url
@@ -18,7 +18,7 @@ export default class RouterEngine {
         this.resolved = false;
         this.request = request;
         this.response = response;
-        this.middlewares = middlewares || [];
+        this.middlewares = Util.isArray(middlewares)? middlewares : [];
 
         this.url = url.toLowerCase().replace(/[#?].*$/, '').replace(/^\/+/, '').replace(/\/+$/, '');
         this.method = method.toUpperCase();
@@ -30,15 +30,7 @@ export default class RouterEngine {
      * return class identifier
     */
     get [Symbol.toStringTag]() {
-        return 'RouterEngine';
-    }
-
-    /**
-     * sets or overrides the existing middlewares
-     *@param {Array} middlewares - array of middlewares
-    */
-    middlewares(middlewares) {
-        this.middlewares = middlewares;
+        return 'RoutingEngine';
     }
 
     /**
