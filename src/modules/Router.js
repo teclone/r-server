@@ -11,15 +11,14 @@ export default class Router {
      *@param {string} method - the request method
      *@param {http.IncomingMessage} request - the request instance
      *@param {RServerResponse} response - the response instance
-     *@param {Array} middlewares - Array of middlewares
-     *@returns {Router}
+     *@param {Array} [middlewares] - Array of middlewares
     */
     constructor(url, method, request, response, middlewares) {
 
         this.resolved = false;
         this.request = request;
         this.response = response;
-        this.middlewares = middlewares;
+        this.middlewares = middlewares || [];
 
         this.url = url.toLowerCase().replace(/[#?].*$/, '').replace(/^\/+/, '').replace(/\/+$/, '');
         this.method = method.toUpperCase();
@@ -32,6 +31,14 @@ export default class Router {
     */
     get [Symbol.toStringTag]() {
         return 'Router';
+    }
+
+    /**
+     * sets or overrides the existing middlewares
+     *@param {Array} middlewares - array of middlewares
+    */
+    middlewares(middlewares) {
+        this.middlewares = middlewares;
     }
 
     /**
