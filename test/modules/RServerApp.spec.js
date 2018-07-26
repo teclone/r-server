@@ -1,4 +1,5 @@
 import RServerApp from '../../src/modules/RServerApp.js';
+import Router from '../../src/modules/Router.js';
 
 describe('RServerApp', function() {
     let rServerApp = null;
@@ -11,54 +12,99 @@ describe('RServerApp', function() {
         it(`should create an RServerApp instance`, function() {
             expect(rServerApp).to.be.an('RServerApp');
         });
+
+        it(`should initialize the server property with an RServer instance`, function() {
+            expect(rServerApp.server).to.be.an('RServer');
+        });
     });
 
-    describe('#all(url, callback, options)', function() {
+    describe('#options(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
-            rServerApp.all('/', () => {}, {});
-            expect(rServerApp.server.routes[0].api).to.equals('all');
+            let callback = () => {};
+            rServerApp.options('/', callback, null);
+            expect(rServerApp.server.router.routes.options).to.be.lengthOf(1)
+                .and.to.satisfy(function(routes) {
+                    let route = routes[0];
+                    return route[0] === '/' && route[1] === callback && route[2] === null;
+                });
+        });
+    });
+
+    describe('#head(url, callback, options)', function() {
+        it(`should pass along the route to the server`, function() {
+            let callback = () => {};
+            rServerApp.head('/', callback, null);
+            expect(rServerApp.server.router.routes.head).to.be.lengthOf(1)
+                .and.to.satisfy(function(routes) {
+                    let route = routes[0];
+                    return route[0] === '/' && route[1] === callback && route[2] === null;
+                });
         });
     });
 
     describe('#get(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
-            rServerApp.get('/', () => {}, {});
-            expect(rServerApp.server.routes[0].api).to.equals('get');
+            let callback = () => {};
+            rServerApp.get('/', callback, null);
+            expect(rServerApp.server.router.routes.get).to.be.lengthOf(1)
+                .and.to.satisfy(function(routes) {
+                    let route = routes[0];
+                    return route[0] === '/' && route[1] === callback && route[2] === null;
+                });
         });
     });
 
     describe('#post(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
-            rServerApp.post('/', () => {}, {});
-            expect(rServerApp.server.routes[0].api).to.equals('post');
-        });
-    });
-
-    describe('#head(url, callback, options)', function() {
-        it(`should pass along the route to the server`, function() {
-            rServerApp.head('/', () => {}, {});
-            expect(rServerApp.server.routes[0].api).to.equals('head');
+            let callback = () => {};
+            rServerApp.post('/', callback, null);
+            expect(rServerApp.server.router.routes.post).to.be.lengthOf(1)
+                .and.to.satisfy(function(routes) {
+                    let route = routes[0];
+                    return route[0] === '/' && route[1] === callback && route[2] === null;
+                });
         });
     });
 
     describe('#put(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
-            rServerApp.put('/', () => {}, {});
-            expect(rServerApp.server.routes[0].api).to.equals('put');
+            let callback = () => {};
+            rServerApp.put('/', callback, null);
+            expect(rServerApp.server.router.routes.put).to.be.lengthOf(1)
+                .and.to.satisfy(function(routes) {
+                    let route = routes[0];
+                    return route[0] === '/' && route[1] === callback && route[2] === null;
+                });
         });
     });
 
     describe('#delete(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
-            rServerApp.delete('/', () => {}, {});
-            expect(rServerApp.server.routes[0].api).to.equals('delete');
+            let callback = () => {};
+            rServerApp.delete('/', callback, null);
+            expect(rServerApp.server.router.routes.delete).to.be.lengthOf(1)
+                .and.to.satisfy(function(routes) {
+                    let route = routes[0];
+                    return route[0] === '/' && route[1] === callback && route[2] === null;
+                });
         });
     });
 
-    describe('#head(url, callback, options)', function() {
+    describe('#all(url, callback, options)', function() {
         it(`should pass along the route to the server`, function() {
-            rServerApp.options('/', () => {}, {});
-            expect(rServerApp.server.routes[0].api).to.equals('options');
+            let callback = () => {};
+            rServerApp.all('/', callback, null);
+            expect(rServerApp.server.router.routes.all).to.be.lengthOf(1)
+                .and.to.satisfy(function(routes) {
+                    let route = routes[0];
+                    return route[0] === '/' && route[1] === callback && route[2] === null;
+                });
+        });
+    });
+
+    describe('#route(url)', function() {
+        it(`should create and return a RouteWrapper`, function() {
+            expect(rServerApp.route('user')).to.be.a('RouteWrapper');
         });
     });
 
@@ -66,24 +112,65 @@ describe('RServerApp', function() {
         it(`should pass along the middleware to the server`, function() {
             let middleware = () => {};
             rServerApp.use(middleware);
-            expect(rServerApp.server.middlewares[0]).to.equals(middleware);
+            expect(rServerApp.server.router.middlewares).to.be.lengthOf(1).to.satisfy(function(middlewares) {
+                return middlewares[0] === middleware;
+            });
         });
     });
 
-    describe('#listen(port?)', function() {
-        it(`should start the server at the given port`, function() {
-            rServerApp.listen();
-            expect(rServerApp.server.listening).to.be.true;
-            rServerApp.close();
+    describe('#mount(baseUrl, router)', function() {
+        it(`should mount the passed in router to the app`, function() {
+            let router = new Router(true);
+
+            router.get('login', () => {});
+            router.post('login', () => {});
+
+            router.get('signup', () => {});
+            router.post('signup', () => {});
+
+            rServerApp.mount('auth', router);
+            expect(rServerApp.server.mountedRouters).to.be.lengthOf(1).to.satisfy(
+                function(mountedRouters) {
+                    return mountedRouters[0] === router;
+                });
         });
     });
 
-    describe('#close()', function() {
-        it(`should close the server`, function() {
-            rServerApp.listen();
-            expect(rServerApp.server.listening).to.be.true;
-            rServerApp.close();
-            expect(rServerApp.server.listening).to.be.false;
+    describe('#listen(port?, callback?)', function() {
+        it(`should start the server at the given port,  calling the callback method once the
+        server gets started`, function(done) {
+            rServerApp.listen(null, function() {
+                rServerApp.close(function() {
+                    done();
+                });
+            });
+        });
+    });
+
+    describe('#close(callback?)', function() {
+        it(`should close the server when called, calling the optional callback method once the
+        server closes`, function(done) {
+            rServerApp.listen(null, function() {
+                rServerApp.close(function() {
+                    if (rServerApp.listening)
+                        done(new Error('Error: server not closed'));
+                    else
+                        done();
+                });
+            });
+        });
+    });
+
+    describe('#address()', function() {
+        it(`should return the server's bound address, it returns null if the server is currently
+        not listening for connections`, function(done) {
+            rServerApp.listen(null, function() {
+                let address = rServerApp.address();
+                if (address.port !== 4000)
+                    done(new Error('Error: server address not valid'));
+                else
+                    done();
+            });
         });
     });
 });

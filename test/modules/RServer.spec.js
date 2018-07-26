@@ -2,6 +2,8 @@ import RServer from '../../src/modules/RServer.js';
 import path from 'path';
 import http from 'http';
 import fs from 'fs';
+import Router from '../../src/modules/Router.js';
+import RoutingEngine from '../../src/modules/RoutingEngine.js';
 
 describe('RServer', function() {
     let rServer = null;
@@ -16,7 +18,13 @@ describe('RServer', function() {
             expect(rServer).to.be.an('RServer');
         });
 
-        it(`should create an RServer instance even without given the user defined config path`, function() {
+        it(`should set the router property to a new Router instance that does not
+        inherit middlewares`, function() {
+            expect(rServer.router).to.be.a('Router');
+            expect(rServer.router.inheritMiddlewares).to.be.false;
+        });
+
+        it(`should create an RServer instance even without the user defined config path`, function() {
             expect(new RServer()).to.be.an('RServer');
         });
     });
@@ -57,236 +65,394 @@ describe('RServer', function() {
         });
     });
 
-    describe('#addRoute(api, ...parameters)', function() {
-        it(`should add the route to the routes array`, function() {
-            rServer.addRoute('get', '/', function() {});
-            expect(rServer.routes[0].parameters[0]).to.equals('/');
+    describe('getter #listening', function() {
+        it(`should return a boolean value indicating if the server is currently listening for
+        requests`, function() {
+            expect(rServer.listening).to.be.false;
         });
     });
 
-    describe('#use(middleware)', function() {
-        it(`should add the middleware to the middlewares array`, function() {
-            let middleware = function() {};
-            rServer.use(middleware);
-            expect(rServer.middlewares[0]).to.equals(middleware);
+    describe('#listen(port?, callback?)', function() {
+        it(`should start the server at the given port`, function(done) {
+            rServer.listen(4000, function() {
+                rServer.close();
+                done();
+            });
         });
 
-        it(`should do nothing if middleware is not a function`, function() {
-            let middleware = null;
-            rServer.use(middleware);
-            expect(rServer.middlewares).to.be.lengthOf(0);
-        });
-    });
-
-    describe('#listen(port?)', function() {
-        it(`should start the server at the given port`, function() {
-            rServer.listen(4000);
-            expect(rServer.server.listening).to.be.true;
-            rServer.close();
+        it(`should start the server at a default port of 8131 if no port is given`, function(done) {
+            rServer.listen(null, function() {
+                rServer.close();
+                done();
+            });
         });
 
-        it(`should start the server at port 8131 if no port is given`, function() {
-            rServer.listen();
-            expect(rServer.server.listening).to.be.true;
-            rServer.close();
-        });
-    });
-
-    describe('#close()', function() {
-        it(`should close the server`, function() {
-            rServer.listen(4000);
-            expect(rServer.server.listening).to.be.true;
-            rServer.close();
-            expect(rServer.server.listening).to.be.false;
+        it(`should start the server using a dummy callback if no callback is given`, function(done) {
+            rServer.listen(null);
+            setTimeout(function() {
+                if (rServer.listening) {
+                    rServer.close();
+                    done();
+                }
+                else {
+                    done(new Error('server could not listen'));
+                }
+            }, 1000);
         });
     });
 
-    describe('#runRoutes(url, method, request, response)', function() {
-        it(`should run the all the routes until the router resolves`, function() {
-            let callback = function() {};
-            rServer.addRoute('get', '/', callback);
-            rServer.addRoute('post', '/', callback);
-            rServer.addRoute('delete', '/', callback);
-            rServer.addRoute('options', '/', callback);
-            rServer.addRoute('head', '/', callback);
-            rServer.addRoute('put', '/', callback);
-            rServer.addRoute('all', '/', callback);
-
-            let result = rServer.runRoutes('/index.js', 'GET', {}, {});
-            expect(result).to.equals(false);
+    describe('#close(callback?)', function() {
+        it(`should close the server when called`, function(done) {
+            rServer.listen(4000, function() {
+                rServer.close(function() {
+                    done();
+                });
+            });
         });
 
-        it(`should run all the routes until the router resolves`, function() {
-            let callback = function() {};
+        it(`should close the server using a dummy callback if no callback is given`, function(done) {
+            rServer.listen(4000, function() {
+                rServer.close();
+                setTimeout(function() {
+                    if (rServer.listening)
+                        done(new Error('close method instance fails to close server'));
+                    else
+                        done();
+                }, 500);
+            });
+        });
+    });
 
-            rServer.addRoute('get', '/', callback);
-            rServer.addRoute('post', '/', callback);
-
-            rServer.addRoute('delete', '/', callback);
-            rServer.addRoute('options', '/', callback);
-
-            rServer.addRoute('head', '/', callback);
-            rServer.addRoute('put', '/', callback);
-
-            rServer.addRoute('all', '/', callback);
-
-            let result = rServer.runRoutes('/index.js', 'GET', {}, {});
-            expect(result).to.equals(false);
+    describe('#address()', function() {
+        it(`should return the server bound address`, function(done) {
+            rServer.listen(4000, function() {
+                let address = rServer.address();
+                rServer.close();
+                if (address && address.port === 4000)
+                    done();
+                else
+                    done(new Error('incorrect server address found'));
+            });
         });
 
-        it(`should run the all the routes until the router resolves`, function() {
-            let callback = function() {};
+        it(`should return null if server is not running`, function() {
+            expect(rServer.address()).to.be.null;
+        });
+    });
 
-            rServer.addRoute('get', '/', callback);
-            rServer.addRoute('post', '/', callback);
+    describe('#onError()', function() {
+        it(`should handle server error such as trying to listen on an already taken port`, function(done) {
+            rServer.listen(null, function() {
+                // port 4000 is no longer available
+                let rServer2 = new RServer();
+                rServer2.listen(); //throws error
+                rServer.close();
+                done();
+            });
+        });
 
-            rServer.addRoute('delete', '/', callback);
-            rServer.addRoute('options', '/', callback);
+        it(`should handle server error such as calling the listen method multiple times. It should
+        ignore such multiple calls and simply log info on the console`, function(done) {
+            rServer.listen(null, function() {
+                //server is already listening
+                rServer.listen(); //throws error
+                rServer.close();
+                done();
+            });
+        });
 
-            rServer.addRoute('head', '/', callback);
-            rServer.addRoute('put', '/', callback);
+        it(`should handle all other arbitrary errors`, function() {
+            rServer.server.emit('error', new Error('something went bad'));
+        });
+    });
 
-            rServer.addRoute('all', '/', callback);
+    describe('#mount(baseUrl, router)', function() {
+        it(`should mount the given router to the main app`, function() {
+            let router = new Router(true);
+            let callback = () => {};
 
-            let result = rServer.runRoutes('/', 'GET', {}, {});
-            expect(result).to.equals(true);
+            router.get('/login', callback);
+            router.get('/signup', callback);
+            router.post('/login', callback);
+            router.post('/signup', callback);
+
+            rServer.mount('auth', router);
+
+            expect(rServer.mountedRouters).to.be.lengthOf(1).and.to.satisfy(function(mountedRouters) {
+                return mountedRouters[0] === router;
+            });
+        });
+
+        it(`should resolve the routers route urls with the given base url before mounting`, function() {
+            let router = new Router(true);
+            let callback = () => {};
+
+            router.get('/login', callback);
+            router.get('/signup', callback);
+            router.post('/login', callback);
+            router.post('/signup', callback);
+
+            rServer.mount('auth', router);
+
+            expect(router.routes.get[0][0]).to.equals('auth/login');
+        });
+    });
+
+    describe('#runRoutes(engine, api, routes)', function() {
+        it(`should run the given routes call the engines method for the given api. it returns
+        true if a matching route was executed and false if otherwise`, function() {
+            let callback = () => {};
+
+            let engine = new RoutingEngine('user/1/profile', 'GET', {}, {}, []);
+
+            rServer.router.get('auth/login', callback);
+            rServer.router.get('user/{id}/profile', callback);
+
+            expect(rServer.runRoutes(engine, 'GET', rServer.router.routes['get'])).to.be.true;
+        });
+
+        it(`should return false if a matching route is not found`, function() {
+            let callback = () => {};
+
+            let engine = new RoutingEngine('user/1/profile', 'GET', {}, {}, []);
+
+            rServer.router.get('auth/login', callback);
+            rServer.router.get('user/{id}/profil', callback);
+
+            expect(rServer.runRoutes(engine, 'GET', rServer.router.routes['get'])).to.be.false;
         });
     });
 
     describe('integrated testing', function() {
-        it (`should listen for requests, run the process, and call the
-            appropriate route`, function(done) {
-            rServer.listen();
+        it (`should listen for requests, run the process, and call the appropriate route`, function(done) {
+            rServer.listen(null, function() {
+                rServer.router.get('/say-name', (req, res) => {
+                    res.writeHead(200, {'Content-Type': 'text/plain'});
+                    res.end('R-Server');
+                });
 
-            rServer.addRoute('get', 'say-name', (req, res) => {
-                res.writeHead(200, {'Content-Type': 'text/plain'});
-                res.end('R-Server');
-            });
-
-            http.request('http://localhost:8131/say-name', (res) => {
-                let buffers = [];
-                res.on('data', (chunk) => {
-                    buffers.push(chunk);
+                http.request('http://localhost:4000/say-name', (res) => {
+                    let buffers = [];
+                    res.on('data', (chunk) => {
+                        buffers.push(chunk);
+                    })
+                        .on('end', () => {
+                            rServer.close();
+                            let data = Buffer.concat(buffers);
+                            if (data.toString() === 'R-Server')
+                                done();
+                            else
+                                done(new Error('wrong data received from the endpoint'));
+                        });
                 })
-                    .on('end', () => {
-                        rServer.close();
-                        let data = Buffer.concat(buffers);
-                        if (data.toString() === 'R-Server')
-                            done();
-                        else
-                            done(new Error('wrong data received from the endpoint'));
-                    });
-            })
-                .end();
+                    .end();
+            });
+        });
+
+        it (`should listen for requests, run the process, and call the appropriate route,
+            running the all routes first`, function(done) {
+            rServer.listen(null, function() {
+                rServer.router.all('/say-name', (req, res) => {
+                    res.writeHead(200, {'Content-Type': 'text/plain'});
+                    res.end('R-Server-All');
+                });
+                rServer.router.get('/say-name', (req, res) => {
+                    res.writeHead(200, {'Content-Type': 'text/plain'});
+                    res.end('R-Server-Get');
+                });
+
+                http.request('http://localhost:4000/say-name', (res) => {
+                    let buffers = [];
+                    res.on('data', (chunk) => {
+                        buffers.push(chunk);
+                    })
+                        .on('end', () => {
+                            rServer.close();
+                            let data = Buffer.concat(buffers);
+                            if (data.toString() === 'R-Server-All')
+                                done();
+                            else
+                                done(new Error('wrong data received from the endpoint'));
+                        });
+                })
+                    .end();
+            });
+        });
+
+        it (`should listen for requests, run the process, and call the appropriate route,
+            checking mounted routes if no main app routes matches the request`, function(done) {
+            rServer.listen(null, function() {
+                let router = new Router(false);
+                router.get('/say-name', (req, res) => {
+                    res.writeHead(200, {'Content-Type': 'text/plain'});
+                    res.end('R-Server-Get');
+                });
+                rServer.mount('/', router);
+
+                http.request('http://localhost:4000/say-name', (res) => {
+                    let buffers = [];
+                    res.on('data', (chunk) => {
+                        buffers.push(chunk);
+                    })
+                        .on('end', () => {
+                            rServer.close();
+                            let data = Buffer.concat(buffers);
+                            if (data.toString() === 'R-Server-Get')
+                                done();
+                            else
+                                done(new Error('wrong data received from the endpoint'));
+                        });
+                })
+                    .end();
+            });
+        });
+
+        it (`should listen for requests, run the process, and call the appropriate route,
+            checking mounted routes if no main app routes matches the request, it should
+            run all routes first`, function(done) {
+            rServer.listen(null, function() {
+                let router = new Router(true);
+                router.all('/say-name', (req, res) => {
+                    res.writeHead(200, {'Content-Type': 'text/plain'});
+                    res.end('R-Server-All');
+                });
+                router.get('/say-name', (req, res) => {
+                    res.writeHead(200, {'Content-Type': 'text/plain'});
+                    res.end('R-Server-Get');
+                });
+                rServer.mount('/', router);
+
+                http.request('http://localhost:4000/say-name', (res) => {
+                    let buffers = [];
+                    res.on('data', (chunk) => {
+                        buffers.push(chunk);
+                    })
+                        .on('end', () => {
+                            rServer.close();
+                            let data = Buffer.concat(buffers);
+                            if (data.toString() === 'R-Server-All')
+                                done();
+                            else
+                                done(new Error('wrong data received from the endpoint'));
+                        });
+                })
+                    .end();
+            });
+        });
+
+        it (`should send 404 response if no route matches request`, function(done) {
+            rServer.listen(null, function() {
+                http.request('http://localhost:4000/say-name', (res) => {
+                    let buffers = [];
+                    res.on('data', (chunk) => {
+                        buffers.push(chunk);
+                    })
+                        .on('end', () => {
+                            rServer.close();
+
+                            if (res.statusCode === 404)
+                                done();
+                            else
+                                done(new Error('wrong response status code recieved'));
+                        });
+                })
+                    .end();
+            });
         });
 
         it (`should parse request body if there is any`, function(done) {
-            rServer.listen();
+            rServer.listen(null, function() {
+                rServer.router.post('report-json', (req, res) => {
+                    res.writeHead(200, {'Content-Type': 'application/json'});
+                    res.end(JSON.stringify(req.body));
+                });
 
-            rServer.addRoute('post', 'report-json', (req, res) => {
-                res.writeHead(200, {'Content-Type': 'application/json'});
-                res.end(JSON.stringify(req.body));
+                let data = {
+                        name: 'Harrison',
+                        password1: 'random_243',
+                        password2: 'random_243'
+                    },
+                    options = {
+                        hostname: 'localhost', path: '/report-json',
+                        port: 4000, method: 'POST', headers: {'Content-Type': 'application/json'}
+                    };
+
+                let req = http.request(options, (res) => {
+                    let buffers = [];
+
+                    res.on('data', (chunk) => {
+                        buffers.push(chunk);
+                    })
+
+                        .on('end', () => {
+                            rServer.close();
+                            let json = JSON.parse(Buffer.concat(buffers).toString());
+                            if (data.name === json.name && data.password1 === json.password1 &&
+                            data.password2 === json.password2)
+                                done();
+                            else
+                                done(new Error('wrong data received from the endpoint'));
+                        });
+                });
+
+                req.write(JSON.stringify(data));
+                req.end();
             });
-
-            let data = {
-                    name: 'Harrison',
-                    password1: 'random_243',
-                    password2: 'random_243'
-                },
-                options = {
-                    hostname: 'localhost', path: '/report-json',
-                    port: 8131, method: 'POST', headers: {'Content-Type': 'application/json'}
-                };
-
-            let req = http.request(options, (res) => {
-                let buffers = [];
-
-                res.on('data', (chunk) => {
-                    buffers.push(chunk);
-                })
-
-                    .on('end', () => {
-                        rServer.close();
-                        let json = JSON.parse(Buffer.concat(buffers).toString());
-                        if (data.name === json.name && data.password1 === json.password1 &&
-                        data.password2 === json.password2)
-                            done();
-                        else
-                            done(new Error('wrong data received from the endpoint'));
-                    });
-            });
-
-            req.write(JSON.stringify(data));
-            req.end();
         });
 
-        it (`should serve static file and return`, function(done) {
-            rServer.listen();
+        it (`should serve static file if it exist and return`, function(done) {
+            rServer.listen(null, function() {
+                http.request('http://localhost:4000/package.json', (res) => {
+                    let buffers = [];
+                    res.on('data', (chunk) => {
+                        buffers.push(chunk);
+                    })
 
-            http.request('http://localhost:8131/package.json', (res) => {
-                let buffers = [];
-                res.on('data', (chunk) => {
-                    buffers.push(chunk);
+                        .on('end', () => {
+                            rServer.close();
+                            let fileContent = fs.readFileSync(
+                                path.resolve(__dirname, '../../package.json'));
+                            if (fileContent.toString() === Buffer.concat(buffers).toString())
+                                done();
+                            else
+                                done(new Error('wrong data received from the endpoint'));
+                        });
                 })
-
-                    .on('end', () => {
-                        rServer.close();
-                        let fileContent = fs.readFileSync(
-                            path.resolve(__dirname, '../../package.json'));
-                        if (fileContent.toString() === Buffer.concat(buffers).toString())
-                            done();
-                        else
-                            done(new Error('wrong data received from the endpoint'));
-                    });
-            })
-                .end();
-        });
-
-        it (`should serve a 404 response if no file and route matches the request`, function(done) {
-            rServer.listen();
-
-            http.request('http://localhost:8131/package', (res) => {
-                rServer.close();
-
-                res.resume();
-                if (res.statusCode === 404)
-                    done();
-                else
-                    done(new Error('wrong status code from endpoint'));
-            })
-                .end();
+                    .end();
+            });
         });
 
         it (`should destroy the request if the buffer sent exceeds the maxBufferSize config option`, function(done) {
             let rServer = new RServer('test/helpers/.rsvrc.json');
-            rServer.listen();
+            rServer.listen(null, function() {
 
-            let options = {
-                method: 'POST', hostname: 'localhost', port: '8131', path: '/report-json',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            };
+                let options = {
+                    method: 'POST', hostname: 'localhost', port: 4000, path: '/report-json',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
 
-            let data = {
-                name: 'Harrison',
-                password1: 'random_243',
-                password2: 'random_243'
-            };
+                let data = {
+                    name: 'Harrison',
+                    password1: 'random_243',
+                    password2: 'random_243'
+                };
 
-            let req = http.request(options, (res) => {
-                res.resume();
-                rServer.close();
-                done(new Error('server did not abort request as expected'));
+                let req = http.request(options, (res) => {
+                    res.resume();
+                    rServer.close();
+                    done(new Error('server did not abort request as expected'));
+                });
+
+                req.on('error', () => {
+                    rServer.close();
+                    done();
+                });
+
+                req.write(JSON.stringify(data));
+                req.end();
             });
-
-            req.on('error', () => {
-                rServer.close();
-                done();
-            });
-
-            req.write(JSON.stringify(data));
-            req.end();
         });
     });
 });
