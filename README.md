@@ -27,7 +27,7 @@ app.get('/', (req, res) => {
 });
 ```
 
-**Start server**:
+**start server**:
 
 ```bash
 npm start
@@ -39,157 +39,162 @@ Navigate to `http://localhost:4000/` in your browser to view this mini web proje
 
 R-Server gives you many cutting edge, excellent features out of the box, saving you the stress of looking for external plugins and third party solutions. These includes:
 
-### Excellent Request Body Parser
+1. **Excellent Request Body Parser:**
 
-R-Server gives you inbuilt, and excellent control over request body parsing, with ability to handle urlencoded, json-encoded, and multipart form-data including file uploads, requiring no overhead trying to use an external plugin. Multi-value form fields are supported and should be named using [PHP-like](http://php.net/manual/en/tutorial.forms.php) ending bracket notations. e.g `slct-countries[]`, `file-documents[]`.
+    R-Server gives you inbuilt, and excellent control over request body parsing, with ability to handle urlencoded, json-encoded, and multipart form-data including file uploads, requiring no overhead trying to use an external plugin. Multi-value form fields are supported and should be named using [PHP-like](http://php.net/manual/en/tutorial.forms.php) ending bracket notations. e.g `slct-countries[]`, `file-documents[]`.
 
-The parsed request body data are accessible through `request.body`, parsed files are accessible through `request.files`, while query parameters are accessible through `request.query` . There is a `request.data` that is a combination of both `body` and `query` with values in `body` winning the battle in case of conflicting keys.
+    The parsed request body data are accessible through `request.body`, parsed files are accessible through `request.files`, while query parameters are accessible through `request.query` . There is a `request.data` that is a combination of both `body` and `query` with values in `body` winning the battle in case of conflicting keys.
 
-**Demonstrating Parsed Request Data Accessiblities:**
+    **Demonstrating Parsed Request Data Accessiblities:**
 
-```javascript
-let fs = require('fs'),
-    RServer = require('r-server'),
-    app = RServer.instance();
+    ```javascript
+    let fs = require('fs'),
+        RServer = require('r-server'),
+        app = RServer.instance();
 
-//default port is 4000
-app.listen();
+    //default port is 4000
+    app.listen();
 
-app.post('user/create', (req, res) => {
-    //access data
-    let name = req.body.name,
-        password = req.body.password,
+    app.post('user/create', (req, res) => {
+        //access data
+        let name = req.body.name,
+            password = req.body.password,
 
-        //access file
-        cvDetails = {
-            filename: req.files.cv.fileName,
-            filesize: req.files.cv.size,
-            mimetype: req.files.cv.mimeType,
-            path: req.files.cv.path,
-            tempName: req.files.cv.tempName,
-        };
+            //access file
+            cvDetails = {
+                filename: req.files.cv.fileName,
+                filesize: req.files.cv.size,
+                mimetype: req.files.cv.mimeType,
+                path: req.files.cv.path,
+                tempName: req.files.cv.tempName,
+            };
 
-    //copy the file to a folder
-    fs.copyFileSync(cvDetails.path, 'public/cv/something.pdf');
+        //copy the file to a folder
+        fs.copyFileSync(cvDetails.path, 'public/cv/something.pdf');
 
-    res.end('Great, user created');
-});
-```
-
-### Excellent Routing Engine
-
-It provides an excellent routing engine, with parameter capturing that incoporates data type enforcement on captured parameters. All http methods verbs are made available for routing including `get`, `post`, `put`, `delete`, `options`, `head` and the universal `all` method.
-
-Unlike express, parameter capturing sections are enclosed in *curly braces {}*  and you are not prevented from using hyphen in your parameter names.
-
-```javascript
-app.get('user/{user-id}/profile', (req, res, id) => {
-    id = /^\d+$/.test(id)? Number.parseInt(id) : 0;
-
-    if (id !== 0)
-        res.end('Cool, user id is valid!!!');
-    else
-        res.end('<h1>Invalid user id found</h1>');
-});
-
-//save stress, type hint parameter data type
-app.route('user/{int:user-id}/profile', (req, res, id) => {
-    //id is already an integer. 0 for NaN
-    if (id !== 0)
-        res.end('<h1>Your profile is not ready yet');
-    else
-        res.end('<h1>Invalid user id found</h1>');
-});
-```
-
-It also supports express `route` method that makes it a breeze to chain routes.
-
-```javascript
-app.route('auth/login')
-    .get((req, res) => {
-
+        res.end('Great, user created');
     });
-    .post((req, res) => {
+    ```
 
+2. **Excellent Routing Engine:**
+
+    It provides an excellent routing engine, with parameter capturing that incoporates data type enforcement on captured parameters. All http methods verbs are made available for routing including `get`, `post`, `put`, `delete`, `options`, `head` and the universal `all` method.
+
+    Unlike express, parameter capturing sections are enclosed in *curly braces {}*  and you are not prevented from using hyphen in your parameter names.
+
+    ```javascript
+    app.get('user/{user-id}/profile', (req, res, id) => {
+        id = /^\d+$/.test(id)? Number.parseInt(id) : 0;
+
+        if (id !== 0)
+            res.end('Cool, user id is valid!!!');
+        else
+            res.end('<h1>Invalid user id found</h1>');
     });
-```
 
-### Excellent Static File Server
+    //save stress, type hint parameter data type
+    app.route('user/{int:user-id}/profile', (req, res, id) => {
+        //id is already an integer. 0 for NaN
+        if (id !== 0)
+            res.end('<h1>Your profile is not ready yet');
+        else
+            res.end('<h1>Invalid user id found</h1>');
+    });
+    ```
 
-It provides static file services out of the box, responding to `GET`, `HEAD`, & `OPTIONS` requests made on such files. By default, it serves files from the project's root directory and also from the `./public` folder. *It does not serve config files (files that starts with dot `.`)*. The list of Default documents includes only 'index.html'. See [customizing-rserver](#customizing-rserver) on how to configure the list of default documents and so many other options.
+    It also supports express' `route` method that makes it a breeze to chain routes.
 
-It uses node.js inbuilt [writable & readable stream API](https://nodejs.org/api/stream.html#stream_class_stream_writable) while serving files for performance gain, user experience and minimal usage of system resources.
+    ```javascript
+    app.route('auth/login')
+        .get((req, res) => {
 
-It provides excellent content negotiation [headers](https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html) (`Cache-Control`, `ETag` & `Last-Modified` headers) and would negotiate contents by checking for the presence of the  `if-none-match` & `if-modified-since` http request headers.
+        });
+        .post((req, res) => {
 
-### Middleware Usage
+        });
+    ```
 
-There is a `use` method that takes a middleware and registers it on the app.
+3. **Excellent Static File Server:**
 
-```javascript
-app.use((req, res, next) => {
-    //do some things
-    ....
+    It provides static file services out of the box, responding to `GET`, `HEAD`, & `OPTIONS` requests made on such files. By default, it serves files from the project's root directory and also from the `./public` folder. *It does not serve config files (files that starts with dot `.`)*. The list of Default documents includes only 'index.html'. See [customizing-rserver](#customizing-rserver) on how to configure the list of default documents and so many other options.
 
-    if (req.method !== 'POST')
+    It uses node.js inbuilt [writable & readable stream API](https://nodejs.org/api/stream.html#stream_class_stream_writable) while serving files for performance gain, user experience and minimal usage of system resources.
+
+    It provides excellent content negotiation [headers](https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html) (`Cache-Control`, `ETag` & `Last-Modified` headers) and would negotiate contents by checking for the presence of the  `if-none-match` & `if-modified-since` http request headers.
+
+4. **Middleware Support:**
+
+    There is a `use` method that takes a middleware and registers it on the app.
+
+    ```javascript
+    app.use((req, res, next) => {
+        //do some things
+        ....
+
+        if (req.method !== 'POST')
+            next();
+        else
+            res.end('wrong method');
+    });
+    ```
+
+5. **Mountable mini-app Router:**
+
+    It gives you the same feature that `express.Router()` offers, with additional ability to specify if the mini app router should inherit the main app's middleware when it gets mounted.
+
+    **call signature:**
+
+    ```javascript
+    // inherit middlewares defaults to true
+    RServer.Router(inheritMiddlewares?);
+    ```
+
+    **usage sample:**
+
+    ```javascript
+    //file routes/auth.js
+    let rServer = require('r-server'),
+        router = rServer.Router(false);
+
+    router.use((req , res, next) => {
         next();
-    else
-        res.end('wrong method');
-});
-```
+    });
 
-### Mountable mini-app Router
+    router.get('/login', (req, res) => {});
+    router.post('/login', (rq, res) => {});
 
-It gives you the same feature that `express.Router()` offers, with additional ability to specify if the mini app router should inherit the main app's middleware when it gets mounted.
+    router.route('signup')
+        .get((req, res) => {})
+        .post((req, res) => {});
 
-**call signature:**
+    module.exports = router;
+    ```
 
-```javascript
-// inherit middlewares defaults to true
- RServer.Router(inheritMiddlewares?);
-```
+    **import to main app:**
 
-**Usage Example:**
+    ```javascript
+    //file app.js
+    let rServer = require('r-server'),
+        authRouter = require('routes/auth.js'),
+        app = rServer.instance();
 
-```javascript
-//file routes/auth.js
-let rServer = require('r-server'),
-    router = rServer.Router(false);
+    app.listen();
 
-router.use((req , res, next) => {
-    next();
-});
+    app.mount('auth', router);
 
-router.get('/login', (req, res) => {});
-router.post('/login', (rq, res) => {});
+    //this middleware will not affect
+    //auth routes, as the router
+    //specified inherit middleware as false
+    app.use((req , res, next) => {
+        next();
+    });
 
-router.route('signup')
-    .get((req, res) => {})
-    .post((req, res) => {});
+    router.get('/', (req, res) => {});
+    router.post('/user/{int:userId}/profile', (rq, res) => {});
+    ```
 
-module.exports = router;
-```
+6. **Request-Response Profiler:**
 
-**Import to main app:**
+    It outputs a command line profile log for all incoming requests, loging the request's method, request url, response status code, request duration and response duration. This gives a performance insight of the project.
 
-```javascript
-//file app.js
-let rServer = require('r-server'),
-    authRouter = require('routes/auth.js'),
-    app = rServer.instance();
-
-app.listen();
-
-app.mount('auth', router);
-
-
-//this middleware will not affect
-//auth routes, as the router
-//specified inherit middleware as false
-app.use((req , res, next) => {
-    next();
-});
-
-router.get('/', (req, res) => {});
-router.post('/user/{int:userId}/profile', (rq, res) => {});
-```
+    [![request-response profile](examples/request-response-profile.png)]
