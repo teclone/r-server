@@ -4,10 +4,12 @@ import path from 'path';
 import Util from './Util.js';
 import http from 'http';
 import StaticFileServer from './StaticFileServer.js';
+import RoutingEngine from './RoutingEngine.js';
 import Router from './Router.js';
 import BodyParser from './BodyParser.js';
 import _config from '../.rsvrc.json';
 import RServerResponse from './RServerResponse.js';
+import Logger from './Logger.js';
 
 export default class {
 
@@ -15,8 +17,9 @@ export default class {
      *@param {string} configPath - user specified configuration path
     */
     constructor(configPath) {
-        this.routes = [];
-        this.middlewares = [];
+
+        this.router = new Router(false);
+        this.mountedRouters = [];
 
         /* istanbul ignore else */
         if (require.main)
@@ -62,23 +65,6 @@ export default class {
     }
 
     /**
-     * starts the serve to listen on a given port
-     *@param {number} port - the port to listen on.
-    */
-    listen(port) {
-        port = port || 8131;
-        this.server.listen(port);
-        console.info('\x1b[32m%s\x1b[0m', 'Server started on port: ' + port);
-    }
-
-    /**
-     * closes the connection
-    */
-    close() {
-        this.server.close();
-    }
-
-    /**
      * returns the project's entry path
      *@param {string} knownPath - the known path for the mean time
     */
@@ -117,65 +103,75 @@ export default class {
     }
 
     /**
-     * adds the given route to the routes array
-     *@param {string} api - the route api
-     *@param {string} url - the route url
-     *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     * mounts a router to the main app
+     *@param {string} baseUrl - the router baseUrl
+     *@param {Router} router - the router instance
     */
-    addRoute(api, ...parameters) {
-        this.routes.push({api, parameters});
-    }
+    mount(baseUrl, router) {
+        //join all routers url
+        let routes = router.routes;
+        for (let api of Object.keys(routes)) {
+            let apiRoutes = routes[api];
+            for (let apiRoute of apiRoutes)
+                apiRoute[0] = path.join(baseUrl, apiRoute[0]);
+        }
 
-    /**
-     * use a middleware
-     *@param {Function} middleware - the middleware function
-    */
-    use(middleware) {
-        if (Util.isCallable(middleware))
-            this.middlewares.push(middleware);
+        this.mountedRouters.push(router);
     }
 
     /**
      * runs all request routes
+     *@param {RouterEngine} router - the router engine instance
+     *@param {string} api - the route api to call
+     *@param {Array} routes - routes array
+     *@returns {boolean}
+    */
+    runRoutes(engine, api, routes) {
+        api = api.toLowerCase();
+        for (let route of routes) {
+            engine[api](...route);
+            if (engine.resolved)
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * cordinates how routes are executed, including mounted routes
      *@param {string} url - request url
      *@param {string} method - request method
      *@param {http.IncomingMessage} request - the request object
      *@param {RServerResponse} response - the response object
      *@returns {boolean}
     */
-    runRoutes(url, method, request, response) {
-        //create router and run routes
-        let router = new Router(url, method, request, response, this.middlewares);
-        //run routes
-        for (const route of this.routes) {
-            switch(route.api.toLowerCase()) {
-                case 'get':
-                    router.get(...route.parameters);
-                    break;
-                case 'post':
-                    router.post(...route.parameters);
-                    break;
-                case 'delete':
-                    router.delete(...route.parameters);
-                    break;
-                case 'put':
-                    router.put(...route.parameters);
-                    break;
-                case 'all':
-                    router.all(...route.parameters);
-                    break;
-                case 'head':
-                    router.head(...route.parameters);
-                    break;
-                case 'options':
-                    router.options(...route.parameters);
-                    break;
-            }
+    cordinateRoutes(url, method, request, response) {
+        method = method.toLowerCase();
 
-            if(router.resolved)
+        let engine = new RoutingEngine(url, method, request, response),
+            router = this.router;
+
+        //run on the main router thread
+        engine.use(router.middlewares);
+
+        if (this.runRoutes(engine, 'all', router.routes['all']))
+            return true;
+        if (this.runRoutes(engine, method, router.routes[method]))
+            return true;
+
+        //run on the mounted routers' thread
+        for (let mountedRouter of this.mountedRouters) {
+            let middlewares = mountedRouter.inheritMiddlewares?
+                [...router.middlewares, ...mountedRouter.middlewares] : mountedRouter.middlewares;
+
+            engine.use(middlewares);
+
+            if (this.runRoutes(engine, 'all', mountedRouter.routes['all']))
+                return true;
+            /* istanbul ignore else */
+            if (this.runRoutes(engine, method, mountedRouter.routes[method]))
                 return true;
         }
+
         return false;
     }
 
@@ -203,7 +199,8 @@ export default class {
      * perform house keeping
      *@param {http.IncomingMessage} request - the request object
     */
-    onResponseFinish(request) {
+    onResponseFinish(request, response) {
+        Logger.logProfile(request, response);
         this.bodyParser.cleanUpTempFiles(request.files);
     }
 
@@ -216,6 +213,10 @@ export default class {
      *@param {Array} bufferDetails.buffers - array containing chunks of buffer data
     */
     onRequestEnd(request, response, bufferDetails) {
+
+        //profile the response time
+        response.startTime = Date.now();
+
         let {url, method, headers} = request;
 
         request.files = {};
@@ -224,7 +225,7 @@ export default class {
 
         //clean up resources once the response has been sent out
         response.on('finish', Util.generateCallback(this.onResponseFinish, this,
-            [request]
+            [request, response]
         ));
 
         if (this.staticfileServer.serve(url, method, headers, response))
@@ -232,7 +233,7 @@ export default class {
 
         this.parseRequestData(request, url, bufferDetails.buffers);
 
-        if (this.runRoutes(url, method, request, response))
+        if (this.cordinateRoutes(url, method, request, response))
             return;
 
         //send 404 response if router did not resolved
@@ -258,6 +259,9 @@ export default class {
      * handles request events
     */
     onRequest(request, response) {
+        //profile the request time
+        request.startTime = Date.now();
+
         let bufferDetails = {buffers: [], size: 0};
 
         //handle on data event
@@ -275,7 +279,7 @@ export default class {
      * handle server close event
     */
     onClose() {
-        console.log('connection closed successfully');
+        Logger.info('connection closed successfully');
     }
 
     /**
@@ -288,16 +292,78 @@ export default class {
     }
 
     /**
+     * handle server error events
+     *@param {Error} err - the error event
+    */
+    onError(err) {
+        console.log(err);
+        if (err.code === 'EADDRINUSE')
+            Logger.error('Server can\'t be started, address already in use');
+
+        else
+            Logger.error('Error :- ' + err.code + ' ' + err.message);
+    }
+
+    /**
+     * handles server listening event
+    */
+    onListening() {
+        let address = this.server.address();
+        Logger.info('Server started on port ' + address.port);
+    }
+
+    /**
      * binds all event handlers on the server.
     */
     initServer() {
-        //handle server close event
-        this.server.on('close', this.onClose)
+        //handle server listening event
+        this.server.on('listening', Util.generateCallback(this.onListening, this))
 
-        //handle server client error
+            //handle on error event
+            .on('error', this.onError)
+
+            //handle server close event
+            .on('close', this.onClose)
+
+            //handle server client error
             .on('clientError', this.onClientError)
 
-        //handle server request
+            //handle server request
             .on('request', Util.generateCallback(this.onRequest, this));
+    }
+
+    /**
+     * starts the server at a given port
+     *@param {number} [port=4000] - the port to listen on.
+     *@param {Function} [callback] - a callback function to execute once the server starts
+     * listening on the given port
+    */
+    listen(port, callback) {
+        if (this.listening) {
+            Logger.error('Server already started. You must close the server first.');
+            return;
+        }
+        callback = Util.isCallable(callback)? callback : () => {};
+        this.server.listen( port || 4000, callback);
+    }
+
+    /**
+     * closes the connection
+     *@param {Function} [callback] - a callback function to execute once the server closes
+    */
+    close(callback) {
+        callback = Util.isCallable(callback)? callback : () => {};
+        this.server.close(callback);
+    }
+
+    /**
+     * returns the bound address that the server is listening on
+     *@returns {Object}
+    */
+    address() {
+        if (this.listening)
+            return this.server.address();
+        else
+            return null;
     }
 }
