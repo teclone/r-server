@@ -4,7 +4,7 @@
   "description": "A lightweight, extensible node.js web-server with inbuilt routing-engine, static file server, file upload handler, request body parser, middleware support and lots more",
   "main": "index.js",
   "scripts": {
-    "test": "BABEL_ENV=test nyc mocha --recursive --exit",
+    "test": "BABEL_ENV=test nyc mocha --recursive",
     "watch-test": "npm run test -- -w",
     "report-coverage": "nyc report --reporter=text-lcov | coveralls",
     "lint": "eslint ./src --fix",
