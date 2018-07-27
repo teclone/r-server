@@ -298,7 +298,6 @@ export default class {
      *@param {Error} err - the error event
     */
     onError(err) {
-        console.log(err);
         if (err.code === 'EADDRINUSE')
             Logger.error('Server can\'t be started, address already in use');
 
