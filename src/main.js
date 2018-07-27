@@ -5,6 +5,9 @@ export default {
 
     /**
      * returns an app instance
+     *@param {string} [configPath] - an optional relative path to a user defined config file
+     * defaults to .rsvrc.json
+     *@returns {RServerApp}
     */
     instance(configPath) {
         return new RServerApp(configPath);
