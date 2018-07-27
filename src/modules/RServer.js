@@ -8,7 +8,7 @@ import RoutingEngine from './RoutingEngine.js';
 import Router from './Router.js';
 import BodyParser from './BodyParser.js';
 import _config from '../.rsvrc.json';
-import RServerResponse from './RServerResponse.js';
+import './RServerResponse.js';
 import Logger from './Logger.js';
 
 export default class {
@@ -42,9 +42,7 @@ export default class {
             this.config.encoding
         );
 
-        this.server = http.createServer({
-            ServerResponse: RServerResponse.getClass(this.staticfileServer)
-        });
+        this.server = http.createServer();
 
         this.initServer();
     }
@@ -200,6 +198,8 @@ export default class {
      *@param {http.IncomingMessage} request - the request object
     */
     onResponseFinish(request, response) {
+        response.staticfileServer = null;
+
         Logger.logProfile(request, response);
         this.bodyParser.cleanUpTempFiles(request.files);
     }
@@ -222,6 +222,8 @@ export default class {
         request.files = {};
         request.query = {};
         request.body = {};
+
+        response.staticfileServer = this.staticfileServer;
 
         //clean up resources once the response has been sent out
         response.on('finish', Util.generateCallback(this.onResponseFinish, this,
