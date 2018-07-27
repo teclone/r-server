@@ -166,6 +166,7 @@ describe('RServerApp', function() {
         not listening for connections`, function(done) {
             rServerApp.listen(null, function() {
                 let address = rServerApp.address();
+                rServerApp.close();
                 if (address.port !== 4000)
                     done(new Error('Error: server address not valid'));
                 else
