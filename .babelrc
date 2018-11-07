@@ -3,20 +3,27 @@
     "test": {
       "presets": [
         [
-          "env"
+          "@babel/preset-env",
+          {
+            "targets": {
+              "node": "current"
+            }
+          }
         ]
       ]
     },
     "build": {
       "presets": [
         [
-          "env",
+          "@babel/preset-env",
           {
-            "modules": false
+            "modules": false,
+            "targets": {
+              "node": "current"
+            }
           }
         ]
-      ],
-      "plugins": "external-helpers"
+      ]
     }
   }
 }
