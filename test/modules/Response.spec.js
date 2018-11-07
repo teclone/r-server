@@ -1,13 +1,13 @@
-import RServerResponse from '../../src/modules/RServerResponse.js';
-import StaticFileServer from '../../src/modules/StaticFileServer.js';
+import Response from '../../src/modules/Response.js';
+import FileServer from '../../src/modules/FileServer.js';
 import path from 'path';
 
-describe('RServerResponse.spec.js', function() {
+describe('Response.spec.js', function() {
     let response = null;
 
     beforeEach(function() {
-        response = new RServerResponse({method: 'GET'});
-        response.staticFileServer = new StaticFileServer(
+        response = new Response({method: 'GET'});
+        response.fileServer = new FileServer(
             path.resolve(__dirname, '../../'), [
                 './', 'public'
             ], {
@@ -23,12 +23,6 @@ describe('RServerResponse.spec.js', function() {
                 'index.html', 'main.js'
             ]
         );
-    });
-
-    describe('.getClass(staticFileServer)', function() {
-        it(`should return return an RServerResponse class`, function() {
-            expect(response).to.be.an('RServerResponse');
-        });
     });
 
     describe('#download(filePath, filename, callback)', function() {
