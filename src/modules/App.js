@@ -1,20 +1,26 @@
-import RServer from './RServer.js';
-import RouteWrapper from './RouteWrapper.js';
+/**
+ *@module App
+*/
+import Server from './Server.js';
+import Wrapper from './Wrapper.js';
 
-export default class RServerApp {
+export default class App {
 
     /**
-     *@param {string} [configPath] - user defined configuration file location.
+     *@param {string|Object} [config] - an optional config object or a string relative path to a
+     * user defined config file defaults to ".rsvrc.json"
     */
-    constructor(configPath) {
-        this.server = new RServer(configPath);
+    constructor(config) {
+        this.server = new Server(config);
     }
 
     /**
      * return instance identity
+     *@private
+     *@type {string}
     */
     get [Symbol.toStringTag]() {
-        return 'RserverApp';
+        return 'App';
     }
 
     /**
@@ -89,10 +95,10 @@ export default class RServerApp {
 
     /**
      * returns a route wrapper for the given url
-     *@returns {RouteWrapper}
+     *@returns {Wrapper}
     */
     route(url) {
-        return new RouteWrapper(this.server.router, url);
+        return new Wrapper(this.server.router, url);
     }
 
     /**
