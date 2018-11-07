@@ -1,10 +1,9 @@
+/**
+ *@module Util
+*/
 import fs from 'fs';
 import path from 'path';
 
-/**
- * Utility module
- * this module defines a bunch of utility functions that will be relevant to most other modules
-*/
 let toString = Object.prototype.toString;
 
 export default {
@@ -164,46 +163,6 @@ export default {
     },
 
     /**
-     * performs a deep merge of all comma seperated list of objects and returns a new object
-     *@param {...Object} objects - comma separated list of objects to merge
-     *@returns {Object}
-    */
-    mergeObjects(...objects) {
-        /**
-         * runs the process
-         *@param {Object} dest - the destination object
-         *@param {Object} src - the src object
-         *@returns {Object}
-        */
-        function run(dest, src) {
-            let keys = Object.keys(src);
-            for (let key of keys) {
-                let value = src[key];
-
-                if (typeof dest[key] === 'undefined') {
-                    dest[key] = this.isPlainObject(value)? run.call(this, {}, value) : value;
-                }
-                else if (this.isPlainObject(value)) {
-                    dest[key] = this.isPlainObject(dest[key])?
-                        run.call(this, dest[key], value) : run.call(this, {}, value);
-                }
-                else {
-                    dest[key] = value;
-                }
-            }
-            return dest;
-        }
-
-        let dest = {};
-        for (let object of objects) {
-            if (!this.isPlainObject(object))
-                continue;
-            dest = run.call(this, dest, object);
-        }
-        return dest;
-    },
-
-    /**
      * creates a directory recursively and synchronously
      *@param {string} dir - the directory to create
      *@returns {boolean}
@@ -211,24 +170,81 @@ export default {
     mkDirSync(dir) {
         if (typeof dir !== 'string')
             throw new TypeError('argument one is not a string');
-        if (dir === '/' || dir === '' || fs.existsSync(dir))
-            return false;
 
-        //search backwards
+        if (fs.existsSync(dir))
+            return true;
+
+        //search backwards and get the last path that already exists
         dir = dir.replace(/\/+$/, '');
         let existingPath = '',
             testPath = dir;
         while (existingPath === '' && testPath !== '/') {
             testPath = path.join(testPath, '../');
+
             if (fs.existsSync(testPath))
                 existingPath = testPath;
         }
 
-        let pathTokens = dir.split(existingPath)[1].split('/');
-        for (let pathToken of pathTokens) {
+        dir.split(existingPath)[1].split('/').forEach(pathToken => {
             existingPath = path.join(existingPath, '/', pathToken);
             fs.mkdirSync(existingPath);
-        }
+        });
+
         return true;
+    },
+
+    /**
+     * assigns the objects to the target object. this better than object.assign as it performs
+     * deep copy
+     *@param {Object} target - the target object
+     *@param {...Objects} objects - comma separated list of objects
+     *@returns {Object}
+    */
+    assign(target, ...objects) {
+
+        const copyObject = function(dest, object) {
+            dest = this.isObject(dest)? dest : {};
+            for (let [key, value] of Object.entries(object)) {
+                dest[key] = cordinate.call(this, dest[key], value);
+            }
+
+            return dest;
+        };
+
+        const copyArray = function(dest, values) {
+            dest = this.isArray(dest)? dest : [];
+
+            values.forEach((current, index) => {
+                dest[index] = cordinate.call(this, null, current);
+            });
+
+            return dest;
+        };
+
+        //cordinates the calls
+        const cordinate = function(dest, value) {
+            if (this.isArray(value)) {
+                return copyArray.call(this, dest, value);
+            }
+            else if (this.isObject(value)) {
+                return copyObject.call(this, dest, value);
+            }
+            else {
+                return value;
+            }
+        };
+
+        target = this.isPlainObject(target)? target : {};
+
+        for (const object of objects) {
+
+            if (!this.isObject(object))
+                continue;
+
+            for (const [key, value] of Object.entries(object)) {
+                target[key] = cordinate.call(this, target[key], value);
+            }
+        }
+        return target;
     }
 };
