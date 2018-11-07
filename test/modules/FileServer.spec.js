@@ -1,13 +1,13 @@
-import StaticFileServer from '../../src/modules/StaticFileServer.js';
+import FileServer from '../../src/modules/FileServer.js';
 import path from 'path';
 import fs from 'fs';
 
-describe('StaticFileServer', function() {
-    let staticFileServer = null,
+describe('FileServer', function() {
+    let fileServer = null,
         response = null;
 
     beforeEach(function() {
-        staticFileServer = new StaticFileServer(path.resolve(__dirname, '../../'), [
+        fileServer = new FileServer(path.resolve(__dirname, '../../'), [
             './', 'public'
         ], {
             'json': 'application/json',
@@ -86,7 +86,7 @@ describe('StaticFileServer', function() {
 
     describe('#constructor(rootDir, publicPaths, mimeTypes, defaultDocuments)', function() {
         it(`should create a static file server instance`, function() {
-            expect(staticFileServer).to.be.a('StaticFileServer');
+            expect(fileServer).to.be.a('FileServer');
         });
     });
 
@@ -94,21 +94,21 @@ describe('StaticFileServer', function() {
         it('should return the default response headers for the given file', function() {
             let filePath = path.resolve(__dirname, '../../package.json'),
                 stat = fs.statSync(filePath),
-                resHeaders = staticFileServer.getDefaultHeaders(
+                resHeaders = fileServer.getDefaultHeaders(
                     path.resolve(__dirname, '../../package.json'));
 
             expect(resHeaders).to.deep.equals({
                 'Content-Type': 'application/json',
                 'Content-Length': stat.size,
                 'Last-Modified': stat.mtime.toString(),
-                'ETag': staticFileServer.getFileTag(stat.mtime),
+                'ETag': fileServer.getFileTag(stat.mtime),
                 'Cache-Control': 'no-cache, max-age=86400'
             });
         });
 
         it('should use set the Content-Type to application/octet-stream if file has no extension', function() {
             let filePath = path.resolve(__dirname, '../../LICENSE'),
-                resHeaders = staticFileServer.getDefaultHeaders(filePath);
+                resHeaders = fileServer.getDefaultHeaders(filePath);
 
             expect(resHeaders['Content-Type']).to.equals('application/octet-stream');
         });
@@ -118,20 +118,20 @@ describe('StaticFileServer', function() {
         it(`should end the response by sending a file using node.js inbuild steam functionality.
             It should call the callback once the process completes`, function(done) {
             let filePath = path.resolve(__dirname, '../../package.json');
-            staticFileServer.endStream(filePath, response, 200, {}, function() {
+            fileServer.endStream(filePath, response, 200, {}, function() {
                 done();
             });
         });
 
         it(`should use a dummy callback function if no callback is specified.`, function() {
             let filePath = path.resolve(__dirname, '../../package.json');
-            staticFileServer.endStream(filePath, response, 200, {});
+            fileServer.endStream(filePath, response, 200, {});
         });
     });
 
     describe('#endResponse(response, status, headers?, data?)', function() {
         it (`should end the response with the status code given, headers and data`, function() {
-            staticFileServer.endResponse(response, 200, null, 'Hello World');
+            fileServer.endResponse(response, 200, null, 'Hello World');
             expect(response.status).to.equals(200);
             expect(response.headers).to.deep.equals({});
             expect(response.data).to.be.equals('Hello World');
@@ -139,7 +139,7 @@ describe('StaticFileServer', function() {
 
         it (`should end the response with the status code, headers and without any data if data
             parameter is not specified`, function() {
-            staticFileServer.endResponse(response, 304, {'Content-Type': 'text/html'});
+            fileServer.endResponse(response, 304, {'Content-Type': 'text/html'});
             expect(response.data).to.be.null;
         });
     });
@@ -147,20 +147,20 @@ describe('StaticFileServer', function() {
     describe('#negotiateContent(headers, eTag, fileMTime)', function() {
         it (`should negotiate the content by checking for an if-none-match header fields and if
             it tallies with the file's calculated eTag. It should return true if it tallies`, function() {
-            expect(staticFileServer.negotiateContent({
+            expect(fileServer.negotiateContent({
                 'if-none-match': 'blablabla'
             }, 'blablabla')).to.be.true;
         });
 
         it (`should negotiate the content by checking for an if-modified-since header fields and if
             it tallies with the file's last modified time. It should return true if it tallies`, function() {
-            expect(staticFileServer.negotiateContent({
+            expect(fileServer.negotiateContent({
                 'if-modified-since': 'Wed Jul 18 2018 14:37:47 GMT+0100 (West Africa Standard Time)'
             }, 'blablabla', 'Wed Jul 18 2018 14:37:47 GMT+0100 (West Africa Standard Time)')).to.be.true;
         });
 
         it (`It should return false if otherwise`, function() {
-            expect(staticFileServer.negotiateContent({
+            expect(fileServer.negotiateContent({
                 'if-none-match': 'blablabla'
             }, 'blablabla2')).to.be.false;
         });
@@ -170,12 +170,12 @@ describe('StaticFileServer', function() {
         it (`should generate an etag for the file using the file's last modification
             time as the hash update input. The returned hash should be sized to the given length
             which defaults to 16`, function() {
-            expect(staticFileServer.getFileTag(20202020))
+            expect(fileServer.getFileTag(20202020))
                 .to.be.a('string').and.lengthOf(16);
         });
 
         it (`should use the given length and size the generated tag to it`, function() {
-            expect(staticFileServer.getFileTag(20202020, 12))
+            expect(fileServer.getFileTag(20202020, 12))
                 .to.be.a('string').and.lengthOf(12);
         });
     });
@@ -183,13 +183,13 @@ describe('StaticFileServer', function() {
     describe('#getDefaultDocument(dir)', function() {
         it (`should search for a default document in the given directory and return it`, function() {
             let dir = path.resolve(__dirname, '../../src');
-            expect(staticFileServer.getDefaultDocument(dir)).to.equals('main.js');
+            expect(fileServer.getDefaultDocument(dir)).to.equals('main.js');
         });
 
         it(`should return empty string if no specified default documents exist inside
             the directory`, function() {
             let dir = path.resolve(__dirname, '../../src/modules');
-            expect(staticFileServer.getDefaultDocument(dir)).to.equals('');
+            expect(fileServer.getDefaultDocument(dir)).to.equals('');
         });
     });
 
@@ -197,48 +197,48 @@ describe('StaticFileServer', function() {
         it(`should validate the request and return valid public file  path that
             matches the requested file`, function() {
             let requestUrl = '/package.json';
-            expect(staticFileServer.validateRequest(requestUrl, 'GET'))
+            expect(fileServer.validateRequest(requestUrl, 'GET'))
                 .to.equals(path.resolve(__dirname, '../../package.json'));
         });
 
         it(`should return empty string if the request's method is neither GET, HEAD nor
             OPTIONS method`, function() {
-            expect(staticFileServer.validateRequest('index.html', 'POST')).to.equals('');
+            expect(fileServer.validateRequest('index.html', 'POST')).to.equals('');
         });
 
         it(`should run the process and check for default documents if the request url
             points to a folder in one of the public paths`, function() {
             let requestUrl = '/src';
-            expect(staticFileServer.validateRequest(requestUrl, 'GET'))
+            expect(fileServer.validateRequest(requestUrl, 'GET'))
                 .to.equals(path.resolve(__dirname, '../../src/main.js'));
         });
 
         it(`should run the process and return empty string no default documents was found for
             the request url that points to a folder in one of the public paths`, function() {
             let requestUrl = '/src/modules';
-            expect(staticFileServer.validateRequest(requestUrl, 'GET'))
+            expect(fileServer.validateRequest(requestUrl, 'GET'))
                 .to.equals('');
         });
 
         it(`should run the process and return empty string for every request made outside the
             specified public paths.`, function() {
-            let staticFileServer = new StaticFileServer(path.resolve(__dirname, '../../'), [
+            let fileServer = new FileServer(path.resolve(__dirname, '../../'), [
                 'test'
             ], null, ['index.js', 'main.js', 'setup.js']);
 
-            expect(staticFileServer.validateRequest('package.json', 'GET'))
+            expect(fileServer.validateRequest('package.json', 'GET'))
                 .to.equals('');
-            expect(staticFileServer.validateRequest('/src', 'GET'))
+            expect(fileServer.validateRequest('/src', 'GET'))
                 .to.equals('');
 
-            expect(staticFileServer.validateRequest('/setup.js', 'GET'))
+            expect(fileServer.validateRequest('/setup.js', 'GET'))
                 .to.equals(path.resolve(__dirname, '../../test/setup.js'));
         });
 
         it(`should run the process and return empty string for every request made for server
         files that starts with .`, function() {
-            expect(staticFileServer.validateRequest('.eslintrc.json', 'GET'));
-            expect(staticFileServer.validateRequest('.gitignore', 'GET'));
+            expect(fileServer.validateRequest('.eslintrc.json', 'GET'));
+            expect(fileServer.validateRequest('.gitignore', 'GET'));
         });
     });
 
@@ -248,7 +248,7 @@ describe('StaticFileServer', function() {
         return a boolean`, function(done) {
             let filePath = path.resolve(__dirname, '../../package.json');
 
-            let status = staticFileServer.serve(
+            let status = fileServer.serve(
                 'package.json', 'GET', {}, response, function() {
                     if (status !== true)
                         done(new Error('#serve sent incorrect return type'));
@@ -270,7 +270,7 @@ describe('StaticFileServer', function() {
 
         it(`should return content type application/octet-stream if files mime type is not found within the
         list of mime types`, function(done) {
-            staticFileServer.serve(
+            fileServer.serve(
                 'LICENSE', 'GET', {}, response, function() {
                     if (response.headers['Content-Type'] !== 'application/octet-stream')
                         done(new Error('#serve sent incorrect content-type'));
@@ -282,13 +282,13 @@ describe('StaticFileServer', function() {
         });
 
         it(`should run an integrated process, and return false if the request fails validation`, function() {
-            let status = staticFileServer.serve('package.json', 'POST', {}, response);
+            let status = fileServer.serve('package.json', 'POST', {}, response);
             expect(status).to.be.false;
         });
 
         it(`should run an integrated process, and respond to OPTIONS requests, letting the client
         know which request methods are allowed without sending any data`, function(done) {
-            staticFileServer.serve(
+            fileServer.serve(
                 'package.json', 'OPTIONS', {}, response, function() {
                     if (response.headers['Allow'] !== 'OPTIONS, HEAD, GET, POST')
                         done(new Error('#serve sent incorrect server allow head for options request'));
@@ -304,7 +304,7 @@ describe('StaticFileServer', function() {
             let filePath = path.resolve(__dirname, '../../package.json'),
                 stat = fs.statSync(filePath);
 
-            staticFileServer.serve(
+            fileServer.serve(
                 'package.json', 'HEAD', {}, response, function() {
                     let headers = response.headers;
 
@@ -320,7 +320,7 @@ describe('StaticFileServer', function() {
                     else if (headers['Last-Modified'].toString() !== stat.mtime.toString())
                         done(new Error('#serve sent incorrect file Last-Modified date'));
 
-                    else if (headers['ETag'] !== staticFileServer.getFileTag(stat.mtime))
+                    else if (headers['ETag'] !== fileServer.getFileTag(stat.mtime))
                         done(new Error('#serve sent incorrect file ETag computed hash'));
 
                     else if (headers['Cache-Control'] !== 'no-cache, max-age=86400')
@@ -336,7 +336,7 @@ describe('StaticFileServer', function() {
         header status if content negotiation succeeds`, function(done) {
 
             //serve the first file.
-            staticFileServer.serve(
+            fileServer.serve(
                 'package.json', 'GET', {}, response, function() {
                     //serve the same file the second time
                     let headers = {};
@@ -351,7 +351,7 @@ describe('StaticFileServer', function() {
                             headers[key] = value;
                     }
 
-                    staticFileServer.serve('package.json', 'GET', headers, response, function() {
+                    fileServer.serve('package.json', 'GET', headers, response, function() {
                         if (response.status !== 304)
                             done(new Error(`#serve sent incorrect response status code, when
                                 it suppose to negotiate content`));
@@ -370,7 +370,7 @@ describe('StaticFileServer', function() {
     describe('#serveHttpErrorFile(response, status, baseDir?, filePath?, callback?)', function() {
         it(`should asynchronously server the user defined http error file that is mapped for the given
             status error code`, function(done) {
-            staticFileServer.serveHttpErrorFile(response, 404, '',
+            fileServer.serveHttpErrorFile(response, 404, '',
                 'test/helpers/404.html', function() {
                     done();
                 }
@@ -379,14 +379,14 @@ describe('StaticFileServer', function() {
 
         it(`should asynchronously server the default internal error file that is mapped for the given
             status error code, if none is defined by the web master`, function(done) {
-            staticFileServer.serveHttpErrorFile(response, 404, '', '', function() {
+            fileServer.serveHttpErrorFile(response, 404, '', '', function() {
                 done();
             });
         });
 
         it(`should send an empty content with the appropriate error status header if user
             defined error file does not exist`, function(done) {
-            staticFileServer.serveHttpErrorFile(response, 404, '', 'test/helpers/401.html', function() {
+            fileServer.serveHttpErrorFile(response, 404, '', 'test/helpers/401.html', function() {
                 if (response.status === 404)
                     done();
                 else
@@ -399,7 +399,7 @@ describe('StaticFileServer', function() {
         it(`should serve the file referred to by the relative filePath as download attachment to the
         client, suggesting the given filename as what the client should use in saving the
         file. `, function(done) {
-            staticFileServer.serveDownload(response, 'package.json', 'node-config.json',
+            fileServer.serveDownload(response, 'package.json', 'node-config.json',
                 function() {
                     if (response.headers['Content-Disposition'] ===
                         'attachment; filename="node-config.json"')
@@ -411,7 +411,7 @@ describe('StaticFileServer', function() {
         });
 
         it(`should default to the files base name if no filename is provided.`, function(done) {
-            staticFileServer.serveDownload(response, 'package.json', '',
+            fileServer.serveDownload(response, 'package.json', '',
                 function() {
                     if (response.headers['Content-Disposition'] ===
                         'attachment; filename="package.json"')
@@ -423,7 +423,7 @@ describe('StaticFileServer', function() {
         });
 
         it(`should simply end the response if the specified file does not exist.`, function(done) {
-            staticFileServer.serveDownload(response, 'packag.json', 'node-config.json',
+            fileServer.serveDownload(response, 'packag.json', 'node-config.json',
                 function() {
                     if (response.data !== null)
                         done(new Error('#serveDownload sent data when file does not actually exist'));
