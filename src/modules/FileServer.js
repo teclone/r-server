@@ -1,12 +1,12 @@
 /**
- * static file server module
+ *@module FileServer
 */
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import Util from './Util.js';
 
-export default class StaticFileServer {
+export default class FileServer {
 
     /**
      *@param {string} rootDir - the project root directory
@@ -29,7 +29,7 @@ export default class StaticFileServer {
      * return instance identity
     */
     get [Symbol.toStringTag]() {
-        return 'StaticFileServer';
+        return 'FileServer';
     }
 
     /**
@@ -52,7 +52,7 @@ export default class StaticFileServer {
 
     /**
      * ends the response.
-     *@param {RServerResponse} response - the response object
+     *@param {Response} response - the response object
      *@param {number} status - response status code
      *@param {Object} headers - the response headers to write
      *@param {string|Buffer} [data] - response data to send
@@ -76,7 +76,7 @@ export default class StaticFileServer {
     /**
      * ends the streaming response
      *@param {string} filePath - the file path to serve.
-     *@param {RServerResponse} - the response object
+     *@param {Response} response - the response object
      *@param {number} status - the status code
      *@param {Object} headers - the request headers
      *@param {function} [callback] - a callback method
@@ -185,7 +185,7 @@ export default class StaticFileServer {
      *@param {string} url - the request url
      *@param {string} method - the request method
      *@param {Object} headers - the request headers
-     *@param {RServerResponse} response - the response object
+     *@param {Response} response - the response object
      *@param {Function} [callback] - a callback function that will be called once the operation
      * fails or completes
     */
@@ -216,7 +216,7 @@ export default class StaticFileServer {
 
     /**
      * servers server http error files. such as 504, 404, etc
-     *@param {RServerResponse} response - the response object
+     *@param {Response} response - the response object
      *@param {number} status - the response status code
      *@param {string} baseDir - the user defined httErors base directory relative to root.
      *@param {string} filePath - the file path that is mapped to the error code
@@ -242,7 +242,7 @@ export default class StaticFileServer {
 
     /**
      * serves file intended for download to the client
-     *@param {RServerResponse} response - the response object
+     *@param {Response} response - the response object
      *@param {string} filePath - the file path
      *@param {string} [filename] - suggested file that the browser will use in saving the file
      *@param {Function} [callback] - a callback function that will be called once the operation
