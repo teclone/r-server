@@ -185,28 +185,46 @@ describe('Util module', function() {
         });
     });
 
-    describe('.mergeObjects(...objects)', function() {
+    describe('.assign(target, ...objects)', function() {
 
-        it(`should deeply merge all the comma separated list of object arguments and return
-        the new object`, function() {
-            let obj1 = {name: 'house1', details: {height: 30, width: 40}};
-            let obj2 = {nickName: 'Finest House', details: {rooms: 40}, name: {value: 'house2'}};
-            let obj3 = {oldName: 'Fine House', details: 'no details'};
+        it(`should deeply assign all the comma separated list of object arguments to the given
+            target object and return it`, function() {
+            let obj1 = {
+                name: 'test',
+                countries: ['Nigeria', 'Ukraine', 'Gambia', 'Zambia', 'Jebba'],
+                address: {
+                    city: 'Obadiah'
+                }
+            };
 
-            expect(Util.mergeObjects(obj1, obj2, obj3)).to.deep.equals({
-                name: {value: 'house2'}, nickName: 'Finest House', oldName: 'Fine House',
-                details: 'no details'
+            let obj2 = {
+                age: 22,
+                countries: ['Nigeria', 'Ghana'],
+                address: {
+                    state: 'Enugu',
+                    lga: 'Udenu'
+                }
+            };
+            expect(Util.assign({}, obj1, obj2)).to.deep.equal({
+                name: 'test',
+                age: 22,
+                countries: ['Nigeria', 'Ghana', 'Gambia', 'Zambia', 'Jebba'],
+                address: {
+                    city: 'Obadiah',
+                    state: 'Enugu',
+                    lga: 'Udenu'
+                }
             });
-        });
 
-        it(`should ignore non plain object argument`, function() {
-            let obj1 = {name: 'house1', details: {height: 30, width: 40}};
-            let obj2 = {nickName: 'Finest House', details: {rooms: 40}};
-            let obj3 = {oldName: 'Fine House', details: {height: 35}};
-
-            expect(Util.mergeObjects(obj1, obj2, obj3, null)).to.deep.equals({
-                name: 'house1', nickName: 'Finest House', oldName: 'Fine House',
-                details: {height: 35, width: 40, rooms: 40}
+            expect(Util.assign(null, obj2, obj1)).to.deep.equals({
+                name: 'test',
+                age: 22,
+                countries: ['Nigeria', 'Ukraine', 'Gambia', 'Zambia', 'Jebba'],
+                address: {
+                    city: 'Obadiah',
+                    state: 'Enugu',
+                    lga: 'Udenu'
+                }
             });
         });
     });
@@ -227,11 +245,9 @@ describe('Util module', function() {
             }).to.throw(TypeError);
         });
 
-        it(`should do nothing if the directory exists, or if the directory given is an empty
-        string or the backward slash. it returns false`, function() {
-            expect(Util.mkDirSync(path.resolve(__dirname))).to.be.false;
-            expect(Util.mkDirSync('/')).to.be.false;
-            expect(Util.mkDirSync('')).to.be.false;
+        it(`should do nothing and return true if the directory exists`, function() {
+            expect(Util.mkDirSync(path.resolve(__dirname))).to.be.true;
+            expect(Util.mkDirSync('/')).to.be.true;
         });
     });
 });
