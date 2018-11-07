@@ -1,5 +1,8 @@
+/**
+ *@module Router
+*/
 import Util from './Util.js';
-import RouteWrapper from './RouteWrapper.js';
+import Wrapper from './Wrapper.js';
 
 export default class Router {
 
@@ -24,6 +27,7 @@ export default class Router {
 
     /**
      * return object identity
+     *@type {string}
     */
     get [Symbol.toStringTag]() {
         return 'Router';
@@ -101,10 +105,10 @@ export default class Router {
 
     /**
      * returns a route wrapper for the given url
-     *@returns {RouteWrapper}
+     *@returns {Wrapper}
     */
     route(url) {
-        return new RouteWrapper(this, url);
+        return new Wrapper(this, url);
     }
 
     /**
