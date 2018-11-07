@@ -117,8 +117,8 @@ describe('Router', function() {
     });
 
     describe('#route(url)', function() {
-        it(`should return a RouteWrapper instance for the given url`, function() {
-            expect(router.route('/user')).to.be.a('RouteWrapper');
+        it(`should return a Route Wrapper instance for the given url`, function() {
+            expect(router.route('/user')).to.be.a('Wrapper');
         });
     });
 
