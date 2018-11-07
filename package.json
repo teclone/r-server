@@ -12,7 +12,10 @@
     "prebuild": "rimraf dist && rimraf lib",
     "build": "BABEL_ENV=build rollup --config",
     "watch-build": "npm run build -- --watch",
-    "semantic-release": "semantic-release"
+    "semantic-release": "semantic-release",
+    "validate-doc": "documentation lint src/**",
+    "generate-doc": "rimraf docs/docs && documentation build src/** -f html -o docs/docs",
+    "start": "npm run build && node server.js"
   },
   "repository": {
     "type": "git",
@@ -34,32 +37,38 @@
   },
   "homepage": "https://github.com/harrison-ifeanyichukwu/r-server#readme",
   "devDependencies": {
-    "babel-plugin-external-helpers": "6.22.0",
-    "babel-preset-env": "1.7.0",
-    "babel-register": "6.26.0",
+    "@babel/core": "7.1.2",
+    "@babel/preset-env": "7.1.0",
+    "@babel/register": "7.0.0",
+    "babel-core": "7.0.0-bridge.0",
     "chai": "4.1.2",
-    "commitizen": "2.10.1",
+    "commitizen": "3.0.4",
     "coveralls": "3.0.2",
     "cz-conventional-changelog": "2.1.0",
+    "documentation": "8.1.2",
     "eslint": "5.1.0",
     "istanbul": "0.4.5",
     "js-beautify": "1.7.5",
+    "jsdoc": "3.5.5",
     "mocha": "5.2.0",
     "nyc": "12.0.2",
+    "request": "2.88.0",
     "rimraf": "2.6.2",
-    "rollup": "0.59.1",
-    "rollup-all": "1.3.0",
-    "rollup-plugin-babel": "3.0.4",
-    "rollup-plugin-node-resolve": "3.3.0",
-    "rollup-plugin-uglify": "4.0.0",
-    "semantic-release": "^15.8.1"
+    "rollup": "0.66.6",
+    "rollup-all": "1.3.1",
+    "rollup-plugin-babel": "4.0.3",
+    "rollup-plugin-node-resolve": "3.4.0",
+    "semantic-release": "^15.8.1",
+    "sinon": "7.1.1"
   },
-  "czConfig": {
-    "path": "node_modules/cz-conventional-changelog"
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
   },
   "nyc": {
     "require": [
-      "babel-register",
+      "@babel/register",
       "./test/setup.js"
     ],
     "include": [

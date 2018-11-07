@@ -11,7 +11,7 @@
 
     "include": ["*"],
 
-    "externalModules": ["fs", "path", "hash", "crypto", "http"],
+    "externalModules": ["fs", "path", "hash", "crypto", "http", "request-ip"],
 
     "copyAssets": true,
 
