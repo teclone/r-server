@@ -1,22 +1,27 @@
+/**
+ *@module Server
+*/
 import fs from 'fs';
 import path from 'path';
-
 import Util from './Util.js';
 import http from 'http';
-import StaticFileServer from './StaticFileServer.js';
-import RoutingEngine from './RoutingEngine.js';
+import FileServer from './FileServer.js';
+import Engine from './Engine.js';
 import Router from './Router.js';
 import BodyParser from './BodyParser.js';
 import _config from '../.rsvrc.json';
-import './RServerResponse.js';
 import Logger from './Logger.js';
+import { ENV } from './Constants.js';
+
+require('./Response');
 
 export default class {
 
     /**
-     *@param {string} configPath - user specified configuration path
+     *@param {string|Object} [config] - an optional config object or a string relative path to a
+     * user defined config file defaults to ".rsvrc.json"
     */
-    constructor(configPath) {
+    constructor(config) {
 
         this.router = new Router(false);
         this.mountedRouters = [];
@@ -27,9 +32,9 @@ export default class {
         else
             this.entryPath = this.getEntryPath(__dirname);
 
-        this.config = this.resolveConfig(this.entryPath, configPath || '.rsvrc.json');
+        this.config = this.resolveConfig(this.entryPath, config || '.rsvrc.json');
 
-        this.staticfileServer = new StaticFileServer(
+        this.fileServer = new FileServer(
             this.entryPath,
             this.config.staticFileDir,
             this.config.mimeTypes,
@@ -44,7 +49,11 @@ export default class {
 
         this.server = http.createServer();
 
-        this.initServer();
+        this.logger = new Logger(
+            path.join(this.entryPath, this.config.errorLog),
+            path.join(this.entryPath, this.config.accessLog),
+            this.config
+        );
     }
 
     /**
@@ -65,37 +74,43 @@ export default class {
     /**
      * returns the project's entry path
      *@param {string} knownPath - the known path for the mean time
+     *@return {string}
     */
     getEntryPath(knownPath) {
 
         if (knownPath.indexOf('node_modules') > 0)
             return knownPath.split('node_modules/')[0];
 
-        let currentPath = path.join(knownPath, '../');
-        while (currentPath !== '/') {
-            if (fs.existsSync(currentPath + '/package.json'))
-                return currentPath;
+        let entryPath = path.join(knownPath, '../');
+        while (entryPath !== '/') {
+            if (fs.existsSync(entryPath + '/package.json'))
+                break;
 
-            currentPath = path.join(currentPath, '../');
+            entryPath = path.join(entryPath, '../');
         }
 
-        /* istanbul ignore next */
-        return '';
+        return entryPath;
     }
 
     /**
      * resolves the configuration object
      *@param {string} entryPath - the project root path
-     *@param {string} configPath - the project config file relative path
+     *@param {string|Object} config - a config object or a string relative path to a
+     * user defined config file defaults to ".rsvrc.json"
     */
-    resolveConfig(entryPath, configPath) {
-        let config = null,
-            absConfigPath = path.join(entryPath, configPath);
+    resolveConfig(entryPath, config) {
 
-        if (fs.existsSync(absConfigPath))
-            config = Util.mergeObjects(_config, require(absConfigPath));
-        else
-            config = _config;
+        if (typeof config === 'string') {
+            const absPath = path.join(entryPath, config);
+            if (fs.existsSync(absPath))
+                config = require(absPath);
+        }
+
+        config = Util.assign(null, _config, config);
+
+        //prioritize node_env setting to config file setting
+        if (process.env.NODE_ENV === ENV.PRODUCTION)
+            config.env = process.env.NODE_ENV;
 
         return config;
     }
@@ -119,16 +134,15 @@ export default class {
 
     /**
      * runs all request routes
-     *@param {RouterEngine} router - the router engine instance
+     *@param {Engine} engine - the router engine instance
      *@param {string} api - the route api to call
      *@param {Array} routes - routes array
      *@returns {boolean}
     */
-    runRoutes(engine, api, routes) {
+    async runRoutes(engine, api, routes) {
         api = api.toLowerCase();
         for (let route of routes) {
-            engine[api](...route);
-            if (engine.resolved)
+            if (await engine[api](...route))
                 return true;
         }
         return false;
@@ -139,21 +153,22 @@ export default class {
      *@param {string} url - request url
      *@param {string} method - request method
      *@param {http.IncomingMessage} request - the request object
-     *@param {RServerResponse} response - the response object
+     *@param {Response} response - the response object
      *@returns {boolean}
     */
-    cordinateRoutes(url, method, request, response) {
+    async cordinateRoutes(url, method, request, response) {
         method = method.toLowerCase();
 
-        let engine = new RoutingEngine(url, method, request, response),
+        let engine = new Engine(url, method, request, response, [], this.logger),
             router = this.router;
 
         //run on the main router thread
         engine.use(router.middlewares);
 
-        if (this.runRoutes(engine, 'all', router.routes['all']))
+        if (await this.runRoutes(engine, 'all', router.routes['all']))
             return true;
-        if (this.runRoutes(engine, method, router.routes[method]))
+
+        if (await this.runRoutes(engine, method, router.routes[method]))
             return true;
 
         //run on the mounted routers' thread
@@ -163,10 +178,11 @@ export default class {
 
             engine.use(middlewares);
 
-            if (this.runRoutes(engine, 'all', mountedRouter.routes['all']))
+            if (await this.runRoutes(engine, 'all', mountedRouter.routes['all']))
                 return true;
+
             /* istanbul ignore else */
-            if (this.runRoutes(engine, method, mountedRouter.routes[method]))
+            if (await this.runRoutes(engine, method, mountedRouter.routes[method]))
                 return true;
         }
 
@@ -198,16 +214,23 @@ export default class {
      *@param {http.IncomingMessage} request - the request object
     */
     onResponseFinish(request, response) {
-        response.staticfileServer = null;
+        response.fileServer = null;
 
-        Logger.logProfile(request, response);
+        this.logger.profile(request, response);
         this.bodyParser.cleanUpTempFiles(request.files);
+    }
+
+    /**
+     * handle on response error event
+    */
+    onResponseError(err) {
+        this.logger.fatal(err);
     }
 
     /**
      * handle request data event
      *@param {http.IncomingMessage} request - the request object
-     *@param {RServerResponse} response - the response object
+     *@param {Response} response - the response object
      *@param {Object} bufferDetails - the buffer details
      *@param {number} bufferDetails.size - the buffer size
      *@param {Array} bufferDetails.buffers - array containing chunks of buffer data
@@ -215,34 +238,42 @@ export default class {
     onRequestEnd(request, response, bufferDetails) {
 
         //profile the response time
-        response.startTime = Date.now();
+        response.startTime = new Date();
+
+        if (bufferDetails.size > this.config.maxBufferSize)
+            return response.status(413).end('Entity too large');
 
         let {url, method, headers} = request;
 
         request.files = {};
         request.query = {};
         request.body = {};
+        request.buffer = bufferDetails.buffer;
 
-        response.staticfileServer = this.staticfileServer;
+        response.fileServer = this.fileServer;
 
-        //clean up resources once the response has been sent out
-        response.on('finish', Util.generateCallback(this.onResponseFinish, this,
-            [request, response]
-        ));
-
-        if (this.staticfileServer.serve(url, method, headers, response))
+        if (this.fileServer.serve(url, method, headers, response))
             return;
 
-        this.parseRequestData(request, url, bufferDetails.buffers);
+        this.parseRequestData(request, url, bufferDetails.buffer);
 
-        if (this.cordinateRoutes(url, method, request, response))
-            return;
+        this.cordinateRoutes(url, method, request, response).then(status => {
+            if (status)
+                return;
 
-        //send 404 response if router did not resolved
-        let httpErrors = this.config.httpErrors;
-        this.staticfileServer.serveHttpErrorFile(
-            response, 404, httpErrors.baseDir, httpErrors['404']
-        );
+            //send 404 response if router did not resolved
+            let httpErrors = this.config.httpErrors;
+            this.fileServer.serveHttpErrorFile(
+                response, 404, httpErrors.baseDir, httpErrors['404']
+            );
+        });
+    }
+
+    /**
+     * handle on request error event
+    */
+    onRequestError(err, request, response) {
+        this.logger.fatal(request, response, err);
     }
 
     /**
@@ -252,9 +283,7 @@ export default class {
         bufferDetails.size += chunk.length;
 
         if (bufferDetails.size <= this.config.maxBufferSize)
-            bufferDetails.buffers.push(chunk);
-        else
-            request.destroy(new Error('Payload too large'));
+            bufferDetails.buffer.push(chunk);
     }
 
     /**
@@ -262,9 +291,13 @@ export default class {
     */
     onRequest(request, response) {
         //profile the request time
-        request.startTime = Date.now();
+        request.startTime = new Date();
 
-        let bufferDetails = {buffers: [], size: 0};
+        let bufferDetails = {buffer: [], size: 0};
+
+        //handle on request error
+        request.on('error', Util.generateCallback(this.onRequestError, this,
+            [request, response]));
 
         //handle on data event
         request.on('data', Util.generateCallback(this.onRequestData, this,
@@ -275,13 +308,23 @@ export default class {
         request.on('end', Util.generateCallback(this.onRequestEnd, this,
             [request, response, bufferDetails]
         ));
+
+        //handle on response error
+        response.on('error', Util.generateCallback(this.onResponseError, this,
+            [request, response]
+        ));
+
+        //clean up resources once the response has been sent out
+        response.on('finish', Util.generateCallback(this.onResponseFinish, this,
+            [request, response]
+        ));
     }
 
     /**
      * handle server close event
     */
     onClose() {
-        Logger.info('connection closed successfully');
+        this.logger.info('connection closed successfully').close();
     }
 
     /**
@@ -297,12 +340,9 @@ export default class {
      * handle server error events
      *@param {Error} err - the error event
     */
-    onError(err) {
-        if (err.code === 'EADDRINUSE')
-            Logger.error('Server can\'t be started, address already in use');
-
-        else
-            Logger.error('Error :- ' + err.code + ' ' + err.message);
+    onServerError(err) {
+        //log to the console
+        this.logger.error('Error: ' + err.code + ' ' + err.message);
     }
 
     /**
@@ -310,7 +350,7 @@ export default class {
     */
     onListening() {
         let address = this.server.address();
-        Logger.info('Server started on port ' + address.port);
+        this.logger.info('Server started on port ' + address.port); //info to the console
     }
 
     /**
@@ -321,13 +361,13 @@ export default class {
         this.server.on('listening', Util.generateCallback(this.onListening, this))
 
             //handle on error event
-            .on('error', this.onError)
+            .on('error', Util.generateCallback(this.onServerError, this))
 
             //handle server close event
-            .on('close', this.onClose)
+            .on('close', Util.generateCallback(this.onClose, this))
 
             //handle server client error
-            .on('clientError', this.onClientError)
+            .on('clientError', Util.generateCallback(this.onClientError, this))
 
             //handle server request
             .on('request', Util.generateCallback(this.onRequest, this));
@@ -341,9 +381,11 @@ export default class {
     */
     listen(port, callback) {
         if (this.listening) {
-            Logger.error('Server already started. You must close the server first.');
+            //log error to the console
+            this.logger.error('Server already started. You must close the server first');
             return;
         }
+        this.initServer();
         callback = Util.isCallable(callback)? callback : () => {};
         this.server.listen( port || 4000, callback);
     }
