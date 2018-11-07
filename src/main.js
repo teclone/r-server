@@ -1,16 +1,19 @@
-import RServerApp from './modules/RServerApp.js';
+/**
+ *@module RServer
+*/
+import App from './modules/App.js';
 import Router from './modules/Router.js';
 
 export default {
 
     /**
      * returns an app instance
-     *@param {string} [configPath] - an optional relative path to a user defined config file
-     * defaults to .rsvrc.json
-     *@returns {RServerApp}
+     *@param {string|Object} [config] - an optional config object or a string relative path to a
+     * user defined config file defaults to ".rsvrc.json"
+     *@returns {App}
     */
-    instance(configPath) {
-        return new RServerApp(configPath);
+    instance(config) {
+        return new App(config);
     },
 
     /**
