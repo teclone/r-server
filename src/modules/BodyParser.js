@@ -1,5 +1,6 @@
 /**
  * Request body parser module
+ *@module BodyParser
 */
 import fs from 'fs';
 import path from 'path';
@@ -14,103 +15,88 @@ export default class {
     constructor(tempDir, encoding) {
         this.tempDir = tempDir;
         this.encoding = encoding? encoding : 'latin1';
+
+        //create the temp dir if it is not created
+        Util.mkDirSync(this.tempDir);
     }
 
     /**
      * return module identity
+     *@private
+     *@type {string}
     */
     get [Symbol.toStringTag]() {
         return 'BodyParser';
     }
 
     /**
-     * assigns value to the given target with the key name
-     *@param {Object} target - the target object
-     *@param {string} name - the field name
-     *@param {string} value - the field value
-    */
-    assignValue(target, name, value) {
-        //field names that end with [] take multiple values
-        if (/\[\]$/.test(name)) {
-            name = name.replace(/\[\]$/, '');
-            if (typeof target[name] === 'undefined')
-                target[name] = [value];
-            else
-                target[name].push(value);
-        }
-        else {
-            target[name] = value;
-        }
-    }
-
-    /**
-     * parse json content
-     *@param {string} string - the request body string
-     *@returns {Object}
-    */
-    parseJSON(string) {
-        let body = null;
-        try {
-            body = JSON.parse(string);
-        }
-        catch(ex) {
-            body = {};
-        }
-        return body;
-    }
-
-    /**
-     * parse url encoded request body
-     *@param {string} string - the request body string
-     *@returns {Object}
-    */
-    parseUrlEncoded(string) {
-        let body = {};
-        if (string) {
-            let pairs = string.split('&');
-            for (let pair of pairs) {
-                let [name, value] = pair.split('=');
-                this.assignValue(body, decodeURIComponent(name), decodeURIComponent(value));
-            }
-        }
-        return body;
-    }
-
-    /**
-     * parse the query parameters in the url given
-     *@param {string} url - the request url
-     *@return {Object}
-    */
-    parseQueryString(url) {
-        if (url.indexOf('?') > -1)
-            return this.parseUrlEncoded(url.split('?')[1]);
-        else
-            return {};
-    }
-
-    /**
      * clean up temp files
+     *@private
      *@param {Object} files - the files object
     */
     cleanUpTempFiles(files) {
-        /**
-         * performs the unlink operation asynchronously
-        */
-        let unlink = function(file) {
-            fs.unlinkSync(file.path);
-        };
 
-        /**iterate through and run the unlink process */
+        const unlink = (path) => {
+            if (fs.existsSync(path))
+                fs.unlinkSync(path);
+        };
         for (let [, file] of Object.entries(files)) {
-            if (Util.isArray(file))
-                file.forEach(unlink);
-            else
-                unlink(file);
+            Util.makeArray(file.path).forEach(unlink);
         }
+
+        return true;
+    }
+
+    /**
+     * resolves the field name by removing trailing bracket
+     *@param {string} fieldName - the field name
+     *@return {Object}
+    */
+    resolveFieldName(fieldName) {
+        if (/^(.+)\[\]$/.test(fieldName)) {
+            return {name: RegExp.$1, isMultiValue: true};
+        }
+        return {name: fieldName, isMultiValue: false};
+    }
+
+    /**
+     *@param {Object} body - the body object
+     *@param {string} fieldName - the file field name
+     *@param {string} value - the field value
+    */
+    assignBodyValue(body, fieldName, value) {
+        const {name, isMultiValue} = this.resolveFieldName(fieldName);
+
+        let target = value;
+        if (isMultiValue) {
+            target = body[name] || [];
+            target.push(value);
+        }
+
+        body[name] = target;
+    }
+
+    /**
+     *@param {Object} files - the files object
+     *@param {string} fieldName - the file field name
+     *@param {Object} value - the file value object
+    */
+    assignFileValue(files, fieldName, value) {
+        const {name, isMultiValue} = this.resolveFieldName(fieldName);
+
+        let target = value;
+        if (isMultiValue) {
+            target = files[name] || {path: [], size: [], type: [], name: [], tmpName: []};
+            for(let [key, current] of Object.entries(value))
+                target[key].push(current);
+        }
+
+        files[name] = target;
     }
 
     /**
      * processes and stores file
+     *@private
      *@param {Object} parsedHeaders - the parsed headers
      *@param {string} parsedHeaders.fileName - the file name as captured from the form data
      *@param {string} parsedHeaders.mimeType - file mime type as captured from the form data
@@ -123,31 +109,30 @@ export default class {
         let tempFileName = Util.getRandomText(8) + '.tmp',
             filePath = path.join(this.tempDir, '/', tempFileName);
 
-        Util.mkDirSync(this.tempDir);
-
         fs.writeFileSync(filePath, content, parsedHeaders.encoding);
 
         return {
             name: decodeURIComponent(parsedHeaders.fileName).replace(/\.\./g, ''),
-            tempName: tempFileName,
+            tmpName: tempFileName,
             path: filePath,
-            mimeType: parsedHeaders.mimeType,
+            type: parsedHeaders.type,
             size: fs.statSync(filePath).size
         };
     }
 
     /**
      * parses a multipart part headers.
+     *@private
      *@param {Array} headers - array of headers.
      *@returns {Object}
     */
     parsePartHeaders(headers) {
         //assume a default value if there are no headers sent
         if (headers.length === 0)
-            return {isFile: false, mimeType: 'text/plain', fileName: '',
+            return {isFile: false, type: 'text/plain', fileName: '',
                 fieldName: Util.getRandomText(6), encoding: this.encoding};
 
-        let result = {isFile: false, mimeType: '', fileName: '', fieldName: '', encoding: this.encoding};
+        let result = {isFile: false, type: '', fileName: '', fieldName: '', encoding: this.encoding};
         for(let header of headers) {
             let [headerName, headerValue] = header.split(/\s*:\s*/);
             switch(headerName.toLowerCase()) {
@@ -165,7 +150,7 @@ export default class {
 
                 case 'content-type':
                     result.isFile = true;
-                    result.mimeType = headerValue.split(/;\s*/)[0];
+                    result.type = headerValue.split(/;\s*/)[0];
                     break;
 
                 case 'content-transfer-encoding':
@@ -178,6 +163,7 @@ export default class {
 
     /**
      * parse multipart form data
+     *@private
      *@param {string} string - the request body string
      *@param {string} [boundary] - the multipart boundary token
      *@returns {Object}
@@ -201,7 +187,8 @@ export default class {
             //remove the first and last CRLF
             part = part.replace(/^\r\n/, '').replace(/\r\n$/, '');
 
-            let headers = [], content = '';
+            let headers = [],
+                content = '';
 
             //if there are no headers, assume default values according to the spec
             /* istanbul ignore if */
@@ -221,15 +208,62 @@ export default class {
 
             //parse through the headers
             let parsedHeaders = this.parsePartHeaders(headers);
-
-            //resolve and assign value
-            let fieldName = parsedHeaders.fieldName,
-                value = parsedHeaders.isFile? this.processFile(parsedHeaders, content) : content,
-                target = parsedHeaders.isFile? files : body;
-
-            this.assignValue(target, fieldName, value);
+            if (parsedHeaders.isFile) {
+                this.assignFileValue(files, parsedHeaders.fieldName, this.processFile(parsedHeaders, content));
+            }
+            else {
+                this.assignBodyValue(body, parsedHeaders.fieldName, content);
+            }
         }
         return {body, files};
+    }
+
+    /**
+     * parse json content
+     *@private
+     *@param {string} string - the request body string
+     *@returns {Object}
+    */
+    parseJSON(string) {
+        let body = null;
+        try {
+            body = JSON.parse(string);
+        }
+        catch(ex) {
+            body = {};
+        }
+        return body;
+    }
+
+    /**
+     * parse url encoded request body
+     *@private
+     *@param {string} string - the request body string
+     *@returns {Object}
+    */
+    parseUrlEncoded(string) {
+        let body = {};
+        if (string) {
+            let pairs = string.split('&');
+            for (let pair of pairs) {
+                let [name, value] = pair.split('=');
+                this.assignBodyValue(body, decodeURIComponent(name), decodeURIComponent(value));
+            }
+        }
+        return body;
+    }
+
+    /**
+     * parse the query parameters in the url given
+     *@private
+     *@param {string} url - the request url
+     *@return {Object}
+    */
+    parseQueryString(url) {
+        if (url.indexOf('?') > -1)
+            return this.parseUrlEncoded(url.split('?')[1]);
+        else
+            return {};
     }
 
     /**
@@ -242,13 +276,14 @@ export default class {
             boundary = '';
 
         switch(tokens[0].toLowerCase()) {
-            case 'text/json':
-            case 'application/json':
-                return {files: {}, body: this.parseJSON(content)};
 
             case 'text/plain':
             case 'application/x-www-form-urlencoded':
                 return {files: {}, body: this.parseUrlEncoded(content)};
+
+            case 'text/json':
+            case 'application/json':
+                return {files: {}, body: this.parseJSON(content)};
 
             case 'multipart/form-data':
                 if (tokens.length === 2 && /boundary\s*=\s*/.test(tokens[1]))
