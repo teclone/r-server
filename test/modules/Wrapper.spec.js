@@ -1,26 +1,26 @@
-import RouteWrapper from '../../src/modules/RouteWrapper.js';
+import Wrapper from '../../src/modules/Wrapper.js';
 import Router from '../../src/modules/Router.js';
 
-describe('RouteWrapper', function() {
-    let routeWrapper = null,
+describe('Wrapper', function() {
+    let wrapper = null,
         router = null;
 
     beforeEach(function() {
         router = new Router(false);
-        routeWrapper = new RouteWrapper(router, '/user');
+        wrapper = new Wrapper(router, '/user');
     });
 
     describe('#constructor(router, url)', function() {
-        it(`should create a RouteWrapper instance when called`, function() {
-            expect(routeWrapper).to.be.a('RouteWrapper');
+        it(`should create a Wrapper instance when called`, function() {
+            expect(wrapper).to.be.a('Wrapper');
         });
 
         it(`should initialize the router property to the given router argument`, function() {
-            expect(routeWrapper.router).to.equals(router);
+            expect(wrapper.router).to.equals(router);
         });
 
         it(`should initialize the url property to the given url argument`, function() {
-            expect(routeWrapper.url).to.equals('/user');
+            expect(wrapper.url).to.equals('/user');
         });
     });
 
@@ -29,7 +29,7 @@ describe('RouteWrapper', function() {
         parameter and options parameter, and return the this object`, function() {
             let callback = function() {}, options = {};
 
-            expect(routeWrapper.options(callback, options)).to.equals(routeWrapper);
+            expect(wrapper.options(callback, options)).to.equals(wrapper);
             expect(router.routes.options).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
                 return route[0] === '/user' && route[1] === callback && route[2] === options;
@@ -42,7 +42,7 @@ describe('RouteWrapper', function() {
         parameter and options parameter and return the this object`, function() {
             let callback = function() {}, options = {};
 
-            expect(routeWrapper.head(callback, options)).to.equals(routeWrapper);
+            expect(wrapper.head(callback, options)).to.equals(wrapper);
             expect(router.routes.head).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
                 return route[0] === '/user' && route[1] === callback && route[2] === options;
@@ -55,7 +55,7 @@ describe('RouteWrapper', function() {
         parameter and options parameter, and return the this object`, function() {
             let callback = function() {}, options = {};
 
-            expect(routeWrapper.get(callback, options)).to.equals(routeWrapper);
+            expect(wrapper.get(callback, options)).to.equals(wrapper);
             expect(router.routes.get).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
                 return route[0] === '/user' && route[1] === callback && route[2] === options;
@@ -68,7 +68,7 @@ describe('RouteWrapper', function() {
         parameter and options parameter, and return the this object`, function() {
             let callback = function() {}, options = {};
 
-            expect(routeWrapper.post(callback, options)).to.equals(routeWrapper);
+            expect(wrapper.post(callback, options)).to.equals(wrapper);
             expect(router.routes.post).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
                 return route[0] === '/user' && route[1] === callback && route[2] === options;
@@ -81,7 +81,7 @@ describe('RouteWrapper', function() {
         parameter and options parameter, and return the this object`, function() {
             let callback = function() {}, options = {};
 
-            expect(routeWrapper.put(callback, options)).to.equals(routeWrapper);
+            expect(wrapper.put(callback, options)).to.equals(wrapper);
             expect(router.routes.put).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
                 return route[0] === '/user' && route[1] === callback && route[2] === options;
@@ -94,7 +94,7 @@ describe('RouteWrapper', function() {
         parameter and options parameter, and return the this object`, function() {
             let callback = function() {}, options = {};
 
-            expect(routeWrapper.delete(callback, options)).to.equals(routeWrapper);
+            expect(wrapper.delete(callback, options)).to.equals(wrapper);
             expect(router.routes.delete).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
                 return route[0] === '/user' && route[1] === callback && route[2] === options;
@@ -107,7 +107,7 @@ describe('RouteWrapper', function() {
         parameter and options parameter, and return the this object`, function() {
             let callback = function() {}, options = {};
 
-            expect(routeWrapper.all(callback, options)).to.equals(routeWrapper);
+            expect(wrapper.all(callback, options)).to.equals(wrapper);
             expect(router.routes.all).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
                 return route[0] === '/user' && route[1] === callback && route[2] === options;

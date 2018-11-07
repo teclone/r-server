@@ -1,4 +1,7 @@
-export default class RouteWrapper {
+/**
+ *@module Wrapper
+*/
+export default class Wrapper {
 
     /**
      *@param {Router} router - the router instance
@@ -11,16 +14,17 @@ export default class RouteWrapper {
 
     /**
      * return object identity
+     *@type {string}
     */
     get [Symbol.toStringTag]() {
-        return 'RouteWrapper';
+        return 'Wrapper';
     }
 
     /**
      * performs route rules for http OPTIONS method verb
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
-     *@returns {RouteWrapper}
+     *@returns {Wrapper}
     */
     options(callback, options) {
         this.router.options(this.url, callback, options);
@@ -31,7 +35,7 @@ export default class RouteWrapper {
      * performs route rules for http HEAD method verb
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
-     *@returns {RouteWrapper}
+     *@returns {Wrapper}
     */
     head(callback, options) {
         this.router.head(this.url, callback, options);
@@ -42,7 +46,7 @@ export default class RouteWrapper {
      * performs route rules for http GET method verb
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
-     *@returns {RouteWrapper}
+     *@returns {Wrapper}
     */
     get(callback, options) {
         this.router.get(this.url, callback, options);
@@ -53,7 +57,7 @@ export default class RouteWrapper {
      * performs route rules for http POST method verb
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
-     *@returns {RouteWrapper}
+     *@returns {Wrapper}
     */
     post(callback, options) {
         this.router.post(this.url, callback, options);
@@ -64,7 +68,7 @@ export default class RouteWrapper {
      * performs route rules for http PUT method verb
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
-     *@returns {RouteWrapper}
+     *@returns {Wrapper}
     */
     put(callback, options) {
         this.router.put(this.url, callback, options);
@@ -75,7 +79,7 @@ export default class RouteWrapper {
      * performs route rules for http DELETE method verb
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
-     *@returns {RouteWrapper}
+     *@returns {Wrapper}
     */
     delete(callback, options) {
         this.router.delete(this.url, callback, options);
@@ -86,7 +90,7 @@ export default class RouteWrapper {
      * performs route rules for all http method verbs
      *@param {Function} callback - callback function
      *@param {Object} [options] - optional configuration options
-     *@returns {RouteWrapper}
+     *@returns {Wrapper}
     */
     all(callback, options) {
         this.router.all(this.url, callback, options);
