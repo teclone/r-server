@@ -99,7 +99,7 @@ export default class {
      *@private
      *@param {Object} parsedHeaders - the parsed headers
      *@param {string} parsedHeaders.fileName - the file name as captured from the form data
-     *@param {string} parsedHeaders.mimeType - file mime type as captured from the form data
+     *@param {string} parsedHeaders.type - file mime type as captured from the form data
      *@param {string} parsedHeaders.encoding - file content transfer encoding type
      *@param {string} content - the file content
      *@returns {Object}
@@ -115,7 +115,7 @@ export default class {
             name: decodeURIComponent(parsedHeaders.fileName).replace(/\.\./g, ''),
             tmpName: tempFileName,
             path: filePath,
-            type: parsedHeaders.type,
+            type: parsedHeaders.type.toLowerCase(),
             size: fs.statSync(filePath).size
         };
     }
