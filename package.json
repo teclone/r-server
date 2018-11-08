@@ -14,7 +14,7 @@
     "watch-build": "npm run build -- --watch",
     "semantic-release": "semantic-release",
     "validate-doc": "documentation lint src/**",
-    "generate-doc": "rimraf docs/docs && documentation build src/** -f html -o docs/docs",
+    "generate-doc": "rimraf docs && documentation build src/** -f html -o docs",
     "start": "npm run build && node server.js"
   },
   "repository": {
@@ -45,7 +45,7 @@
     "commitizen": "3.0.4",
     "coveralls": "3.0.2",
     "cz-conventional-changelog": "2.1.0",
-    "documentation": "8.1.2",
+    "documentation": "9.0.0-alpha.0",
     "eslint": "5.1.0",
     "istanbul": "0.4.5",
     "js-beautify": "1.7.5",
