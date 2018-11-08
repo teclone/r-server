@@ -4,7 +4,7 @@
 import {ServerResponse as Response} from 'http';
 import Util from './Util';
 
-/**
+/*
  * catch the built in setHeader and setHeaders method.
 */
 const setHeader = Response.prototype.setHeader;
