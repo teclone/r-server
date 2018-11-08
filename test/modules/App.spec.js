@@ -137,7 +137,7 @@ describe('App', function() {
     });
 
     describe('#listen(port?, callback?)', function() {
-        it(`should start the server at the given port,  calling the callback method once the
+        it(`should start the server at the given port, calling the callback method once the
         server gets started`, function(done) {
             app.listen(null, function() {
                 app.close(function() {

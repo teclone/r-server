@@ -228,6 +228,13 @@ export default class {
     }
 
     /**
+     * responds to un handled promise rejection
+    */
+    unhandledPRHandler(reason, p, response) {
+        this.logger.fatal(reason, response);
+    }
+
+    /**
      * handle request data event
      *@param {http.IncomingMessage} request - the request object
      *@param {Response} response - the response object
@@ -235,7 +242,7 @@ export default class {
      *@param {number} bufferDetails.size - the buffer size
      *@param {Array} bufferDetails.buffers - array containing chunks of buffer data
     */
-    onRequestEnd(request, response, bufferDetails) {
+    async onRequestEnd(request, response, bufferDetails) {
 
         //profile the response time
         response.startTime = new Date();
@@ -257,16 +264,24 @@ export default class {
 
         this.parseRequestData(request, url, bufferDetails.buffer);
 
-        this.cordinateRoutes(url, method, request, response).then(status => {
-            if (status)
-                return;
+        const promiseRejectionHandler = Util.generateCallback(
+            this.unhandledPRHandler,
+            this,
+            response
+        );
+        process.on('unhandledRejection', promiseRejectionHandler);
 
-            //send 404 response if router did not resolved
-            let httpErrors = this.config.httpErrors;
-            this.fileServer.serveHttpErrorFile(
-                response, 404, httpErrors.baseDir, httpErrors['404']
-            );
-        });
+        const status = await this.cordinateRoutes(url, method, request, response);
+
+        process.off('unhandledRejection', promiseRejectionHandler);
+        if (status)
+            return;
+
+        //send 404 response if router did not resolved
+        let httpErrors = this.config.httpErrors;
+        this.fileServer.serveHttpErrorFile(
+            response, 404, httpErrors.baseDir, httpErrors['404']
+        );
     }
 
     /**

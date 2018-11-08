@@ -385,5 +385,30 @@ describe('Server', function() {
                 });
             });
         });
+
+        it (`should handle all forms of errors, unhandled promises that arises from any of
+            the middleware, or route callbacks`, function(done) {
+
+            server.router.all('/', () => {
+                return new Promise((resolve) => {
+                    resolve(Math.abs(-10));
+                }).then( () => {
+                    throw new Error('chai');
+                });
+            });
+
+            server.listen(null, () => {
+                const spy = sinon.spy(server, 'unhandledPRHandler');
+                request.get('http://localhost:4000/', () => {
+
+                    expect(spy.called).to.be.true;
+                    spy.restore();
+
+                    server.close(() => {
+                        done();
+                    });
+                });
+            });
+        });
     });
 });
