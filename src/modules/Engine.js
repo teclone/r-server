@@ -13,15 +13,13 @@ export default class Engine {
      *@param {http.IncomingMessage} request - the request instance
      *@param {Response} response - the response instance
      *@param {Array} [middlewares] - Array of middlewares
-     *@param {Logger} logger - the logger instance
     */
-    constructor(url, method, request, response, middlewares, logger) {
+    constructor(url, method, request, response, middlewares) {
 
         this.resolved = false;
         this.request = request;
         this.response = response;
         this.middlewares = Util.isArray(middlewares)? middlewares : [];
-        this.logger = logger;
 
         this.url = url.toLowerCase().replace(/[#?].*$/, '').replace(/^\/+/, '').replace(/\/+$/, '');
         this.method = method.toUpperCase();
@@ -67,29 +65,20 @@ export default class Engine {
 
         for (const middleware of this.middlewares) {
             cont = false;
-            try {
-                await middleware(this.request, this.response, next, ...params);
-                //if middleware says continue and response.end is not called, then continue
-                if (cont && !this.response.finished)
-                    continue;
 
-                //else if the response is not ended, end it
-                if (!this.response.finished)
-                    this.response.end();
+            await middleware(this.request, this.response, next, ...params);
+            //if middleware says continue and response.end is not called, then continue
+            if (cont && !this.response.finished)
+                continue;
 
-                return;
-            }
-            catch(ex) {
-                this.logger.fatal(ex, this.response);
-            }
+            //else if the response is not ended, end it
+            if (!this.response.finished)
+                this.response.end();
+
+            return;
         }
 
-        try {
-            await callback(this.request, this.response, ...params);
-        }
-        catch(ex) {
-            this.logger.fatal(ex, this.response);
-        }
+        await callback(this.request, this.response, ...params);
     }
 
     /**
