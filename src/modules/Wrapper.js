@@ -23,7 +23,7 @@ export default class Wrapper {
     /**
      * performs route rules for http OPTIONS method verb
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Wrapper}
     */
     options(callback, options) {
@@ -34,7 +34,7 @@ export default class Wrapper {
     /**
      * performs route rules for http HEAD method verb
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Wrapper}
     */
     head(callback, options) {
@@ -45,7 +45,7 @@ export default class Wrapper {
     /**
      * performs route rules for http GET method verb
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Wrapper}
     */
     get(callback, options) {
@@ -56,7 +56,7 @@ export default class Wrapper {
     /**
      * performs route rules for http POST method verb
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Wrapper}
     */
     post(callback, options) {
@@ -67,7 +67,7 @@ export default class Wrapper {
     /**
      * performs route rules for http PUT method verb
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Wrapper}
     */
     put(callback, options) {
@@ -78,7 +78,7 @@ export default class Wrapper {
     /**
      * performs route rules for http DELETE method verb
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Wrapper}
     */
     delete(callback, options) {
@@ -89,7 +89,7 @@ export default class Wrapper {
     /**
      * performs route rules for all http method verbs
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Wrapper}
     */
     all(callback, options) {
