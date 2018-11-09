@@ -22,6 +22,13 @@ export default class Logger {
     }
 
     /**
+     *@type {string}
+    */
+    get [Symbol.toStringTag]() {
+        return 'Logger';
+    }
+
+    /**
      * initializes the log files
      *@param {string} errorLog - path to error log file
      *@param {string} accessLog - path to access log file
@@ -29,6 +36,7 @@ export default class Logger {
     init(errorLog, accessLog) {
         this.errorHandle = fs.openSync(errorLog, 'a');
         this.accessHandle = fs.openSync(accessLog, 'a');
+        return this;
     }
 
     /**
@@ -37,6 +45,7 @@ export default class Logger {
     close() {
         fs.closeSync(this.errorHandle);
         fs.closeSync(this.accessHandle);
+        return this;
     }
 
     /**
@@ -48,6 +57,7 @@ export default class Logger {
             this.errorHandle,
             `[${now.toUTCString()}] [${level}] ${stack}\r\n`
         );
+        return this;
     }
 
     /**
@@ -59,6 +69,7 @@ export default class Logger {
         ` Http/${req.httpVersion}" ${res.statusCode}\r\n`;
 
         fs.writeSync(this.accessHandle, log);
+        return this;
     }
 
     /**
@@ -76,13 +87,7 @@ export default class Logger {
                 console.log('%s: %s \x1b[32m%d\x1b[0m ~%dms ~%dms\x1b[0m', req.method, req.url,
                     res.statusCode, res.startTime - req.startTime, Date.now() - res.startTime);
         }
-    }
-
-    /**
-     * logs a warning to the file
-    */
-    warn(message) {
-        this.logError(ERROR_LEVELS.WARNING, message, '');
+        return this;
     }
 
     /**
@@ -93,22 +98,24 @@ export default class Logger {
     fatal({stack}, response, errorCode) {
 
         this.logError(ERROR_LEVELS.FATAL, stack);
-        if (response instanceof ServerResponse) {
-            if (this.config.env === ENV.DEVELOPMENT) {
+
+        /* istanbul ignore else */
+        if (response instanceof ServerResponse && !response.finished) {
+            if (this.config.env === ENV.DEVELOPMENT)
                 response.end(stack);
-            }
-            else {
+            else
                 response.status(errorCode || 500).end();
-            }
         }
+        return this;
     }
 
     /**
      * log error message to the console
      *@param {string} message - the error message
     */
-    error(message) {
+    warn(message) {
         console.log('\x1b[1m\x1b[31m%s\x1b[0m', message);
+        return this;
     }
 
     /**
@@ -117,5 +124,6 @@ export default class Logger {
     */
     info(message) {
         console.log('\x1b[1m\x1b[32m%s\x1b[0m', message);
+        return this;
     }
 }
