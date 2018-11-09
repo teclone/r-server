@@ -105,18 +105,26 @@ export default class {
      *@returns {Object}
     */
     processFile(parsedHeaders, content) {
+        let tmpName = '',
+            filePath = '',
+            type = '',
+            size = 0;
 
-        let tempFileName = Util.getRandomText(8) + '.tmp',
-            filePath = path.join(this.tempDir, '/', tempFileName);
+        if (parsedHeaders.fileName) {
+            tmpName = Util.getRandomText(16) + '.tmp';
+            filePath = path.join(this.tempDir, '/', tmpName);
 
-        fs.writeFileSync(filePath, content, parsedHeaders.encoding);
+            fs.writeFileSync(filePath, content, parsedHeaders.encoding);
+            size = fs.statSync(filePath).size;
+            type = parsedHeaders.type.toLowerCase();
+        }
 
         return {
             name: decodeURIComponent(parsedHeaders.fileName).replace(/\.\./g, ''),
-            tmpName: tempFileName,
+            tmpName: tmpName,
             path: filePath,
-            type: parsedHeaders.type.toLowerCase(),
-            size: fs.statSync(filePath).size
+            type: type,
+            size: size
         };
     }
 

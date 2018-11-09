@@ -125,6 +125,16 @@ describe('BodyParser', function() {
 
             bodyParser.cleanUpTempFiles({'file-cv': tempFileDetails});
         });
+
+        it(`should not create any temporary file in the temp directory if the fileName header is
+            empty`, function() {
+            const parsedHeaders = {fileName: '', type: ''},
+                tempFileDetails = bodyParser.processFile(parsedHeaders, 'my name is harrison');
+
+            expect(tempFileDetails).to.deep.equals({
+                path: '', name: '', tmpName: '', type: '', size: 0
+            });
+        });
     });
 
     describe('#processPartHeaders(headers)', function() {
