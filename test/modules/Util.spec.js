@@ -94,6 +94,16 @@ describe('Util module', function() {
         });
     });
 
+    describe('.makeObject(arg)', function() {
+        it('should return an empty object if the given argument is not a plain object', function() {
+            expect(Util.makeObject(null)).to.deep.equals({});
+        });
+
+        it('should return the argument if it is a plain object', function() {
+            expect(Util.makeObject({})).to.deep.equals({});
+        });
+    });
+
     describe('.generateCallback(callback, scope?, parameters?)', function() {
         it('should throw error if argument one is not a function', function() {
             expect(function() {
@@ -205,7 +215,7 @@ describe('Util module', function() {
                     lga: 'Udenu'
                 }
             };
-            expect(Util.assign({}, obj1, obj2)).to.deep.equal({
+            expect(Util.assign({}, obj1, obj2, null)).to.deep.equal({
                 name: 'test',
                 age: 22,
                 countries: ['Nigeria', 'Ghana', 'Gambia', 'Zambia', 'Jebba'],
