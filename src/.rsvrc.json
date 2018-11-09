@@ -9,7 +9,9 @@
 
     "tempDir": "storage/temp",
 
-    "staticFileDir": ["/", "/public"],
+    "publicPaths": [
+        "public"
+    ],
 
     "cacheControl": "no-cache, max-age=86400",
 
@@ -32,7 +34,9 @@
     },
 
     "defaultDocuments": [
-        "index.html"
+        "index.html",
+        "index.js",
+        "index.css"
     ],
 
     "httpErrors": {
