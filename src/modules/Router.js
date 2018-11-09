@@ -4,6 +4,16 @@
 import Util from './Util.js';
 import Wrapper from './Wrapper.js';
 
+/**
+ *@typedef {Object} routeOptions
+ *@param {Function[]} [methods] - array of http methods allowed
+ *@param {Function|Function[]} [middleware] - a middleware funtion or array of middlewares to
+ * apply specifically on the route
+*/
+
+/**
+ *@typedef {Object} middlewareOptions
+*/
 export default class Router {
 
     /**
@@ -21,7 +31,7 @@ export default class Router {
             delete: [],
             all: []
         };
-        this.middlewares = [];
+        this.middlewares = []; //middlewares
         this.inheritMiddlewares = inheritMiddlewares === false? false : true;
     }
 
@@ -35,72 +45,83 @@ export default class Router {
 
     /**
      * performs route rules for http OPTIONS method verb
+     *@param {string} method - the route method/api in question
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
+    */
+    set(method, url, callback, options) {
+        this.routes[method].push([url, callback, Util.makeObject(options)]);
+    }
+
+    /**
+     * performs route rules for http OPTIONS method verb
+     *@param {string} url - the route url
+     *@param {Function} callback - callback function
+     *@param {routeOptions} [options] - optional configuration options
     */
     options(url, callback, options) {
-        this.routes.options.push([url, callback, options]);
+        this.set('options', url, callback, options);
     }
 
     /**
      * performs route rules for http HEAD method verb
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     head(url, callback, options) {
-        this.routes.head.push([url, callback, options]);
+        this.set('head', url, callback, options);
     }
 
     /**
      * performs route rules for http GET method verb
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     get(url, callback, options) {
-        this.routes.get.push([url, callback, options]);
+        this.set('get', url, callback, options);
     }
 
     /**
      * performs route rules for http POST method verb
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     post(url, callback, options) {
-        this.routes.post.push([url, callback, options]);
+        this.set('post', url, callback, options);
     }
 
     /**
      * performs route rules for http PUT method verb
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     put(url, callback, options) {
-        this.routes.put.push([url, callback, options]);
+        this.set('put', url, callback, options);
     }
 
     /**
      * performs route rules for http DELETE method verb
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     delete(url, callback, options) {
-        this.routes.delete.push([url, callback, options]);
+        this.set('delete', url, callback, options);
     }
 
     /**
      * performs route rules for all http method verbs
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     all(url, callback, options) {
-        this.routes.all.push([url, callback, options]);
+        this.set('all', url, callback, options);
     }
 
     /**
@@ -113,10 +134,18 @@ export default class Router {
 
     /**
      * use a middleware
+     *@param {string} url - the url to apply middleware to, use null to apply globally on all
+     * urls
      *@param {Function} middleware - the middleware function
+     *@param {middlewareOptions} options - middleware optional configuration options
     */
-    use(middleware) {
-        if (Util.isCallable(middleware))
-            this.middlewares.push(middleware);
+    use(url, middleware, options) {
+        if (Util.isCallable(middleware)) {
+
+            if (typeof url !== 'string')
+                url = '/'; //this middleware runs on the root url or the mount root url
+
+            this.middlewares.push([url, middleware, Util.makeObject(options)]);
+        }
     }
 }

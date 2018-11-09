@@ -122,18 +122,20 @@ describe('Router', function() {
         });
     });
 
-    describe('#use(middleware)', function() {
-        it(`should push the given middleware callback to the instance middlewares array`, function() {
+    describe('#use(url, middleware, options)', function() {
+        it(`should push the given middleware url callback to the instance middlewares array,
+        defaulting the url to / if it is not a string`, function() {
             let middleware = function() {};
-            router.use(middleware);
+            router.use(null, middleware);
+            router.use('/tests', middleware);
 
-            expect(router.middlewares).to.be.lengthOf(1).and.satisfy(function(middlewares) {
-                return middlewares[0] === middleware;
-            });
+            expect(router.middlewares).to.be.lengthOf(2);
+            expect(router.middlewares[0]).to.deep.equals(['/', middleware, {}]);
+            expect(router.middlewares[1]).to.deep.equals(['/tests', middleware, {}]);
         });
 
         it(`should do nothing if argument is not a callable`, function() {
-            router.use({middleware: () => {}});
+            router.use(null, {middleware: () => {}});
 
             expect(router.middlewares).to.be.lengthOf(0);
         });
