@@ -76,10 +76,19 @@ export default {
      * to empty array just like undefined argument
      *@returns {Array}
     */
-    makeArray: function(arg, excludeNulls) {
+    makeArray(arg, excludeNulls) {
         if (this.isArray(arg))
             return arg;
         return this.isValidParameter(arg, excludeNulls)? [arg] : [];
+    },
+
+    /**
+     * returns the arg if it is a plain object, otherwise, returns empty object
+     *@param {mixed} arg - the argument
+     *@returns {Object}
+    */
+    makeObject(arg) {
+        return this.isPlainObject(arg)? arg : {};
     },
 
     /**
