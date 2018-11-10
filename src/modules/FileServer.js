@@ -4,25 +4,29 @@
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import Util from './Util.js';
 
 export default class FileServer {
 
     /**
      *@param {string} rootDir - the project root directory
+     *@param {ServerConfig} config - the server config object
      *@param {Array} publicPaths - array of public paths to serve static files from
      *@param {Object} mimeTypes - object of file mime types
      *@param {Array} defaultDocuments - array of folder default documents
      *@param {string} cacheControl - cache control header for static files
+     *@param {}
     */
-    constructor(rootDir, publicPaths, mimeTypes, defaultDocuments, cacheControl) {
+    constructor(rootDir, {publicPaths, mimeTypes, defaultDocuments, cacheControl}, logger) {
         this.rootDir = rootDir;
-        this.publicPaths = publicPaths.map(publicPath =>  {
+        this.publicPaths = publicPaths.map(publicPath => {
             return path.join(rootDir, publicPath, '/');
         });
+
         this.mimeTypes = mimeTypes;
         this.defaultDocuments = defaultDocuments;
         this.cacheControl = cacheControl || 'no-cache, max-age=86400';
+        this.methods = ['GET', 'HEAD', 'OPTIONS'];
+        this.logger = logger;
     }
 
     /**
@@ -33,7 +37,36 @@ export default class FileServer {
     }
 
     /**
+     * computes and returns a files eTag
+     *@private
+     *@param {number} fileMTime - the files last modification time
+     *@param {string} [length=16] - the hash tag length to generate
+     *@returns {string}
+    */
+    getFileTag(fileMTime, length) {
+        let hash = crypto.createHash('sha256');
+        hash.update(fileMTime.toString());
+
+        return hash.digest('hex').substring(0, length || 16);
+    }
+
+    /**
+     * returns the directories default document if any
+     *@private
+     *@param {string} dir - dir or file path.
+     *@returns {string}
+    */
+    getDefaultDocument(dir) {
+        for(let file of this.defaultDocuments)
+            if (fs.existsSync(path.join(dir, '/', file)))
+                return file;
+
+        return '';
+    }
+
+    /**
      * returns default response headers
+     *@private
      *@param {string} filePath - the file path
      *@returns {Object}
     */
@@ -51,58 +84,8 @@ export default class FileServer {
     }
 
     /**
-     * ends the response.
-     *@param {Response} response - the response object
-     *@param {number} status - response status code
-     *@param {Object} headers - the response headers to write
-     *@param {string|Buffer} [data] - response data to send
-     *@param {function} [callback] - a callback method
-     *@returns {boolean}
-    */
-    endResponse(response, status, headers, data, callback) {
-        callback = Util.isCallable(callback)? callback : () => {};
-        response.writeHead(status, headers || {});
-
-        if (data)
-            response.end(data);
-        else
-            response.end();
-        setTimeout(function() {
-            callback();
-        }, 1);
-        return true;
-    }
-
-    /**
-     * ends the streaming response
-     *@param {string} filePath - the file path to serve.
-     *@param {Response} response - the response object
-     *@param {number} status - the status code
-     *@param {Object} headers - the request headers
-     *@param {function} [callback] - a callback method
-     *@returns {boolean}
-    */
-    endStream(filePath, response, status, headers, callback) {
-        callback = Util.isCallable(callback)? callback : () => {};
-
-        response.writeHead(status, headers);
-
-        let readStream = fs.createReadStream(filePath);
-
-        readStream.on('end', () => {
-            response.end(callback);
-        })
-            .on('error', () => {
-                /* istanbul ignore next */
-                readStream.end();
-            });
-
-        readStream.pipe(response, {end: false});
-        return true;
-    }
-
-    /**
      * negotiates the content
+     *@private
     */
     negotiateContent(headers, eTag, fileMTime) {
         if (typeof headers['if-none-match'] !== 'undefined' &&
@@ -117,67 +100,84 @@ export default class FileServer {
     }
 
     /**
-     * computes and returns a files eTag
-     *@param {number} fileMTime - the files last modification time
-     *@param {string} [length=16] - the hash tag length to generate
-     *@returns {string}
-    */
-    getFileTag(fileMTime, length) {
-        let hash = crypto.createHash('sha256');
-        hash.update(fileMTime.toString());
-
-        return hash.digest('hex').substring(0, length || 16);
-    }
-
-    /**
-     * returns the directories default document if any
-     *@param {string} dir - dir or file path.
-     *@returns {string}
-    */
-    getDefaultDocument(dir) {
-        for(let file of this.defaultDocuments)
-            if (fs.existsSync(path.join(dir, '/', file)))
-                return file;
-
-        return '';
-    }
-
-    /**
      * validates the request method and returns the public file or directory path that
      * matches the request url
+     *@private
      *@param {string} method - the request method
      *@returns {string}
     */
     validateRequest(url, method) {
         let validPath = '';
+
         //sanitize the url
         url = decodeURIComponent(url).replace(/[#?].*/, '').replace(/\.\./g, '');
 
-        if (['GET', 'OPTIONS', 'HEAD'].includes(method.toUpperCase())) {
+        //do not serve files start with dot or that is inside a folder whose name starts with dot
+        if (!/^(\.|.*\/\.)/.test(url) && this.methods.includes(method.toUpperCase())) {
             for (let publicPath of this.publicPaths) {
-                let testPath = path.join(publicPath, url);
+                const testPath = path.join(publicPath, url);
 
-                if (fs.existsSync(testPath)) {
+                if (!fs.existsSync(testPath))
+                    continue;
 
-                    if (fs.statSync(testPath).isFile()) {
-                        validPath = testPath;
-                        break;
-                    }
+                if (fs.statSync(testPath).isFile()) {
+                    validPath = testPath;
+                    break;
+                }
 
-                    let defaultDocument = this.getDefaultDocument(testPath);
-                    if (defaultDocument) {
-                        validPath = path.join(testPath + '/' + defaultDocument);
-                        break;
-                    }
+                //check if there is a default document in the folder
+                const defaultDocument = this.getDefaultDocument(testPath);
+                if (defaultDocument) {
+                    validPath = path.join(testPath + '/' + defaultDocument);
+                    break;
                 }
             }
         }
 
-        //do not serve files that starts with .
-        if (validPath && path.basename(validPath).indexOf('.') !== 0)
-            return validPath;
-        else
-            return '';
+        return validPath;
+    }
+
+    /**
+     * ends the response.
+     *@private
+     *@param {Response} response - the response object
+     *@param {number} status - response status code
+     *@param {Object} headers - the response headers to write
+     *@param {string|Buffer} [data] - response data to send
+     *@returns {Promise} promises resolves to true
+    */
+    endResponse(response, status, headers, data) {
+        return response.status(status).setHeaders(headers).end(data);
+    }
+
+    /**
+     * ends the streaming response
+     *@private
+     *@param {string} filePath - the file path to serve.
+     *@param {Response} response - the response object
+     *@param {number} status - the status code
+     *@param {Object} headers - the request headers
+     *@returns {Promise} that resolves to true
+    */
+    endStream(filePath, response, status, headers) {
+        return new Promise((resolve) => {
+
+            const readStream = fs.createReadStream(filePath);
+            response.status(status).setHeaders(headers);
+
+            readStream.on('end', () => {
+                return response.end().then(() => {
+                    resolve(true);
+                });
+            })
+                .on('error', (err) => {
+                    readStream.end();
+                    this.logger.fatal(err, response);
+                    resolve(true);
+                });
+
+            readStream.pipe(response, {end: false});
+        });
     }
 
     /**
@@ -186,31 +186,31 @@ export default class FileServer {
      *@param {string} method - the request method
      *@param {Object} headers - the request headers
      *@param {Response} response - the response object
-     *@param {Function} [callback] - a callback function that will be called once the operation
-     * fails or completes
     */
-    serve(url, method, headers, response, callback) {
+    serve(url, method, headers, response) {
         method = method.toUpperCase();
 
         let filePath = this.validateRequest(url, method);
         if (filePath === '')
-            return false;
+            return Promise.resolve(false);
 
-        if (method === 'OPTIONS')
-            return this.endResponse(response, 200, {'Allow': 'OPTIONS, HEAD, GET, POST'}, null, callback);
+        if (method === 'OPTIONS') {
+            const methods = ['OPTIONS', 'HEAD', 'GET', 'POST'];
+            return this.endResponse(response, 200, {Allow: methods.join(',')});
+        }
 
         let resHeaders = this.getDefaultHeaders(filePath);
 
         if (this.negotiateContent(headers, resHeaders['ETag'], resHeaders['Last-Modified']))
-            return this.endResponse(response, 304, {}, null, callback);
+            return this.endResponse(response, 304, {});
 
         switch(method) {
             case 'HEAD':
                 resHeaders['Accept-Ranges'] = 'bytes';
-                return this.endResponse(response, 200, resHeaders, null, callback);
+                return this.endResponse(response, 200, resHeaders);
 
             case 'GET':
-                return this.endStream(filePath, response, 200, resHeaders, callback);
+                return this.endStream(filePath, response, 200, resHeaders);
         }
     }
 
@@ -220,24 +220,20 @@ export default class FileServer {
      *@param {number} status - the response status code
      *@param {string} baseDir - the user defined httErors base directory relative to root.
      *@param {string} filePath - the file path that is mapped to the error code
-     *@param {Function} [callback] - a callback function that will be called once the operation
      * fails or completes
+     *@returns {Promise} promise resolves to true
     */
-    serveHttpErrorFile(response, status, baseDir, filePath, callback) {
+    serveHttpErrorFile(response, status, baseDir, filePath) {
         if (!filePath)
             filePath = path.join(__dirname, '../httpErrors/' + status + '.html');
         else
             filePath = path.join(this.rootDir, baseDir, filePath);
 
-        if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-            response.statusCode = status;
-            response.end(callback);
-            return true;
-        }
+        if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory())
+            return response.status(status).end();
 
         let headers = this.getDefaultHeaders(filePath);
-        this.endStream(filePath, response, status, headers, callback);
-        return true;
+        return this.endStream(filePath, response, status, headers);
     }
 
     /**
@@ -245,14 +241,12 @@ export default class FileServer {
      *@param {Response} response - the response object
      *@param {string} filePath - the file path
      *@param {string} [filename] - suggested file that the browser will use in saving the file
-     *@param {Function} [callback] - a callback function that will be called once the operation
-     * fails or completes
+     *@returns {Promise} - returns promise
     */
-    serveDownload(response, filePath, filename, callback) {
+    serveDownload(response, filePath, filename) {
         let absPath = path.join(this.rootDir, filePath);
         if (!fs.existsSync(absPath) || fs.statSync(absPath).isDirectory()) {
-            response.end(callback);
-            return;
+            return Promise.reject(new Error(absPath + ' does not exists'));
         }
 
         let resHeaders = this.getDefaultHeaders(filePath);
@@ -261,6 +255,6 @@ export default class FileServer {
 
         resHeaders['Content-Disposition'] = 'attachment; filename="' + filename + '"';
 
-        this.endStream(absPath, response, 200, resHeaders, callback);
+        return this.endStream(absPath, response, 200, resHeaders);
     }
 }
