@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import sinon from 'sinon';
 import { ERROR_LEVELS } from '../../src/modules/Constants';
+import config from '../../src/.rsvrc.json';
 
 describe('Logger Module', function() {
     let logger = null,
@@ -20,7 +21,7 @@ describe('Logger Module', function() {
         logger = new Logger(
             errorLog,
             accessLog,
-            require(path.resolve(__dirname, '../../src/.rsvrc.json'))
+            config
         );
     });
 
