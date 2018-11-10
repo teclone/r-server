@@ -5,12 +5,16 @@ import {ServerResponse as Response} from 'http';
 import Util from './Util';
 
 /*
- * catch the built in setHeader and setHeaders method.
+ * catch the built in setHeader and end method.
 */
-const setHeader = Response.prototype.setHeader;
+const setHeader = Response.prototype.setHeader,
+    end = Response.prototype.end;
 
 /**
- * make the setHeader method chainable
+ * sets a given http header on the response object
+ * it is chainable
+ *@param {string} name - the header name
+ *@param {string|number} value - the header value
  *@returns {this}
 */
 Response.prototype.setHeader = function(name, value) {
@@ -19,14 +23,16 @@ Response.prototype.setHeader = function(name, value) {
 };
 
 /**
- * make the setHeaders method chainable
+ * calls the setHeader method on every response header name: value pair in the given
+ * headers object
+ *@param {Object} headers - object of header name: value pairs
  *@returns {this}
 */
 Response.prototype.setHeaders = function(headers) {
 
     if (Util.isPlainObject(headers)) {
-        Object.entries(headers).forEach(current => {
-            setHeader.call(this, ...current);
+        Object.entries(headers).forEach(([name, value]) => {
+            this.setHeader.call(this, name, value);
         });
     }
 
@@ -44,16 +50,30 @@ Response.prototype.status = function(code) {
 };
 
 /**
+ * ends the response and returns a promise
+ *
+ *@param {string|Buffer} [data] - response data
+ *@param {string} encodig - response data encoding
+ *@returns {Promise}
+*/
+Response.prototype.end = function(data, encoding) {
+    return new Promise((resolve) => {
+        end.call(this, data, encoding, () => {
+            resolve(true);
+        });
+    });
+};
+
+/**
  * sends json content back to the browser
  *@param {string|Object} data - json string or json object
- *@returns {this}
+ *@returns {Promise}
 */
 Response.prototype.json = function(data) {
     if (typeof data !== 'string')
         data = JSON.stringify(data);
 
-    this.setHeader('Content-Type', 'application/json').end(data);
-    return this;
+    return this.setHeader('Content-Type', 'application/json').end(data);
 };
 
 /**
@@ -61,11 +81,11 @@ Response.prototype.json = function(data) {
  *@param {string} filePath - file relative path
  *@param {string} [filename] - suggested file download name that the browser uses while
  * saving the file. defaults to the files base name.
- *@param {Function} callback - the callback function to execute once the operation
  * completes or fails
+ *@returns {Promise}
 */
-Response.prototype.download = function(filePath, filename, callback) {
-    this.fileServer.serveDownload(this, filePath, filename, callback);
+Response.prototype.download = function(filePath, filename) {
+    this.fileServer.serveDownload(this, filePath, filename);
 };
 
 export default Response;
