@@ -3,7 +3,7 @@
 */
 import fs from 'fs';
 import { ERROR_LEVELS, ENV } from './Constants';
-import { ServerResponse } from 'http';
+import Response from './Response';
 
 export default class Logger {
 
@@ -32,6 +32,7 @@ export default class Logger {
      * initializes the log files
      *@param {string} errorLog - path to error log file
      *@param {string} accessLog - path to access log file
+     *@return {this}
     */
     init(errorLog, accessLog) {
         this.errorHandle = fs.openSync(errorLog, 'a');
@@ -41,6 +42,7 @@ export default class Logger {
 
     /**
      * close the handles once the server is closed
+     *@return {this}
     */
     close() {
         fs.closeSync(this.errorHandle);
@@ -50,6 +52,9 @@ export default class Logger {
 
     /**
      * runs the error logging
+     *@param {number} leve - the error level
+     *@param {string} stack - the error stack trace
+     *@return {this}
     */
     logError(level, stack) {
         const now = new Date();
@@ -62,6 +67,9 @@ export default class Logger {
 
     /**
      * logs access information
+     *@param {http.IncomingMessage} req - the request object
+     *@param {Response} res - the response object
+     *@return {this}
     */
     logAccess(req, res) {
         const log = `[${req.startTime.toUTCString()}] "${req.method} ${req.url}`
@@ -75,7 +83,8 @@ export default class Logger {
     /**
      * log request response profile
      *@param {http.IncomingMessage} req - the request object
-     *@param {http.ServerResponse} res - the response object
+     *@param {Response} res - the response object
+     *@return {this}
     */
     profile(req, res) {
         this.logAccess(req, res);
@@ -91,20 +100,24 @@ export default class Logger {
     }
 
     /**
-     * logs a fatal error to the file and ends the response
-     *@param {http.ServerResponse} response - the response object
-     *@param {Error} ex - the error that just occured
+     * logs fatal error to error log ile and ends the response
+     *@param {Error} ex - the exception object
+     *@param {Response} response - the response object
+     *@param {number} [errorCode=500] - response error code to use while ending the response.
+     * defaults to 500 in production mode, and 200 in development mode if not given
+     *@return {this}
     */
     fatal({stack}, response, errorCode) {
 
         this.logError(ERROR_LEVELS.FATAL, stack);
 
         /* istanbul ignore else */
-        if (response instanceof ServerResponse && !response.finished) {
-            if (this.config.env === ENV.DEVELOPMENT)
-                response.end(stack);
-            else
-                response.status(errorCode || 500).end();
+        if (response instanceof Response && !response.finished) {
+            if (!/^[12345]\d{2}$/.test(errorCode))
+                errorCode = this.config.env === ENV.PRODUCTION? 500 : 200;
+
+            stack = this.config.env === ENV.PRODUCTION? undefined : stack;
+            response.status(errorCode).end(stack);
         }
         return this;
     }
@@ -112,6 +125,7 @@ export default class Logger {
     /**
      * log error message to the console
      *@param {string} message - the error message
+     *@return {this}
     */
     warn(message) {
         console.log('\x1b[1m\x1b[31m%s\x1b[0m', message);
@@ -121,6 +135,7 @@ export default class Logger {
     /**
      * log info message to the console
      *@param {string} message - the info message
+     *@return {this}
     */
     info(message) {
         console.log('\x1b[1m\x1b[32m%s\x1b[0m', message);
