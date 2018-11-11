@@ -113,8 +113,7 @@ export default class Logger {
 
         /* istanbul ignore else */
         if (response instanceof Response && !response.finished) {
-            if (!/^[12345]\d{2}$/.test(errorCode))
-                errorCode = this.config.env === ENV.PRODUCTION? 500 : 200;
+            errorCode = this.config.env === ENV.PRODUCTION? 500 : 200;
 
             stack = this.config.env === ENV.PRODUCTION? undefined : stack;
             response.status(errorCode).end(stack);

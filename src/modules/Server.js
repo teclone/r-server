@@ -167,7 +167,7 @@ export default class {
         method = method.toLowerCase();
 
         //create the engine, with zero middlewares yet
-        let engine = new Engine(url, method, request, response, [], this.logger),
+        let engine = new Engine(url, method, request, response, this.logger),
             router = this.router;
 
         //run on the main router thread
