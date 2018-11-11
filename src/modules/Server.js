@@ -383,7 +383,6 @@ export default class {
      *@param {Function} [callback] - a callback function to execute once the server closes
     */
     close(callback) {
-        callback = Util.isCallable(callback)? callback : () => {};
         this.server.close(callback);
     }
 
