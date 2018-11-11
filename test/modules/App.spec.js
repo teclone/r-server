@@ -1,5 +1,6 @@
 import App from '../../src/modules/App.js';
 import Router from '../../src/modules/Router.js';
+import sinon from 'sinon';
 
 describe('App', function() {
     let app = null;
@@ -8,7 +9,7 @@ describe('App', function() {
         app = new App('.rsvrc.json');
     });
 
-    describe('#constructor(configPath?)', function() {
+    describe('#constructor(config?)', function() {
         it(`should create an App instance`, function() {
             expect(app).to.be.an('App');
         });
@@ -19,86 +20,93 @@ describe('App', function() {
     });
 
     describe('#options(url, callback, options)', function() {
-        it(`should pass along the route to the server`, function() {
-            let callback = () => {};
+        it(`should call the server.router.options method, passing in the whole argument`, function() {
+            sinon.spy(app.server.router, 'options');
+            const callback = () => {};
             app.options('/', callback, null);
-            expect(app.server.router.routes.options).to.be.lengthOf(1)
-                .and.to.satisfy(function(routes) {
-                    let route = routes[0];
-                    return route[0] === '/' && route[1] === callback && route[2] === null;
-                });
+
+            expect(app.server.router.options.called).to.be.true;
+            expect(app.server.router.options.getCall(0).args[0]).to.equals('/');
+            expect(app.server.router.options.getCall(0).args[1]).to.equals(callback);
+            expect(app.server.router.options.getCall(0).args[2]).to.be.null;
         });
     });
 
     describe('#head(url, callback, options)', function() {
-        it(`should pass along the route to the server`, function() {
-            let callback = () => {};
+        it(`should call the server.router.head method, passing in the whole argument`, function() {
+            sinon.spy(app.server.router, 'head');
+            const callback = () => {};
             app.head('/', callback, null);
-            expect(app.server.router.routes.head).to.be.lengthOf(1)
-                .and.to.satisfy(function(routes) {
-                    let route = routes[0];
-                    return route[0] === '/' && route[1] === callback && route[2] === null;
-                });
+
+            expect(app.server.router.head.called).to.be.true;
+            expect(app.server.router.head.getCall(0).args[0]).to.equals('/');
+            expect(app.server.router.head.getCall(0).args[1]).to.equals(callback);
+            expect(app.server.router.head.getCall(0).args[2]).to.be.null;
         });
     });
 
     describe('#get(url, callback, options)', function() {
-        it(`should pass along the route to the server`, function() {
-            let callback = () => {};
+        it(`should call the server.router.get method, passing in the whole argument`, function() {
+            sinon.spy(app.server.router, 'get');
+            const callback = () => {};
             app.get('/', callback, null);
-            expect(app.server.router.routes.get).to.be.lengthOf(1)
-                .and.to.satisfy(function(routes) {
-                    let route = routes[0];
-                    return route[0] === '/' && route[1] === callback && route[2] === null;
-                });
+
+            expect(app.server.router.get.called).to.be.true;
+            expect(app.server.router.get.getCall(0).args[0]).to.equals('/');
+            expect(app.server.router.get.getCall(0).args[1]).to.equals(callback);
+            expect(app.server.router.get.getCall(0).args[2]).to.be.null;
         });
     });
 
     describe('#post(url, callback, options)', function() {
-        it(`should pass along the route to the server`, function() {
-            let callback = () => {};
+        it(`should call the server.router.post method, passing in the whole argument`, function() {
+            sinon.spy(app.server.router, 'post');
+            const callback = () => {};
             app.post('/', callback, null);
-            expect(app.server.router.routes.post).to.be.lengthOf(1)
-                .and.to.satisfy(function(routes) {
-                    let route = routes[0];
-                    return route[0] === '/' && route[1] === callback && route[2] === null;
-                });
+
+            expect(app.server.router.post.called).to.be.true;
+            expect(app.server.router.post.getCall(0).args[0]).to.equals('/');
+            expect(app.server.router.post.getCall(0).args[1]).to.equals(callback);
+            expect(app.server.router.post.getCall(0).args[2]).to.be.null;
         });
     });
 
     describe('#put(url, callback, options)', function() {
-        it(`should pass along the route to the server`, function() {
-            let callback = () => {};
+        it(`should call the server.router.put method, passing in the whole argument`, function() {
+            sinon.spy(app.server.router, 'put');
+            const callback = () => {};
             app.put('/', callback, null);
-            expect(app.server.router.routes.put).to.be.lengthOf(1)
-                .and.to.satisfy(function(routes) {
-                    let route = routes[0];
-                    return route[0] === '/' && route[1] === callback && route[2] === null;
-                });
+
+            expect(app.server.router.put.called).to.be.true;
+            expect(app.server.router.put.getCall(0).args[0]).to.equals('/');
+            expect(app.server.router.put.getCall(0).args[1]).to.equals(callback);
+            expect(app.server.router.put.getCall(0).args[2]).to.be.null;
         });
     });
 
     describe('#delete(url, callback, options)', function() {
-        it(`should pass along the route to the server`, function() {
-            let callback = () => {};
+        it(`should call the server.router.delete method, passing in the whole argument`, function() {
+            sinon.spy(app.server.router, 'delete');
+            const callback = () => {};
             app.delete('/', callback, null);
-            expect(app.server.router.routes.delete).to.be.lengthOf(1)
-                .and.to.satisfy(function(routes) {
-                    let route = routes[0];
-                    return route[0] === '/' && route[1] === callback && route[2] === null;
-                });
+
+            expect(app.server.router.delete.called).to.be.true;
+            expect(app.server.router.delete.getCall(0).args[0]).to.equals('/');
+            expect(app.server.router.delete.getCall(0).args[1]).to.equals(callback);
+            expect(app.server.router.delete.getCall(0).args[2]).to.be.null;
         });
     });
 
     describe('#all(url, callback, options)', function() {
-        it(`should pass along the route to the server`, function() {
-            let callback = () => {};
+        it(`should call the server.router.all method, passing in the whole argument`, function() {
+            sinon.spy(app.server.router, 'all');
+            const callback = () => {};
             app.all('/', callback, null);
-            expect(app.server.router.routes.all).to.be.lengthOf(1)
-                .and.to.satisfy(function(routes) {
-                    let route = routes[0];
-                    return route[0] === '/' && route[1] === callback && route[2] === null;
-                });
+
+            expect(app.server.router.all.called).to.be.true;
+            expect(app.server.router.all.getCall(0).args[0]).to.equals('/');
+            expect(app.server.router.all.getCall(0).args[1]).to.equals(callback);
+            expect(app.server.router.all.getCall(0).args[2]).to.be.null;
         });
     });
 
@@ -108,31 +116,23 @@ describe('App', function() {
         });
     });
 
-    describe('#use(middleware)', function() {
-        it(`should pass along the middleware to the server`, function() {
-            let middleware = () => {};
-            app.use(middleware);
-            expect(app.server.router.middlewares).to.be.lengthOf(1).to.satisfy(function(middlewares) {
-                return middlewares[0] === middleware;
-            });
+    describe('#use(url, middleware, options)', function() {
+        it(`should pass along the middleware to the server.router.use method`, function() {
+            sinon.spy(app.server.router, 'use');
+            const middleware = function() {};
+            app.use('/', middleware);
+
+            expect(app.server.router.use.called).to.be.true;
         });
     });
 
     describe('#mount(baseUrl, router)', function() {
-        it(`should mount the passed in router to the app`, function() {
+        it(`should call the server mount method with the passed in argument`, function() {
             let router = new Router(true);
-
-            router.get('login', () => {});
-            router.post('login', () => {});
-
-            router.get('signup', () => {});
-            router.post('signup', () => {});
-
+            sinon.spy(app.server, 'mount');
             app.mount('auth', router);
-            expect(app.server.mountedRouters).to.be.lengthOf(1).to.satisfy(
-                function(mountedRouters) {
-                    return mountedRouters[0] === router;
-                });
+
+            expect(app.server.mount.called).to.be.true;
         });
     });
 
@@ -151,11 +151,10 @@ describe('App', function() {
         it(`should close the server when called, calling the optional callback method once the
         server closes`, function(done) {
             app.listen(null, function() {
+                expect(app.listening).to.be.true;
                 app.close(function() {
-                    if (app.listening)
-                        done(new Error('Error: server not closed'));
-                    else
-                        done();
+                    expect(app.listening).to.be.false;
+                    done();
                 });
             });
         });
@@ -165,12 +164,11 @@ describe('App', function() {
         it(`should return the server's bound address, it returns null if the server is currently
         not listening for connections`, function(done) {
             app.listen(null, function() {
-                let address = app.address();
-                app.close();
-                if (address.port !== 4000)
-                    done(new Error('Error: server address not valid'));
-                else
+                expect(app.listening).to.be.true;
+                expect(app.address().port).to.equals(4000);
+                app.close(function() {
                     done();
+                });
             });
         });
     });
