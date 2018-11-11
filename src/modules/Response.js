@@ -85,7 +85,7 @@ Response.prototype.json = function(data) {
  *@returns {Promise}
 */
 Response.prototype.download = function(filePath, filename) {
-    this.fileServer.serveDownload(this, filePath, filename);
+    return this.fileServer.serveDownload(this, filePath, filename);
 };
 
 export default Response;
