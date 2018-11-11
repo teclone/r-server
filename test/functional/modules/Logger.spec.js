@@ -47,7 +47,6 @@ describe('Logger Module', function() {
             sinon.spy(console, 'log');
             request.get(host + 'index.xml', (err, res) => {
                 expect(res.statusCode).to.equals(404);
-                expect(console.log.called).to.be.true;
                 console.log.restore();
                 done();
             });
