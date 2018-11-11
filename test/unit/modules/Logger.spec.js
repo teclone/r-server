@@ -1,9 +1,9 @@
-import Logger from '../../src/modules/Logger';
+import Logger from '../../../src/modules/Logger';
 import path from 'path';
 import fs from 'fs';
 import sinon from 'sinon';
-import { ERROR_LEVELS } from '../../src/modules/Constants';
-import config from '../../src/.rsvrc.json';
+import { ERROR_LEVELS } from '../../../src/modules/Constants';
+import config from '../../../src/.rsvrc.json';
 
 describe('Logger Module', function() {
     let logger = null,
@@ -11,8 +11,8 @@ describe('Logger Module', function() {
         accessLog = '';
 
     beforeEach(function() {
-        errorLog = path.resolve(__dirname, '../../.error.log');
-        accessLog = path.resolve(__dirname, '../../.access.log');
+        errorLog = path.resolve(__dirname, '../../../.error.log');
+        accessLog = path.resolve(__dirname, '../../../.access.log');
 
         //clear the files
         fs.writeFileSync(errorLog, '');

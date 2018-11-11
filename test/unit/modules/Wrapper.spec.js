@@ -1,5 +1,5 @@
-import Wrapper from '../../src/modules/Wrapper.js';
-import Router from '../../src/modules/Router.js';
+import Wrapper from '../../../src/modules/Wrapper.js';
+import Router from '../../../src/modules/Router.js';
 
 describe('Wrapper', function() {
     let wrapper = null,

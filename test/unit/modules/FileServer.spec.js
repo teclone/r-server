@@ -1,15 +1,15 @@
-import FileServer from '../../src/modules/FileServer';
+import FileServer from '../../../src/modules/FileServer';
 import fs from 'fs';
-import config from '../../src/.rsvrc.json';
-import Logger from '../../src/modules/Logger';
+import config from '../../../src/.rsvrc.json';
+import Logger from '../../../src/modules/Logger';
 import path from 'path';
 
 describe('FileServer Module', function() {
     let fileServer = null;
 
     beforeEach(function() {
-        const errorLog = path.resolve(__dirname, '../../.error.log'),
-            accessLog = path.resolve(__dirname, '../../.access.log');
+        const errorLog = path.resolve(__dirname, '../../../.error.log'),
+            accessLog = path.resolve(__dirname, '../../../.access.log');
 
         //clear the files
         fs.writeFileSync(errorLog, '');
@@ -20,7 +20,7 @@ describe('FileServer Module', function() {
             accessLog,
             config
         );
-        fileServer = new FileServer(path.resolve(__dirname, '../../'), config, logger);
+        fileServer = new FileServer(path.resolve(__dirname, '../../../'), config, logger);
     });
 
     describe('#constructor(rootDir, config, logger)', function() {
@@ -46,7 +46,7 @@ describe('FileServer Module', function() {
     describe('#getDefaultHeaders(filePath)', function() {
         let filePath = '';
         beforeEach(function() {
-            filePath = path.resolve(__dirname, '../../package.json');
+            filePath = path.resolve(__dirname, '../../../package.json');
         });
 
         it('should return the default response headers for the given file', function() {
@@ -63,7 +63,7 @@ describe('FileServer Module', function() {
         });
 
         it('should set the Content-Type to application/octet-stream if file has no extension', function() {
-            const filePath = path.resolve(__dirname, '../../LICENSE'),
+            const filePath = path.resolve(__dirname, '../../../LICENSE'),
                 resHeaders = fileServer.getDefaultHeaders(filePath);
 
             expect(resHeaders['Content-Type']).to.equals('application/octet-stream');
@@ -72,13 +72,13 @@ describe('FileServer Module', function() {
 
     describe('#getDefaultDocument(dir)', function() {
         it (`should search for a default document in the given directory and return it`, function() {
-            const dir = path.resolve(__dirname, '../../public');
+            const dir = path.resolve(__dirname, '../../../public');
             expect(fileServer.getDefaultDocument(dir)).to.equals('index.html');
         });
 
         it(`should return empty string if no specified default documents exist inside
             the directory`, function() {
-            const dir = path.resolve(__dirname, '../../src/modules');
+            const dir = path.resolve(__dirname, '../../../src/modules');
             expect(fileServer.getDefaultDocument(dir)).to.equals('');
         });
     });
@@ -87,7 +87,7 @@ describe('FileServer Module', function() {
         it(`should validate the request and return valid public file path that
             matches the requested file`, function() {
             expect(fileServer.validateRequest('/index.html', 'GET'))
-                .to.equals(path.resolve(__dirname, '../../public/index.html'));
+                .to.equals(path.resolve(__dirname, '../../../public/index.html'));
         });
 
         it(`should return empty string if the request's method is neither GET, HEAD nor
@@ -98,7 +98,7 @@ describe('FileServer Module', function() {
         it(`should run the process and check for default documents if the request url
             points to a folder in one of the public paths`, function() {
             expect(fileServer.validateRequest('/', 'GET'))
-                .to.equals(path.resolve(__dirname, '../../public/index.html'));
+                .to.equals(path.resolve(__dirname, '../../../public/index.html'));
         });
 
         it(`should run the process and return empty string if no default documents was found for

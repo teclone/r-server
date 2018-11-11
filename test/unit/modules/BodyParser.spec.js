@@ -1,4 +1,4 @@
-import BodyParser from '../../src/modules/BodyParser.js';
+import BodyParser from '../../../src/modules/BodyParser.js';
 import path from 'path';
 import fs from 'fs';
 import sinon from 'sinon';
@@ -7,7 +7,7 @@ describe('BodyParser', function() {
     let bodyParser = null;
 
     before(function() {
-        bodyParser = new BodyParser(path.resolve(__dirname, '../../storage/temp'), 'latin1');
+        bodyParser = new BodyParser(path.resolve(__dirname, '../../../storage/temp'), 'latin1');
     });
 
     describe(`#constructor(tempDir, encoding?)`, function() {
@@ -16,7 +16,7 @@ describe('BodyParser', function() {
         });
 
         it(`should can create a body parser without the encoding argument`, function() {
-            expect(new BodyParser(path.resolve(__dirname, '../../storage/temp')))
+            expect(new BodyParser(path.resolve(__dirname, '../../../storage/temp')))
                 .to.be.a('BodyParser');
         });
     });
@@ -70,7 +70,7 @@ describe('BodyParser', function() {
     describe('#cleanUpTempFiles(files)', function() {
         it(`should delete all temporarily files from the temp folder once the
             response finishes. taking care to check if the file still exists`, function() {
-            let dir = path.resolve(__dirname, '../../'),
+            let dir = path.resolve(__dirname, '../../../'),
                 filePath = path.join(dir + '/' + 'file1.txt');
 
             fs.writeFileSync(filePath, 'my name is harrison');
@@ -87,7 +87,7 @@ describe('BodyParser', function() {
         });
 
         it(`should iterate through an array of multi files and delete all files`, function() {
-            let dir = path.resolve(__dirname, '../../'),
+            let dir = path.resolve(__dirname, '../../../'),
                 paths = [
                     path.join(dir + '/' + 'file1.txt'),
                     path.join(dir + '/' + 'file2.txt')
@@ -264,7 +264,7 @@ describe('BodyParser', function() {
         describe('#parseMultiPart(string, boundary)', function() {
             it(`should parse the multipart string and return an object consisting of body and
             file objects keys`, function() {
-                const filePath = path.resolve(__dirname, '../helpers/multipart.log'),
+                const filePath = path.resolve(__dirname, '../../helpers/multipart.log'),
                     boundary = '----WebKitFormBoundaryAw0u9Lykfr41KdqS';
 
                 expect(bodyParser.parseMultiPart(fs.readFileSync(filePath, 'latin1'), boundary).body)
@@ -272,7 +272,7 @@ describe('BodyParser', function() {
             });
 
             it(`should detect the part boundary if not given`, function() {
-                const filePath = path.resolve(__dirname, '../helpers/multipart.log');
+                const filePath = path.resolve(__dirname, '../../helpers/multipart.log');
 
                 expect(bodyParser.parseMultiPart(fs.readFileSync(filePath, 'latin1')).body)
                     .deep.equals(data);
@@ -336,7 +336,7 @@ describe('BodyParser', function() {
 
             it(`should call parseMultiPart if content type is multipart/form-data`, function(){
 
-                const filePath = path.resolve(__dirname, '../helpers/multipart.log'),
+                const filePath = path.resolve(__dirname, '../../helpers/multipart.log'),
                     boundary = '----WebKitFormBoundaryAw0u9Lykfr41KdqS';
 
                 sinon.spy(bodyParser, 'parseMultiPart');
@@ -354,7 +354,7 @@ describe('BodyParser', function() {
             it(`should call parseMultiPart if content type is multipart/form-data even when the
             boundary header is not given`, function(){
 
-                const filePath = path.resolve(__dirname, '../helpers/multipart.log');
+                const filePath = path.resolve(__dirname, '../../helpers/multipart.log');
 
                 sinon.spy(bodyParser, 'parseMultiPart');
 
@@ -369,7 +369,7 @@ describe('BodyParser', function() {
             });
 
             it(`should run no parse if the content type does not match any of the above`, function(){
-                const filePath = path.resolve(__dirname, '../helpers/multipart.log'),
+                const filePath = path.resolve(__dirname, '../../helpers/multipart.log'),
                     result = bodyParser.parse(
                         Buffer.from(fs.readFileSync(filePath, 'latin1'), 'latin1'),
                         ''

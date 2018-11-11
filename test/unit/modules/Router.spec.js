@@ -1,4 +1,4 @@
-import Router from '../../src/modules/Router.js';
+import Router from '../../../src/modules/Router.js';
 
 describe('Router', function() {
     let router = null;

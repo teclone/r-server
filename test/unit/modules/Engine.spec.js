@@ -1,8 +1,8 @@
-import Engine from '../../src/modules/Engine.js';
+import Engine from '../../../src/modules/Engine.js';
 import sinon from 'sinon';
-import Logger from '../../src/modules/Logger.js';
+import Logger from '../../../src/modules/Logger.js';
 import path from 'path';
-import config from '../../src/.rsvrc.json';
+import config from '../../../src/.rsvrc.json';
 
 describe('Engine', function() {
     let engine = null,
@@ -13,8 +13,8 @@ describe('Engine', function() {
         errorLog = '';
 
     before(function() {
-        errorLog = path.resolve(__dirname, '../../.error.log');
-        accessLog = path.resolve(__dirname, '../../.access.log');
+        errorLog = path.resolve(__dirname, '../../../.error.log');
+        accessLog = path.resolve(__dirname, '../../../.access.log');
     });
 
     beforeEach(function() {

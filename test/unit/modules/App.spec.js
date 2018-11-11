@@ -1,5 +1,5 @@
-import App from '../../src/modules/App.js';
-import Router from '../../src/modules/Router.js';
+import App from '../../../src/modules/App.js';
+import Router from '../../../src/modules/Router.js';
 import sinon from 'sinon';
 
 describe('App', function() {

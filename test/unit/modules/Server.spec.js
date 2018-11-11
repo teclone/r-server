@@ -1,11 +1,11 @@
-import Server from '../../src/modules/Server.js';
+import Server from '../../../src/modules/Server.js';
 import path from 'path';
 import fs from 'fs';
-import Router from '../../src/modules/Router.js';
-import Engine from '../../src/modules/Engine.js';
+import Router from '../../../src/modules/Router.js';
+import Engine from '../../../src/modules/Engine.js';
 import request from 'request';
 import sinon from 'sinon';
-import inbuiltConfig from '../../src/.rsvrc.json';
+import inbuiltConfig from '../../../src/.rsvrc.json';
 
 describe('Server', function() {
 
@@ -33,13 +33,13 @@ describe('Server', function() {
     describe('#getEntryPath(knownPath)', function() {
         it(`should inspect the given known path and return the project's roots
             directory`, function() {
-            const root = path.join(__dirname, '../../', '/');
+            const root = path.join(__dirname, '../../../', '/');
             expect(server.getEntryPath(__dirname)).to.equals(root);
         });
 
         it(`should run the process by spliting the path at the first occurrence of
             node_modules`, function() {
-            const root = path.join(__dirname, '../../', '/');
+            const root = path.join(__dirname, '../../../', '/');
 
             expect(server.getEntryPath(path.join(root, 'node_modules/mocha/bin/main.js')))
                 .to.equals(root);
@@ -49,7 +49,7 @@ describe('Server', function() {
     describe('resolveConfg(entryPath, config)', function() {
         it(`if given a string as second parameter, it should load the config from the given path
             and merge it with the inbuilt default config parameters`, function() {
-            const entryPath = path.join(__dirname, '../../');
+            const entryPath = path.join(__dirname, '../../../');
 
             const config = server.resolveConfig(entryPath, 'test/helpers/.rsvrc.json');
             expect(config.maxBufferSize).to.equals(10);
@@ -57,7 +57,7 @@ describe('Server', function() {
 
         it(`if given an object as second parameter, it should merge it with the inbuilt default
             config parameters`, function() {
-            const entryPath = path.join(__dirname, '../../'),
+            const entryPath = path.join(__dirname, '../../../'),
                 config = server.resolveConfig(entryPath, {maxBufferSize: 20});
 
             expect(config.maxBufferSize).to.equal(20);
@@ -65,7 +65,7 @@ describe('Server', function() {
 
         it(`should do nothing if config is a path string which does not exist and return only a
             clone of the internally defined config object`, function() {
-            const entryPath = path.join(__dirname, '../../');
+            const entryPath = path.join(__dirname, '../../../');
 
             const config = server.resolveConfig(entryPath, 'test/helpers/.rsvr.json');
             expect(config.maxBufferSize).to.equals(inbuiltConfig.maxBufferSize);
@@ -75,7 +75,7 @@ describe('Server', function() {
             process.env.NODE_ENV = 'production';
 
             const config = server.resolveConfig(
-                path.join(__dirname, '../../'),
+                path.join(__dirname, '../../../'),
                 {env: 'development'}
             );
             expect(config.env).to.equals('production');
