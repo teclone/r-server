@@ -1,6 +1,10 @@
 /**
  *@module Server
 */
+
+/**
+ *@typedef {Object} serverConfig
+*/
 import fs from 'fs';
 import path from 'path';
 import Util from './Util.js';
@@ -11,20 +15,18 @@ import Router from './Router.js';
 import BodyParser from './BodyParser.js';
 import _config from '../.rsvrc.json';
 import Logger from './Logger.js';
-import { ENV } from './Constants.js';
 
 require('./Response');
 
 export default class {
 
     /**
-     *@param {string|Object} [config] - an optional config object or a string relative path to a
-     * user defined config file defaults to ".rsvrc.json"
+     *@param {string|serverConfig} [config] - optional config file string path or config object
     */
     constructor(config) {
 
-        this.router = new Router(false);
-        this.mountedRouters = [];
+        this.router = new Router(false); // the main router. the root router
+        this.mountedRouters = []; //mounted routers
 
         /* istanbul ignore else */
         if (require.main)
@@ -34,13 +36,7 @@ export default class {
 
         this.config = this.resolveConfig(this.entryPath, config || '.rsvrc.json');
 
-        this.fileServer = new FileServer(
-            this.entryPath,
-            this.config.staticFileDir,
-            this.config.mimeTypes,
-            this.config.defaultDocuments,
-            this.config.cacheControl
-        );
+        this.fileServer = new FileServer(this.entryPath, this.config);
 
         this.bodyParser = new BodyParser(
             path.join(this.entryPath, this.config.tempDir, '/'),
@@ -109,7 +105,7 @@ export default class {
         config = Util.assign(null, _config, config);
 
         //prioritize node_env setting to config file setting
-        if (process.env.NODE_ENV === ENV.PRODUCTION)
+        if (typeof process.env.NODE_ENV !== 'undefined')
             config.env = process.env.NODE_ENV;
 
         return config;
@@ -121,13 +117,24 @@ export default class {
      *@param {Router} router - the router instance
     */
     mount(baseUrl, router) {
-        //join all routers url
-        let routes = router.routes;
-        for (let api of Object.keys(routes)) {
-            let apiRoutes = routes[api];
-            for (let apiRoute of apiRoutes)
-                apiRoute[0] = path.join(baseUrl, apiRoute[0]);
-        }
+        baseUrl = baseUrl.replace(/\/+$/, '');
+        const resolve = ([url, callback, options]) => {
+            return [
+                path.join(baseUrl, url),
+                callback,
+                options
+            ];
+        };
+
+        if (!(router instanceof Router))
+            return;
+
+        //resolve all routes, each apiRoutes is of the form [url, callback, options]
+        for (const [api, apiRoutes] of Object.entries(router.routes))
+            router.routes[api] = apiRoutes.map(resolve);
+
+        //resolve all middlewares. each middleware is of the format [url, callback, options]
+        router.middlewares = router.middlewares.map(resolve);
 
         this.mountedRouters.push(router);
     }
@@ -159,6 +166,7 @@ export default class {
     async cordinateRoutes(url, method, request, response) {
         method = method.toLowerCase();
 
+        //create the engine, with zero middlewares yet
         let engine = new Engine(url, method, request, response, [], this.logger),
             router = this.router;
 
@@ -190,6 +198,23 @@ export default class {
     }
 
     /**
+     * perform house keeping
+     *@param {http.IncomingMessage} request - the request object
+    */
+    onResponseFinish(request, response) {
+
+        this.logger.profile(request, response);
+        this.bodyParser.cleanUpTempFiles(request.files);
+    }
+
+    /**
+     * handle on response error event
+    */
+    onResponseError(err, response) {
+        this.logger.fatal(err, response);
+    }
+
+    /**
      * parse all request data
     */
     parseRequestData(request, url, buffers) {
@@ -210,31 +235,6 @@ export default class {
     }
 
     /**
-     * perform house keeping
-     *@param {http.IncomingMessage} request - the request object
-    */
-    onResponseFinish(request, response) {
-        response.fileServer = null;
-
-        this.logger.profile(request, response);
-        this.bodyParser.cleanUpTempFiles(request.files);
-    }
-
-    /**
-     * handle on response error event
-    */
-    onResponseError(err) {
-        this.logger.fatal(err);
-    }
-
-    /**
-     * responds to un handled promise rejection
-    */
-    unhandledPRHandler(reason, p, response) {
-        this.logger.fatal(reason, response);
-    }
-
-    /**
      * handle request data event
      *@param {http.IncomingMessage} request - the request object
      *@param {Response} response - the response object
@@ -242,7 +242,7 @@ export default class {
      *@param {number} bufferDetails.size - the buffer size
      *@param {Array} bufferDetails.buffers - array containing chunks of buffer data
     */
-    async onRequestEnd(request, response, bufferDetails) {
+    onRequestEnd(request, response, bufferDetails) {
 
         //profile the response time
         response.startTime = new Date();
@@ -259,36 +259,29 @@ export default class {
 
         response.fileServer = this.fileServer;
 
-        if (this.fileServer.serve(url, method, headers, response))
-            return;
+        return this.fileServer.serve(url, method, headers, response).then(status => {
+            if (status)
+                return;
 
-        this.parseRequestData(request, url, bufferDetails.buffer);
+            this.parseRequestData(request, url, bufferDetails.buffer);
+            return this.cordinateRoutes(url, method, request, response).then(status => {
+                if (status)
+                    return;
 
-        const promiseRejectionHandler = Util.generateCallback(
-            this.unhandledPRHandler,
-            this,
-            response
-        );
-        process.on('unhandledRejection', promiseRejectionHandler);
-
-        const status = await this.cordinateRoutes(url, method, request, response);
-
-        process.off('unhandledRejection', promiseRejectionHandler);
-        if (status)
-            return;
-
-        //send 404 response if router did not resolved
-        let httpErrors = this.config.httpErrors;
-        this.fileServer.serveHttpErrorFile(
-            response, 404, httpErrors.baseDir, httpErrors['404']
-        );
+                //send 404 response if router did not resolved
+                let httpErrors = this.config.httpErrors;
+                return this.fileServer.serveHttpErrorFile(
+                    response, 404, httpErrors.baseDir, httpErrors['404']
+                );
+            });
+        });
     }
 
     /**
      * handle on request error event
     */
-    onRequestError(err, request, response) {
-        this.logger.fatal(request, response, err);
+    onRequestError(err, response) {
+        this.logger.fatal(err, response);
     }
 
     /**
@@ -311,8 +304,7 @@ export default class {
         let bufferDetails = {buffer: [], size: 0};
 
         //handle on request error
-        request.on('error', Util.generateCallback(this.onRequestError, this,
-            [request, response]));
+        request.on('error', Util.generateCallback(this.onRequestError, this, response));
 
         //handle on data event
         request.on('data', Util.generateCallback(this.onRequestData, this,
@@ -325,9 +317,7 @@ export default class {
         ));
 
         //handle on response error
-        response.on('error', Util.generateCallback(this.onResponseError, this,
-            [request, response]
-        ));
+        response.on('error', Util.generateCallback(this.onResponseError, this, response));
 
         //clean up resources once the response has been sent out
         response.on('finish', Util.generateCallback(this.onResponseFinish, this,
@@ -357,7 +347,7 @@ export default class {
     */
     onServerError(err) {
         //log to the console
-        this.logger.error('Error: ' + err.code + ' ' + err.message);
+        this.logger.warn('Error: ' + err.code + ' ' + err.message);
     }
 
     /**
@@ -389,23 +379,6 @@ export default class {
     }
 
     /**
-     * starts the server at a given port
-     *@param {number} [port=4000] - the port to listen on.
-     *@param {Function} [callback] - a callback function to execute once the server starts
-     * listening on the given port
-    */
-    listen(port, callback) {
-        if (this.listening) {
-            //log error to the console
-            this.logger.error('Server already started. You must close the server first');
-            return;
-        }
-        this.initServer();
-        callback = Util.isCallable(callback)? callback : () => {};
-        this.server.listen( port || 4000, callback);
-    }
-
-    /**
      * closes the connection
      *@param {Function} [callback] - a callback function to execute once the server closes
     */
@@ -423,5 +396,22 @@ export default class {
             return this.server.address();
         else
             return null;
+    }
+
+    /**
+     * starts the server at a given port
+     *@param {number} [port=4000] - the port to listen on.
+     *@param {Function} [callback] - a callback function to execute once the server starts
+     * listening on the given port
+    */
+    listen(port, callback) {
+        if (this.listening) {
+            //log error to the console
+            this.logger.warn('Server already started. You must close the server first');
+            return;
+        }
+        this.initServer();
+        callback = Util.isCallable(callback)? callback : () => {};
+        this.server.listen( port || process.env.PORT || 4000, callback);
     }
 }
