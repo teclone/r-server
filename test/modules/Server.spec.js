@@ -5,6 +5,7 @@ import Router from '../../src/modules/Router.js';
 import Engine from '../../src/modules/Engine.js';
 import request from 'request';
 import sinon from 'sinon';
+import inbuiltConfig from '../../src/.rsvrc.json';
 
 describe('Server', function() {
 
@@ -13,34 +14,32 @@ describe('Server', function() {
         server = new Server('.rsvrc.json');
     });
 
-    describe('#constructor(configPath?)', function() {
+    describe('#constructor(config?)', function() {
 
-        it(`should create an RServer instance given the user defined config path that is
-            relative to the root directory`, function() {
+        it(`should an accept an optional string pointing to a user defined config path relative
+        to the project root directory`, function() {
             expect(server).to.be.an('RServer');
         });
 
-        it(`should set the router property to a new Router instance that does not
-        inherit middlewares`, function() {
-            expect(server.router).to.be.a('Router');
-            expect(server.router.inheritMiddlewares).to.be.false;
+        it(`the config parameter can also be an object defining server configurations`, function() {
+            expect(new Server({env: 'production'})).to.be.an('RServer');
         });
 
-        it(`should create an RServer instance even without the user defined config path`, function() {
+        it(`should create an RServer instance even without the optional config parameter`, function() {
             expect(new Server()).to.be.an('RServer');
         });
     });
 
     describe('#getEntryPath(knownPath)', function() {
-        it(`should inspect the given known path and return the projects roots
+        it(`should inspect the given known path and return the project's roots
             directory`, function() {
-            let root = path.join(__dirname, '../../', '/');
+            const root = path.join(__dirname, '../../', '/');
             expect(server.getEntryPath(__dirname)).to.equals(root);
         });
 
         it(`should run the process by spliting the path at the first occurrence of
             node_modules`, function() {
-            let root = path.join(__dirname, '../../', '/');
+            const root = path.join(__dirname, '../../', '/');
 
             expect(server.getEntryPath(path.join(root, 'node_modules/mocha/bin/main.js')))
                 .to.equals(root);
@@ -48,30 +47,76 @@ describe('Server', function() {
     });
 
     describe('resolveConfg(entryPath, config)', function() {
-        it(`should merge the user defined config object that is located at the given
-            config string argument with the internally defined config object`, function() {
-            let config = '.rsvrc.json',
-                entryPath = path.join(__dirname, '../../');
+        it(`if given a string as second parameter, it should load the config from the given path
+            and merge it with the inbuilt default config parameters`, function() {
+            const entryPath = path.join(__dirname, '../../');
 
-            config = server.resolveConfig(entryPath, config);
-            expect(config).to.be.an('Object');
+            const config = server.resolveConfig(entryPath, 'test/helpers/.rsvrc.json');
+            expect(config.maxBufferSize).to.equals(10);
         });
 
-        it(`should merge the user defined config object with the internally defined config
-        object if the config argument is an object`, function() {
-            let entryPath = path.join(__dirname, '../../'),
-                config = server.resolveConfig(entryPath, {maxBufferSize: 10});
+        it(`if given an object as second parameter, it should merge it with the inbuilt default
+            config parameters`, function() {
+            const entryPath = path.join(__dirname, '../../'),
+                config = server.resolveConfig(entryPath, {maxBufferSize: 20});
 
-            expect(config.maxBufferSize).to.equal(10);
+            expect(config.maxBufferSize).to.equal(20);
         });
 
         it(`should do nothing if config is a path string which does not exist and return only a
             clone of the internally defined config object`, function() {
-            let config = '.rsvc.json',
-                entryPath = path.join(__dirname, '../../');
+            const entryPath = path.join(__dirname, '../../');
 
-            config = server.resolveConfig(entryPath, config);
-            expect(config).to.be.an('Object');
+            const config = server.resolveConfig(entryPath, 'test/helpers/.rsvr.json');
+            expect(config.maxBufferSize).to.equals(inbuiltConfig.maxBufferSize);
+        });
+
+        it(`should prioritize the NODE_ENV property if it is set`, function() {
+            process.env.NODE_ENV = 'production';
+
+            const config = server.resolveConfig(
+                path.join(__dirname, '../../'),
+                {env: 'development'}
+            );
+            expect(config.env).to.equals('production');
+            delete process.env.NODE_ENV;
+        });
+    });
+
+    describe('#mount(baseUrl, router)', function() {
+        it(`should mount the given router to the main app, resolving the router routes and
+        and middleware urls`, function() {
+            const router = new Router(true),
+                callback = () => {};
+
+            router.route('/login').get(callback).post(callback);
+            router.route('/signup').get(callback).post(callback);
+
+            router.use('*', callback);
+            server.mount('auth', router);
+
+            expect(server.mountedRouters).to.be.lengthOf(1);
+            const mountedRouter = server.mountedRouters[0];
+
+            expect(mountedRouter.routes.get).deep.equals([
+                ['auth/login', callback, null],
+                ['auth/signup', callback, null],
+            ]);
+
+            expect(mountedRouter.routes.post).deep.equals([
+                ['auth/login', callback, null],
+                ['auth/signup', callback, null],
+            ]);
+
+            expect(mountedRouter.middlewares).deep.equals([
+                ['auth/*', callback, null],
+            ]);
+        });
+
+        it(`should do nothing if argument is not an instance of the Router module`, function() {
+
+            server.mount('auth', {});
+            expect(server.mountedRouters).to.be.lengthOf(0);
         });
     });
 
@@ -90,11 +135,42 @@ describe('Server', function() {
     });
 
     describe('#listen(port?, callback?)', function() {
-        it(`should start the server at the given port`, function(done) {
+        it(`should start the server at the given port and info a message to the console`, function(done) {
+            sinon.spy(server.logger, 'info');
+
+            expect(server.listening).to.be.false;
+            server.listen(9000, () => {
+                expect(server.listening).to.be.true;
+                expect(server.logger.info.called).to.be.true;
+                expect(server.address().port).to.equals(9000);
+
+                server.close(() => {
+                    done();
+                });
+            });
+        });
+
+        it(`should start the server at port process.env.PORT if not given`, function(done) {
+            process.env.PORT = 8000;
             expect(server.listening).to.be.false;
 
             server.listen(null, () => {
                 expect(server.listening).to.be.true;
+                expect(server.address().port).to.equals(8000);
+                delete process.env.PORT;
+                server.close(() => {
+                    done();
+                });
+            });
+        });
+
+        it(`should start the server at port 4000 if port is not given and process.env.PORT
+            is not defined`, function(done) {
+            expect(server.listening).to.be.false;
+
+            server.listen(null, () => {
+                expect(server.listening).to.be.true;
+                expect(server.address().port).to.equals(4000);
                 server.close(() => {
                     done();
                 });
@@ -106,11 +182,11 @@ describe('Server', function() {
             server.listen(null, () => {
                 expect(server.listening).to.be.true;
 
-                sinon.spy(server.logger, 'error');
+                sinon.spy(server.logger, 'warn');
                 server.listen();
 
-                expect(server.logger.error.calledOnce).to.to.true;
-                server.logger.error.restore();
+                expect(server.logger.warn.calledOnce).to.be.true;
+                server.logger.warn.restore();
                 server.close(() => {
                     done();
                 });
@@ -119,11 +195,13 @@ describe('Server', function() {
     });
 
     describe('#close(callback?)', function() {
-        it(`should close the server when called`, function(done) {
+        it(`should close the connection when called and info message to the console`, function(done) {
+            sinon.spy(server.logger, 'info');
             server.listen(4000, function() {
                 expect(server.listening).to.be.true;
                 server.close(function() {
                     expect(server.listening).to.be.false;
+                    expect(server.logger.info.called).to.be.true;
                     done();
                 });
             });
@@ -131,10 +209,7 @@ describe('Server', function() {
     });
 
     describe('#address()', function() {
-        it(`should return the server bound address if the server is listening else,
-            return null`, function(done) {
-            expect(server.address()).to.be.null;
-
+        it(`should return the server address if the server is listening`, function(done) {
             server.listen(null, function() {
                 expect(server.address().port).to.equals(4000);
                 server.close(function() {
@@ -149,262 +224,81 @@ describe('Server', function() {
         });
     });
 
-    describe('#onError()', function() {
-        it(`should handle server error such as trying to listen on an already taken port`, function(done) {
-            let testServer = new Server();
+    describe('#onServerError()', function() {
+        it(`should handle server error such as trying to listen on an already taken port and
+        log warning message to the console`, function(done) {
+            const testServer = new Server();
             sinon.spy(testServer, 'onServerError');
+            sinon.spy(testServer.logger, 'warn');
 
             server.listen(null, function() {
                 testServer.listen(null);
                 server.close(function() {
                     expect(testServer.onServerError.calledOnce).to.be.true;
+                    expect(testServer.logger.warn.called).to.be.true;
                     done();
                 });
             });
         });
     });
 
-    describe('#mount(baseUrl, router)', function() {
-        it(`should mount the given router to the main app`, function() {
-            let router = new Router(true);
-            let callback = () => {};
+    describe('#onClientError(err, socket)', function() {
+        it (`should handle every client error on the server by simply ending the socket`, function(done) {
+            sinon.spy(server, 'onClientError');
+            server.listen(null, () => {
+                server.server.emit('clientError');
+                expect(server.onClientError.called).to.be.true;
+                server.onClientError.restore();
 
-            router.get('/login', callback);
-            router.get('/signup', callback);
-            router.post('/login', callback);
-            router.post('/signup', callback);
-
-            server.mount('auth', router);
-
-            expect(server.mountedRouters).to.be.lengthOf(1).and.to.satisfy(function(mountedRouters) {
-                return mountedRouters[0] === router;
+                server.close(() => {
+                    done();
+                });
             });
-        });
-
-        it(`should resolve the routers route urls with the given base url before mounting`, function() {
-            let router = new Router(true);
-            let callback = () => {};
-
-            router.get('/login', callback);
-            router.get('/signup', callback);
-            router.post('/login', callback);
-            router.post('/signup', callback);
-
-            server.mount('auth', router);
-
-            expect(router.routes.get[0][0]).to.equals('auth/login');
         });
     });
 
-    describe('#runRoutes(engine, api, routes)', function() {
-        it(`should synchronously run the given routes by calling the api method on the engine, and return
-        a promise that resolves to a boolean value`, function() {
-            const callback = sinon.spy();
+    describe('#onRequestError()', function() {
+        it(`should handle errors that occurs on the request, calling logger.fatal method to
+        log the error and end the response`, function(done) {
 
-            let engine = new Engine('user/1/profile', 'GET', {}, {}, []);
+            sinon.spy(server, 'onRequestError');
+            sinon.spy(server.logger, 'fatal');
 
-            server.router.get('auth/login', callback);
-            server.router.get('user/{id}/profile', callback);
+            server.router.get('say-hi', (req) => {
+                req.emit('error', 'something went bad');
+            });
 
-            return server.runRoutes(engine, 'GET', server.router.routes['get'])
-                .then(status => {
-                    expect(status).to.be.true;
-                    expect(callback.calledOnce).to.be.true;
+            server.listen(null, function() {
+                request.get('http://localhost:4000/say-hi', () => {
+                    expect(server.onRequestError.calledOnce).to.be.true;
+                    expect(server.logger.fatal.called).to.be.true;
+
+                    server.onRequestError.restore();
+                    server.close(function() {
+                        done();
+                    });
                 });
-        });
-
-        it(`the promise should resolve to false if there is no matching route found`, function() {
-            let callback = sinon.spy();
-
-            let engine = new Engine('user/1/profile', 'GET', {}, {}, []);
-
-            server.router.get('auth/login', callback);
-            server.router.get('user/{id}/profil', callback);
-
-            return server.runRoutes(engine, 'GET', server.router.routes['get'])
-                .then(status => {
-                    expect(status).to.be.false;
-                    expect(callback.callCount).to.equals(0);
-                });
+            });
         });
     });
 
-    describe('functional testing', function() {
+    describe('#onResponseError()', function() {
+        it(`should handle errors that occurs on the response, calling logger.fatal method to
+        log error and end the response`, function(done) {
 
-        it (`should listen for requests, run the process, and call the appropriate
-        route`, function(done) {
-            server.router.get('say-name', (req, res) => {
-                res.status(200).end('R-Server');
-            });
-            server.listen(null, () => {
-                request.get('http://localhost:4000/say-name', (err, res, body) => {
-                    expect(res.statusCode).to.equal(200);
-                    expect(body).to.equal('R-Server');
+            sinon.spy(server, 'onResponseError');
+            sinon.spy(server.logger, 'fatal');
 
-                    server.close(() => {
-                        done();
-                    });
-                });
-            });
-        });
-
-        it (`should listen for requests, run the process, and call the appropriate route,
-            running the all routes first`, function(done) {
-
-            server.router.all('/say-name', (req, res) => {
-                res.status(200).setHeaders().end('R-Server-All');
-            });
-            server.router.get('/say-name', (req, res) => {
-                res.status(200).end('R-Server-Get');
+            server.router.get('say-hi', (req, res) => {
+                res.emit('error', 'something went bad');
             });
 
             server.listen(null, function() {
-                request.get('http://localhost:4000/say-name', (err, res, body) => {
-                    expect(res.statusCode).to.equal(200);
-                    expect(body).to.equal('R-Server-All');
+                request.get('http://localhost:4000/say-hi', () => {
+                    expect(server.onResponseError.calledOnce).to.be.true;
+                    expect(server.logger.fatal.called).to.be.true;
 
-                    server.close(() => {
-                        done();
-                    });
-                });
-            });
-        });
-
-        it (`should listen for requests, run the process, and call the appropriate route,
-            checking mounted routes if no main app routes matches the request`, function(done) {
-            const router = new Router(false);
-
-            router.get('/say-name', (req, res) => {
-                res.setHeader('Content-Type', 'text/plain').end('R-Server-Get');
-            });
-
-            server.listen(null, function() {
-                server.mount('/', router); // we can mount even after the server is started
-                request.get('http://localhost:4000/say-name', (err, res, body) => {
-                    expect(res.statusCode).to.equal(200);
-                    expect(body).to.equal('R-Server-Get');
-
-                    server.close(() => {
-                        done();
-                    });
-                });
-            });
-        });
-
-        it(`should listen for requests, run the process, and call the appropriate route,
-        checking mounted routes if no main app routes matches the request, it should
-        run all routes first`, function(done) {
-            const router = new Router(true);
-
-            router.all('/say-name', (req, res) => {
-                res.status(200).setHeaders({'Content-Type': 'text/plain'}).json({name: 'R-Server-All'});
-            });
-            router.get('/say-name', (req, res) => {
-                res.status(200).end('R-Server-Get');
-            });
-
-            server.listen(null, () => {
-                server.mount('/', router);
-
-                request.get('http://localhost:4000/say-name', (err, res, body) => {
-                    expect(res.statusCode).to.equal(200);
-                    expect(JSON.parse(body).name).to.equal('R-Server-All');
-
-                    server.close(() => {
-                        done();
-                    });
-                });
-            });
-        });
-
-        it (`should send 404 response if no route matches request`, function(done) {
-
-            server.listen(null, () => {
-                request.get('http://localhost:4000/say-name', (err, res) => {
-                    expect(res.statusCode).to.equal(404);
-                    server.close(() => {
-                        done();
-                    });
-                });
-            });
-        });
-
-        it (`should parse request body if there is any`, function(done) {
-            server.router.post('report-json', (req, res) => {
-                res.json(JSON.stringify(req.body));
-            });
-
-            server.listen(null, function() {
-                const data = {
-                    name: 'Harrison',
-                    password1: 'random_243',
-                    password2: 'random_243'
-                };
-
-                request.post({url:'http://localhost:4000/report-json', form: data}, (err, res, body) => {
-                    let json = JSON.parse(body);
-                    expect(json.name).to.equal('Harrison');
-
-                    server.close(() => {
-                        done();
-                    });
-                });
-            });
-        });
-
-        it (`should serve static file if it exists and return`, function(done) {
-            server.listen(null, function() {
-                request.get('http://localhost:4000/package.json', (err, res, body) => {
-                    let fileContent = fs.readFileSync(
-                        path.resolve(__dirname, '../../package.json')
-                    );
-                    expect(fileContent.toString()).to.equal(body);
-                    server.close(() => {
-                        done();
-                    });
-                });
-            });
-        });
-
-        it (`should return a 413 entity too large status code if the buffer sent exceeds the maxBufferSize
-            config option`, function(done) {
-            let server = new Server({maxBufferSize: 10});
-            server.listen(null, function() {
-                const data = {
-                    name: 'Harrison',
-                    password1: 'random_243',
-                    password2: 'random_243'
-                };
-
-                request.post('http://localhost:4000', {form: data}, (err, res) => {
-                    expect(res.statusCode).to.equal(413);
-
-                    server.close(() => {
-                        done();
-                    });
-                });
-            });
-        });
-
-        it (`should handle all forms of errors, unhandled promises that arises from any of
-            the middleware, or route callbacks`, function(done) {
-
-            server.router.all('/', () => {
-                return new Promise((resolve) => {
-                    resolve(Math.abs(-10));
-                }).then( () => {
-                    throw new Error('chai');
-                });
-            });
-
-            server.listen(null, () => {
-                const spy = sinon.spy(server, 'unhandledPRHandler');
-                request.get('http://localhost:4000/', () => {
-
-                    expect(spy.called).to.be.true;
-                    spy.restore();
-
-                    server.close(() => {
+                    server.close(function() {
                         done();
                     });
                 });
