@@ -12,19 +12,18 @@ export default class Engine {
      *@param {string} method - the request method
      *@param {http.IncomingMessage} request - the request instance
      *@param {Response} response - the response instance
-     *@param {Array} [middlewares] - Array of middlewares
+     *@param {Logger} logger - the logger instance
     */
-    constructor(url, method, request, response, middlewares) {
+    constructor(url, method, request, response, logger) {
 
         this.resolved = false;
         this.request = request;
         this.response = response;
-        this.middlewares = Util.isArray(middlewares)? middlewares : [];
+        this.middlewares = [];
+        this.logger = logger;
 
-        this.url = url.toLowerCase().replace(/[#?].*$/, '').replace(/^\/+/, '').replace(/\/+$/, '');
+        this.url = this.resolveUrl(url);
         this.method = method.toUpperCase();
-
-        this.params = []; //create a simple [paramName, paramValue] tuple
     }
 
     /**
@@ -37,82 +36,50 @@ export default class Engine {
     }
 
     /**
-     * sets or overrides the existing middlewares
-     *@private
-     *@param {Array} middlewares - array of middlewares
+     * cleans up the url, and makes it ready for matching and processing
+     *@param {string} url - the url
+     *@returns {string}
     */
-    use(middlewares) {
-        if (Util.isArray(middlewares))
-            this.middlewares = middlewares;
+    resolveUrl(url) {
+        return url.toLowerCase().replace(/[#?].*$/, '')
+            .replace(/^\/+/, '').replace(/\/+$/, '');
     }
 
     /**
-     * runs the routes template callback function
+     * stores the route parameter into the params array if the routeToken is a capturing
+     * token. It also decomposes the token into data type and name, applying appropriate cast
+     * logic to the captured value.
      *@private
-     *@param {Function} callback - route callback function
+     *@param {string} routeToken - the route token
+     *@param {string} urlToken - the corresponding url token for the route token
+     *@param {Array} [params=[]] - array to store captured parameter
+     *@returns {Array}
     */
-    async run(callback) {
-        let cont = false;
+    captureRouteParameter(routeToken, urlToken, params) {
+        params = Util.isArray(params)? params : [];
 
-        const next = function () {
-            cont = true;
-        };
+        //if route token is not a capturing one. return the params immediately
+        if (!/^\{([-\w:]+)\}\??$/.test(routeToken))
+            return params;
 
-        const params = [];
-        this.params.forEach(([, param]) => {
-            params.push(param);
-        });
+        routeToken = RegExp.$1;
+        const [type, name] = routeToken.indexOf(':') > -1?
+            routeToken.split(':') : ['string', routeToken];
 
-        for (const middleware of this.middlewares) {
-            cont = false;
-
-            await middleware(this.request, this.response, next, ...params);
-            //if middleware says continue and response.end is not called, then continue
-            if (cont && !this.response.finished)
-                continue;
-
-            //else if the response is not ended, end it
-            if (!this.response.finished)
-                this.response.end();
-
-            return;
-        }
-
-        await callback(this.request, this.response, ...params);
-    }
-
-    /**
-     * decomposes the template token into data type and name
-     *@private
-     *@param {string} routeToken - the route template token to be decomposed
-     *@param {string} pathToken - the corresponding path token for this route template token
-     *@returns {Object} returns object containing dataType and name
-     * keys
-    */
-    deComposeRouteToken(routeToken, pathToken) {
-        let storeAsParam = false;
-
-        if (/\{([-\w:]+)\}/.exec(routeToken)) {
-            storeAsParam = true;
-            routeToken = RegExp.$1;
-        }
-
-        let [dataType, name] = routeToken.indexOf(':') > -1? routeToken.split(':') : ['', routeToken],
-            value = pathToken;
-
-        switch(dataType.toLowerCase()) {
+        let value = urlToken;
+        switch(type.toLowerCase()) {
             case 'int':
-            case 'integer':
-                value = Number.parseInt(pathToken);
+                value = Number.parseInt(urlToken);
                 break;
             case 'float':
-            case 'double':
             case 'number':
-                value = Number.parseFloat(pathToken);
+            case 'numeric':
+                value = Number.parseFloat(urlToken);
                 break;
             case 'bool':
             case 'boolean':
-                value = ['0', 'false', ''].includes(pathToken.toString().toLowerCase())?
+                urlToken = urlToken.toString().toLowerCase();
+                value = ['0', 'false', '', 'null', 'nil', 'undefined', 'no', 'none'].includes(urlToken)?
                     false : true;
                 break;
         }
@@ -120,10 +87,8 @@ export default class Engine {
         if (Number.isNaN(value))
             value = 0;
 
-        if (storeAsParam)
-            this.params.push([name, value]);
-
-        return {name, value, dataType};
+        params.push([name, value]);
+        return params;
     }
 
     /**
@@ -134,45 +99,50 @@ export default class Engine {
     */
     matchUrl(routeUrl) {
         /*create matching regular expression*/
-        let tokens = routeUrl? routeUrl.replace(/^\/+/, '').replace(/\/+$/, '').split('/') : [],
-            pattern = tokens.map(function(token) {
-                let pattern = '';
-                if (/^\{[\w:-]+\}$/.exec(token))
+        const tokens = routeUrl? routeUrl.replace(/^\/+/, '').replace(/\/+$/, '').split('/') : [],
+            pattern = tokens.map((token) => {
+                let pattern = token;
+                if (/^\{[\w:-]+\}$/.test(token)) {
                     pattern = '[^/]+';
+                }
 
-                else if (/^\{[\w:-]+\}\?$/.exec(token))
+                else if (/^\{[\w:-]+\}\?$/.exec(token)) {
                     pattern = '([^/]+)?';
+                    //add trailing / to the request url, to help match this pattern
+                }
 
-                else if (token === '*')
+                else if (token === '*') {
                     pattern = '.*';
-
-                else
-                    pattern = token.replace(/\\-/g, '-').replace(/-/g, '\\-');
+                }
 
                 return pattern;
             }).join('/');
 
-        let regex = new RegExp('^' + pattern + '$', 'i'); //regex is case insensitive
-        return regex.test(this.url);
+        const regex = new RegExp('^' + pattern + '$', 'i'); //regex is case insensitive
+        return regex.test(this.url) || regex.test(this.url + '/');
     }
 
     /**
+     * validate that the options are ok
      *@private
-     *@param {Object} [options] - optional configuration options
-     *@param {Array} [options.methods] - array of methods allowed
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {boolean}
     */
     validateOptions(options) {
-        options = Util.isPlainObject(options)? options : {};
+        if (!Util.isPlainObject(options))
+            return true;
+
         let result = true;
 
-        //validate request method. the request method should be among the options.methods item.
-        if (Util.isArray(options.methods)) {
-            let method = this.method;
-            result = options.methods.some((testMethod) => {
-                return typeof testMethod === 'string' && testMethod.toUpperCase() === method;
+        const methods = Util.value(['methods', 'method'], options);
+        if (methods !== undefined) {
+            result = Util.makeArray(methods).some(method => {
+                return typeof method === 'string' && method.toUpperCase() === this.method;
             });
         }
+        //validate request method. the request method should be among the options.methods array
+        //if given.
+
         return result;
     }
 
@@ -189,47 +159,142 @@ export default class Engine {
     }
 
     /**
+     * runs the whole processes
+     *@private
+     *@param {string} routeUrl - the route's url
+     *@param {Function} callback - callback function
+     *@param {routeOptions} [options] - optional configuration options
+     *@param {string} [overrideMethod] - a string indicating the only method allowed for the route
+     *@returns {boolean|Array}
+    */
+    runValidations(routeUrl, callback, options, overrideMethod) {
+
+        if (!this.validateRoute(callback, overrideMethod) || !this.validateOptions(options) ||
+            !this.matchUrl(routeUrl))
+            return false;
+
+        //split the tokens.
+        let urlTokens = this.url !== ''? this.url.split('/') : [],
+            routeTokens = routeUrl !== ''? routeUrl.split('/') : [];
+
+        //if the route token is greater than the url tokens, then fill it with empty strings
+        const difference = routeTokens.length - urlTokens.length;
+        if (difference > 0)
+            urlTokens = urlTokens.concat(new Array(difference).fill(''));
+
+        const params = [],
+            len = routeTokens.length;
+
+        let i = -1;
+        while (++i < len) {
+            let urlToken = urlTokens[i],
+                routeToken = routeTokens[i];
+
+            if (routeToken === '*') {
+                //final route token. add remaining url and name it as asterisks
+                params.push(['asterisks', urlTokens.slice(i).join('/')]);
+                break;
+            }
+
+            this.captureRouteParameter(routeToken, urlToken, params);
+        }
+
+        return params.map(([, param]) => {
+            return param;
+        });
+    }
+
+    /**
+     * asynchronously runs the middleware
+    */
+    async runMiddleware(middleware, middlewareParams) {
+        let cont = false,
+            next = function() {
+                cont = true;
+            };
+
+        await middleware(this.request, this.response, next, ...middlewareParams);
+
+        //if middleware did not say continue and did not end the response, end it
+        if (!cont && !this.response.finished)
+            this.response.end();
+
+        return cont;
+    }
+
+    /**
+     * asynchronously call the runMiddleware method on each middleware that applies to the
+     * route, and running the route callback if all the executed middlewares executes the next
+     * callback
+     *@private
+     *@param {Function} callback - route callback function
+     *@param {Array} params - array of parameter to apply to the route callback
+     *@param {routeOptions} [options] - optional configuration options
+    */
+    async run(callback, params, options) {
+        options = Util.isPlainObject(options)? options : {};
+
+        //run middlewares
+        for (const [url, middleware, options] of this.middlewares) {
+
+            let middlewareParams = this.runValidations(url, middleware, options);
+            if (middlewareParams === false || await this.runMiddleware(middleware, middlewareParams))
+                continue;
+
+            return;
+        }
+
+
+        const middlewares = Util.makeArray(
+            Util.value(['middlewares', 'middleware'], options)
+        );
+        for (const middleware of middlewares) {
+            if (!Util.isCallable(middleware))
+                continue; //skip
+
+            if (await this.runMiddleware(middleware, params))
+                continue;
+
+            return;
+        }
+
+        await callback(this.request, this.response, ...params);
+    }
+
+    /**
      * processes the route
      *@private
      *@param {string} routeUrl - the route's url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
-     *@param {Array} [options.methods] - array of methods allowed
+     *@param {routeOptions} [options] - optional configuration options
      *@param {string} [overrideMethod] - a string indicating the only method allowed for the route
      *@returns {Promise} - the promise resolves to a boolean value
     */
     process(routeUrl, callback, options, overrideMethod) {
+        // if it has been resolved, return
+        if (this.resolved)
+            return Promise.resolve(true);
+
+        routeUrl = this.resolveUrl(routeUrl);
+        const params = this.runValidations(routeUrl, callback, options, overrideMethod);
+
+        if (!params)
+            return Promise.resolve(false);
+
+        this.resolved = true;
         return new Promise((resolve) => {
-            if (this.resolved)
-                return resolve(true);
 
-            this.params = []; //reset the params tuple
-            routeUrl = routeUrl.toLowerCase().replace(/^\/+/, '').replace(/\/+$/, '');
+            //here, we have our callback now
+            return this.run(callback, params, options)
 
-            if (!this.validateRoute(callback, overrideMethod) || !this.validateOptions(options) || !this.matchUrl(routeUrl))
-                return resolve(false);
+                .then(() => {
+                    resolve(true);
+                })
 
-            let pathTokens = this.url !== ''? this.url.split('/') : [],
-                routeTokens = routeUrl !== ''? routeUrl.split('/') : [];
-
-            let i = -1;
-            while (++i < routeTokens.length) {
-                let pathToken = pathTokens[i],
-                    routeToken = routeTokens[i];
-
-                if (routeToken === '*') {
-                    //final route token. add remaining url and pass it to the callback
-                    this.params.push(['asterisk', pathTokens.slice(i).join('/')]);
-                    break;
-                }
-                this.deComposeRouteToken(routeToken, pathToken);
-            }
-
-            this.resolved = true;
-
-            this.run(callback).then(() => {
-                resolve(true);
-            });
+                .catch(ex => {
+                    this.logger.fatal(ex, this.response);
+                    resolve(true);
+                });
         });
     }
 
@@ -237,8 +302,7 @@ export default class Engine {
      * performs route rules for all http method verbs
      *@param {string} routeUrl - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
-     *@param {Array} [options.methods] - array of methods allowed
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Promise}
     */
     all(routeUrl, callback, options) {
@@ -249,7 +313,7 @@ export default class Engine {
      * performs route rules for only GET request method verb
      *@param {string} routeUrl - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Promise}
     */
     get(routeUrl, callback, options) {
@@ -260,7 +324,7 @@ export default class Engine {
      * performs route rules for only HEAD request method verb
      *@param {string} routeUrl - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Promise}
     */
     head(routeUrl, callback, options) {
@@ -271,7 +335,7 @@ export default class Engine {
      * performs route rules for only OPTIONS request method verb
      *@param {string} routeUrl - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Promise}
     */
     options(routeUrl, callback, options) {
@@ -282,7 +346,7 @@ export default class Engine {
      * performs route rules for only DELETE method verb
      *@param {string} routeUrl - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Promise}
     */
     delete(routeUrl, callback, options) {
@@ -293,7 +357,7 @@ export default class Engine {
      * performs route rules for only POST request method verb
      *@param {string} routeUrl - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Promise}
     */
     post(routeUrl, callback, options) {
@@ -304,10 +368,23 @@ export default class Engine {
      * performs route rules for only PUT request method verb
      *@param {string} routeUrl - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
      *@returns {Promise}
     */
     put(routeUrl, callback, options) {
         return this.process(routeUrl, callback, options, 'PUT');
+    }
+
+    /**
+     * sets or overrides the existing middlewares
+     *@private
+     *@param {Array} middlewares - array of middlewares
+     *@returns {this}
+    */
+    use(middlewares) {
+        if (Util.isArray(middlewares))
+            this.middlewares = middlewares;
+
+        return this;
     }
 }
