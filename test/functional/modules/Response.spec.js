@@ -109,5 +109,20 @@ describe('Response Module', function() {
                 done();
             });
         });
+
+        it(`should call FileServer#serveDownload method to send the content of the file specified by the relative file path back to the
+        client for download. filename should default to file's base name if not given`, function(done) {
+            app.get('/send-download', (req, res) => {
+                return res.download('package.json');
+            });
+
+            request.get(host + 'send-download', (err, res, body) => {
+                expect(res.headers['content-disposition']).to.equals('attachment; filename="package.json"');
+                expect(body).to.equal(
+                    fs.readFileSync(path.resolve(__dirname, '../../../package.json')).toString()
+                );
+                done();
+            });
+        });
     });
 });
