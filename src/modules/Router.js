@@ -51,7 +51,7 @@ export default class Router {
      *@param {routeOptions} [options] - optional configuration options
     */
     set(method, url, callback, options) {
-        this.routes[method].push([url, callback, Util.makeObject(options)]);
+        this.routes[method].push([url, callback, options || null]);
     }
 
     /**

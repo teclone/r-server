@@ -35,7 +35,7 @@ describe('Router', function() {
     describe('#options(url, callback, options?)', function() {
         it(`should push the given route url, callback and optional options object to the
         routes options api store`, function() {
-            let callback = function() {}, options = {};
+            const callback = function() {}, options = {};
             router.options('/', callback, options);
             expect(router.routes.options).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
@@ -47,11 +47,11 @@ describe('Router', function() {
     describe('#head(url, callback, options?)', function() {
         it(`should push the given route url, callback and optional options object to the
         routes head api store`, function() {
-            let callback = function() {}, options = {};
-            router.head('/', callback, options);
+            let callback = function() {};
+            router.head('/', callback);
             expect(router.routes.head).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
-                return route[0] === '/' && route[1] === callback && route[2] === options;
+                return route[0] === '/' && route[1] === callback && route[2] === null;
             });
         });
     });
@@ -59,7 +59,7 @@ describe('Router', function() {
     describe('#get(url, callback, options?)', function() {
         it(`should push the given route url, callback and optional options object to the
         routes get api store`, function() {
-            let callback = function() {}, options = {};
+            const callback = function() {}, options = {};
             router.get('/', callback, options);
             expect(router.routes.get).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
@@ -71,7 +71,7 @@ describe('Router', function() {
     describe('#post(url, callback, options?)', function() {
         it(`should push the given route url, callback and optional options object to the
         routes post api store`, function() {
-            let callback = function() {}, options = {};
+            const callback = function() {}, options = {};
             router.post('/', callback, options);
             expect(router.routes.post).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
@@ -83,7 +83,7 @@ describe('Router', function() {
     describe('#put(url, callback, options?)', function() {
         it(`should push the given route url, callback and optional options object to the
         routes put api store`, function() {
-            let callback = function() {}, options = {};
+            const callback = function() {}, options = {};
             router.put('/', callback, options);
             expect(router.routes.put).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
@@ -95,7 +95,7 @@ describe('Router', function() {
     describe('#delete(url, callback, options?)', function() {
         it(`should push the given route url, callback and optional options object to the
         routes delete api store`, function() {
-            let callback = function() {}, options = {};
+            const callback = function() {}, options = {};
             router.delete('/', callback, options);
             expect(router.routes.delete).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
@@ -107,7 +107,7 @@ describe('Router', function() {
     describe('#all(url, callback, options?)', function() {
         it(`should push the given route url, callback and optional options object to the
         routes all api store`, function() {
-            let callback = function() {}, options = {};
+            const callback = function() {}, options = {};
             router.all('/', callback, options);
             expect(router.routes.all).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
