@@ -145,7 +145,7 @@ export default class Router {
             if (typeof url !== 'string')
                 url = '/'; //this middleware runs on the root url or the mount root url
 
-            this.middlewares.push([url, middleware, Util.makeObject(options)]);
+            this.middlewares.push([url, middleware, options || null]);
         }
     }
 }

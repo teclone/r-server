@@ -130,8 +130,8 @@ describe('Router', function() {
             router.use('/tests', middleware);
 
             expect(router.middlewares).to.be.lengthOf(2);
-            expect(router.middlewares[0]).to.deep.equals(['/', middleware, {}]);
-            expect(router.middlewares[1]).to.deep.equals(['/tests', middleware, {}]);
+            expect(router.middlewares[0]).to.deep.equals(['/', middleware, null]);
+            expect(router.middlewares[1]).to.deep.equals(['/tests', middleware, null]);
         });
 
         it(`should do nothing if argument is not a callable`, function() {
