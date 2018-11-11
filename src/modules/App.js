@@ -27,7 +27,7 @@ export default class App {
      * performs route rules for http OPTIONS method verb
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     options(url, callback, options) {
         this.server.router.options(url, callback, options);
@@ -37,7 +37,7 @@ export default class App {
      * performs route rules for http HEAD method verb
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     head(url, callback, options) {
         this.server.router.head(url, callback, options);
@@ -47,7 +47,7 @@ export default class App {
      * performs route rules for http GET method verb
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     get(url, callback, options) {
         this.server.router.get(url, callback, options);
@@ -57,7 +57,7 @@ export default class App {
      * performs route rules for http POST method verb
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     post(url, callback, options) {
         this.server.router.post(url, callback, options);
@@ -67,7 +67,7 @@ export default class App {
      * performs route rules for http PUT method verb
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     put(url, callback, options) {
         this.server.router.put(url, callback, options);
@@ -77,7 +77,7 @@ export default class App {
      * performs route rules for http DELETE method verb
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     delete(url, callback, options) {
         this.server.router.delete(url, callback, options);
@@ -87,7 +87,7 @@ export default class App {
      * performs route rules for all http method verbs
      *@param {string} url - the route url
      *@param {Function} callback - callback function
-     *@param {Object} [options] - optional configuration options
+     *@param {routeOptions} [options] - optional configuration options
     */
     all(url, callback, options) {
         this.server.router.all(url, callback, options);
@@ -103,10 +103,13 @@ export default class App {
 
     /**
      * use a middleware
+     *@param {string} url - the url to apply middleware to, use null to apply globally on all
+     * urls
      *@param {Function} middleware - the middleware function
+     *@param {middlewareOptions} options - middleware optional configuration options
     */
-    use(middleware) {
-        this.server.router.use(middleware);
+    use(url, middleware, options) {
+        this.server.router.use(url, middleware, options);
     }
 
     /**
