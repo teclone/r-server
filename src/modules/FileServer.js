@@ -24,7 +24,7 @@ export default class FileServer {
 
         this.mimeTypes = mimeTypes;
         this.defaultDocuments = defaultDocuments;
-        this.cacheControl = cacheControl || 'no-cache, max-age=86400';
+        this.cacheControl = cacheControl;
         this.methods = ['GET', 'HEAD', 'OPTIONS'];
         this.logger = logger;
     }
@@ -169,12 +169,12 @@ export default class FileServer {
                 return response.end().then(() => {
                     resolve(true);
                 });
-            })
-                .on('error', (err) => {
-                    readStream.end();
-                    this.logger.fatal(err, response);
-                    resolve(true);
-                });
+            });
+            // .on('error', (err) => {
+            //     readStream.end();
+            //     this.logger.fatal(err, response);
+            //     resolve(true);
+            // });
 
             readStream.pipe(response, {end: false});
         });
@@ -202,7 +202,7 @@ export default class FileServer {
         let resHeaders = this.getDefaultHeaders(filePath);
 
         if (this.negotiateContent(headers, resHeaders['ETag'], resHeaders['Last-Modified']))
-            return this.endResponse(response, 304, {});
+            return this.endResponse(response, 304);
 
         switch(method) {
             case 'HEAD':
