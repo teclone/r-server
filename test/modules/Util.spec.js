@@ -4,6 +4,17 @@ import path from 'path';
 import rimraf from 'rimraf';
 
 describe('Util module', function() {
+    describe('.isString(variable)', function() {
+        it('should return true if argument is of type string', function() {
+            expect(Util.isString('')).to.be.true;
+        });
+
+        it('should return false if argument is not of type string', function() {
+            expect(Util.isString({})).to.be.false;
+            expect(Util.isString(2)).to.be.false;
+        });
+    });
+
     describe('.isNumber(variable)', function() {
         it('should return true if argument is a number', function() {
             expect(Util.isNumber(3.2)).to.be.true;
@@ -258,6 +269,24 @@ describe('Util module', function() {
         it(`should do nothing and return true if the directory exists`, function() {
             expect(Util.mkDirSync(path.resolve(__dirname))).to.be.true;
             expect(Util.mkDirSync('/')).to.be.true;
+        });
+    });
+
+    describe('.value(keys, object, defaultValue=undefined)', function() {
+        let object = null;
+        beforeEach(function() {
+            object = {name: 'Harrison', age: 22};
+        });
+
+        it(`should return the value for the first key that exists in the object`, function() {
+            expect(Util.value(['firstName', 'name'], object)).to.equals('Harrison');
+        });
+
+        it(`should return the default value if none of the keys exists
+            in the object or if argument two is not an object`, function() {
+            expect(Util.value('height', object)).to.be.undefined;
+            expect(Util.value('height', object, '5ft')).to.equal('5ft');
+            expect(Util.value('height', null, '5ft')).to.equal('5ft');
         });
     });
 });

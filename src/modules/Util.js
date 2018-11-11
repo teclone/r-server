@@ -7,6 +7,16 @@ import path from 'path';
 let toString = Object.prototype.toString;
 
 export default {
+
+    /**
+     * tests if a variable is a string
+     *@param {*} variable - variable to test
+     *@returns {boolean}
+    */
+    isString(variable) {
+        return typeof variable === 'string';
+    },
+
     /**
      * tests if a variable is a number
      *@param {*} variable - variable to test
@@ -255,5 +265,27 @@ export default {
             }
         }
         return target;
-    }
+    },
+
+    /**
+     * returns the value for the first key in the keys array that exists in the object
+     * otherwise, return the default value
+     *
+     *@param {string[]|string} keys - array of keys or a single string key
+     *@param {Object} object - the object
+     *@param {mixed} [defaultValue=undefined] - the default value to return if otherwise.
+     * defaults to undefined
+     *@return mixed
+    */
+    value(keys, object, defaultValue) {
+        keys = this.makeArray(keys);
+
+        if (this.isPlainObject(object)) {
+            for (let key of keys) {
+                if (this.isString(key) && typeof object[key] !== 'undefined')
+                    return object[key];
+            }
+        }
+        return defaultValue;
+    },
 };
