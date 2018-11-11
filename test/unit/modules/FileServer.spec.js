@@ -103,7 +103,7 @@ describe('FileServer Module', function() {
 
         it(`should run the process and return empty string if no default documents was found for
             the request url that points to a folder in one of the public paths`, function() {
-            expect(fileServer.validateRequest('/src', 'GET'))
+            expect(fileServer.validateRequest('/image', 'GET'))
                 .to.equals('');
         });
 
