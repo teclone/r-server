@@ -1,7 +1,7 @@
 import main from '../src/main.js';
 
 describe('main export', function() {
-    describe('.instance(configPath?)', function() {
+    describe('.instance(config)', function() {
         it('should return an RServer App instance', function() {
             expect(main.instance()).to.be.an('App');
         });
