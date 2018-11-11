@@ -1,4 +1,4 @@
-import main from '../src/main.js';
+import main from '../../src/main.js';
 
 describe('main export', function() {
     describe('.instance(config)', function() {

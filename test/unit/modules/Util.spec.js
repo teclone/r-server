@@ -1,4 +1,4 @@
-import Util from '../../src/modules/Util.js';
+import Util from '../../../src/modules/Util.js';
 import fs from 'fs';
 import path from 'path';
 import rimraf from 'rimraf';
@@ -252,11 +252,11 @@ describe('Util module', function() {
 
     describe('.mkDirSync(dir)', function() {
         it(`should create the directory recursively if it does not exist`, function() {
-            let dir = path.join(__dirname, '../../storage/media/images');
+            let dir = path.join(__dirname, '../../../storage/media/images');
             Util.mkDirSync(dir);
 
             let result = fs.existsSync(dir);
-            rimraf.sync(path.join(__dirname, '../../storage'));
+            rimraf.sync(path.join(__dirname, '../../../storage'));
             expect(result).to.be.true;
         });
 
