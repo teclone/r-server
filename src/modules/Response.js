@@ -88,4 +88,13 @@ Response.prototype.download = function(filePath, filename) {
     return this.fileServer.serveDownload(this, filePath, filename);
 };
 
+/**
+ * Redirect client to the given url
+ *@param {string} path - path to redirect user to
+ *@param {number} [status=302] - redirect status code
+*/
+Response.prototype.redirect = function(path, status) {
+    return this.status(status || 302).setHeader('Location', path).end();
+};
+
 export default Response;
