@@ -93,6 +93,34 @@ describe('Response Module', function() {
         });
     });
 
+    describe('#redirect(path, status)', function() {
+        it(`should redirect the client to the given path, using the given status code`, function(done) {
+            app.get('/redirect', (req, res) => {
+                return res.redirect('/index.html', 301);
+            });
+
+            request.get(host + 'redirect', (err, res, body) => {
+                expect(body).to.equal(
+                    fs.readFileSync(path.resolve(__dirname, '../../../public/index.html')).toString()
+                );
+                done();
+            });
+        });
+
+        it(`should default the status code to 302 if not given`, function(done) {
+            app.get('/redirect', (req, res) => {
+                return res.redirect('/index.html');
+            });
+
+            request.get(host + 'redirect', (err, res, body) => {
+                expect(body).to.equal(
+                    fs.readFileSync(path.resolve(__dirname, '../../../public/index.html')).toString()
+                );
+                done();
+            });
+        });
+    });
+
     describe('#download(filePath, filename)', function() {
         it(`should call FileServer#serveDownload method to send the content of the file specified by the relative file path back to the
         client for download. It should also suggest that the client saves the file using the given
