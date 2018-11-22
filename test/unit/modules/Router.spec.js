@@ -42,6 +42,16 @@ describe('Router', function() {
                 return route[0] === '/' && route[1] === callback && route[2] === options;
             });
         });
+
+        it(`should resolve options to an object with the middleware key set to the given middleware callback
+        if options argument is a callable`, function() {
+            const callback = function() {}, options = () => {};
+            router.options('/', callback, options);
+            expect(router.routes.options).to.be.lengthOf(1).and.to.satisfy(function(routes) {
+                let route = routes[0];
+                return route[0] === '/' && route[1] === callback && route[2].middleware === options;
+            });
+        });
     });
 
     describe('#head(url, callback, options?)', function() {
