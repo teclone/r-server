@@ -51,6 +51,9 @@ export default class Router {
      *@param {routeOptions} [options] - optional configuration options
     */
     set(method, url, callback, options) {
+        if (Util.isCallable(options))
+            options = {middleware: options};
+
         this.routes[method].push([url, callback, options || null]);
     }
 
