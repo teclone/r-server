@@ -1,6 +1,5 @@
 import RServer from '../../../src/main';
 import Router from '../../../src/modules/Router';
-import request from 'request';
 
 describe('Functional: Server Module', function() {
     /**
@@ -36,7 +35,9 @@ describe('Functional: Server Module', function() {
                 return res.json(req.body);
             });
 
+            request.debug = true;
             request.post(host + 'process-data', {form}, (err, res, body) => {
+                request.debug = false;
                 expect(JSON.parse(body)).to.deep.equals(form);
                 done();
             });

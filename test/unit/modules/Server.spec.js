@@ -2,7 +2,6 @@ import inbuiltConfig from '../../../src/.server.config.js';
 import Router from '../../../src/modules/Router.js';
 import Server from '../../../src/modules/Server.js';
 import path from 'path';
-import request from 'request';
 import sinon from 'sinon';
 
 describe('Server', function() {
