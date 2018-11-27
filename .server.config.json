@@ -1,0 +1,12 @@
+{
+    "env": "development",
+
+    "https": {
+        "enabled": false,
+        "enforce": true,
+        "credentials": {
+            "key": ".ssl/server.key",
+            "cert": ".ssl/server.crt"
+        }
+    }
+}
