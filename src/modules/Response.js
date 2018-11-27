@@ -1,8 +1,8 @@
 /**
  *@module Response
 */
-import {ServerResponse as Response} from 'http';
 import Util from './Util';
+import {ServerResponse as Response} from 'http';
 
 /*
  * catch the built in setHeader and end method.
@@ -53,7 +53,7 @@ Response.prototype.status = function(code) {
  * ends the response and returns a promise
  *
  *@param {string|Buffer} [data] - response data
- *@param {string} encodig - response data encoding
+ *@param {string} encoding - response data encoding
  *@returns {Promise}
 */
 Response.prototype.end = function(data, encoding) {
@@ -85,7 +85,7 @@ Response.prototype.json = function(data) {
  *@returns {Promise}
 */
 Response.prototype.download = function(filePath, filename) {
-    return this.fileServer.serveDownload(this, filePath, filename);
+    return this.fileServer.serveDownload(this.request, this, filePath, filename);
 };
 
 /**
