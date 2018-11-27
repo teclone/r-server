@@ -1,9 +1,9 @@
-import Logger from '../../../src/modules/Logger';
-import path from 'path';
-import fs from 'fs';
-import sinon from 'sinon';
+import config from '../../../src/.server.config.js';
 import { ERROR_LEVELS } from '../../../src/modules/Constants';
-import config from '../../../src/.rsvrc.json';
+import Logger from '../../../src/modules/Logger';
+import fs from 'fs';
+import path from 'path';
+import sinon from 'sinon';
 
 describe('Logger Module', function() {
     let logger = null,

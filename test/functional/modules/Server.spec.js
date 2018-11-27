@@ -1,9 +1,8 @@
 import RServer from '../../../src/main';
-import request from 'request';
 import Router from '../../../src/modules/Router';
+import request from 'request';
 
-
-describe('Server Module', function() {
+describe('Functional: Server Module', function() {
     /**
      *@type {App}
     */
@@ -120,46 +119,6 @@ describe('Server Module', function() {
                     });
                 });
             });
-        });
-
-        it(`should redirect to the https.redirectPort config parameter if running in production
-        mode`, function(done) {
-            const app = RServer.instance({
-                env: 'production',
-                https: {
-                    enabled: true,
-                    enforce: true,
-                    redirectPort: 443
-                }
-            });
-
-            app.get('/say-protocol', (req, res) => {
-                res.end(req.isHttps? 'https' : 'http');
-            });
-
-            app.listen(6000, function() {
-                //it should redirect to https://localhost:443/say-protocol
-                request('http://localhost:6000/say-protocol', {rejectUnauthorized: false}, (err) => {
-                    expect(err).to.be.an.instanceOf(Error);
-                    app.close(() => {
-                        done();
-                    });
-                });
-            });
-        });
-
-        it(`should redirect to the process.env.HTTPS_REDIRECT_PORT env setting if defined and
-        when running in production mode`, function() {
-            process.env.HTTPS_REDIRECT_PORT = 442;
-            const app = RServer.instance({
-                env: 'production',
-                https: {
-                    enabled: true,
-                    enforce: true,
-                }
-            });
-
-            expect(app.server.config.https.redirectPort).to.equals('442');
         });
     });
 });

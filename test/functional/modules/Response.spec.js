@@ -1,10 +1,10 @@
 import RServer from '../../../src/main';
-import request from 'request';
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
+import request from 'request';
 
 
-describe('Response Module', function() {
+describe('Functional: Response Module', function() {
     /**
      *@type {App}
     */

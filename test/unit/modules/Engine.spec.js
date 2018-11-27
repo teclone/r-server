@@ -1,8 +1,8 @@
+import config from '../../../src/.server.config.js';
 import Engine from '../../../src/modules/Engine.js';
-import sinon from 'sinon';
 import Logger from '../../../src/modules/Logger.js';
 import path from 'path';
-import config from '../../../src/.rsvrc.json';
+import sinon from 'sinon';
 
 describe('Engine', function() {
     let engine = null,
@@ -118,40 +118,34 @@ describe('Engine', function() {
         });
     });
 
-    describe('#validateRoute(callback, overrideMethod?)', function() {
-        it(`should validate the route by checking if callback is a callable and that the override
-            method if given is equal to the current request's method, returning boolean as a result`, function() {
-            //engine was created for a get request with path url of '/'
-            expect(engine.validateRoute(() => {}, 'GET')).to.be.true;
-            expect(engine.validateRoute(() => {})).to.be.true;
-
-            expect(engine.validateRoute(() => {}, 'POST')).to.be.false;
-        });
-
-        it(`should return false if argument one is not callable`, function() {
-            expect(engine.validateRoute({}, 'GET')).to.be.false;
-        });
-    });
-
-    describe('#validateOptions(options?)', function() {
-        it(`should validate the route's additional options and return true if the options are
-        valid.`, function() {
-            expect(engine.validateOptions()).to.be.true;
+    describe('#validateOptions(overrideMethod, options)', function() {
+        it(`should validate the overrideMethod and route's additional options and return true if everything
+        is valid`, function() {
+            expect(engine.validateOptions('', {})).to.be.true;
         });
 
         it(`should validate the route's options.methods array parameter, return true if the request
             method is among the array entries, else, return false`, function() {
-            expect(engine.validateOptions({
+            expect(engine.validateOptions('', {
                 methods: ['GET', 'POST']
             })).to.be.true;
 
-            expect(engine.validateOptions({
+            expect(engine.validateOptions('', {
                 methods: []
             })).to.be.false;
 
-            expect(engine.validateOptions({
+            expect(engine.validateOptions('', {
                 methods: ['POST', 'PUT']
             })).to.be.false;
+        });
+
+        it(`should return false if the routes overrideMethod is not equal to request method`, function() {
+            expect(engine.validateOptions('POST', {})).to.be.false;
+        });
+
+        it(`should return true if the routes overrideMethod is equal to request method and routes
+            methods options are valid`, function() {
+            expect(engine.validateOptions('get', {})).to.be.true;
         });
     });
 
@@ -187,44 +181,38 @@ describe('Engine', function() {
         });
     });
 
-    describe('runValidations(routeUrl, callback, options, overrideMethod)', function() {
-        it(`should validate the route and return false if callback is not a callable,
-            or if overrideMethod is given and not the same as the request method, or if the
-            options argument is given and request did not meet requirements, or if the route
+    describe('runValidations(routeUrl, options, overrideMethod)', function() {
+        it(`should validate the route and return false if overrideMethod is given and not the same as the request method,
+        or if the options argument is given and request did not meet requirements, or if the route
             url did not match the request url`, function() {
-            const callback = () => {};
 
-            expect(engine.runValidations('/index.html', callback)).to.be.false;
-            expect(engine.runValidations('/')).to.be.false;
-            expect(engine.runValidations('/', callback, null, 'POST')).to.be.false;
-
-            expect(engine.runValidations('/index.html', callback, {methods: ['POST']})).to.be.false;
+            expect(engine.runValidations('/index.html')).to.be.false;
+            expect(engine.runValidations('/', {}, 'POST')).to.be.false;
+            expect(engine.runValidations('/index.html', {methods: ['POST']})).to.be.false;
         });
 
         it(`should validate and return array of captured parameters if everything goes well`, function() {
-            const callback = () => {};
 
-            expect(engine.runValidations('/', callback)).to.deep.equals([]);
-            expect(engine.runValidations('/{view}?', callback)).to.deep.equals(['']);
+            expect(engine.runValidations('/')).to.deep.equals([]);
+            expect(engine.runValidations('/{view}?')).to.deep.equals(['']);
 
             engine = new Engine('users/1/posts/4/comments', 'GET', request, response, logger);
-            expect(engine.runValidations('users/{int:userId}/posts/{int:postId}/comments', callback))
+            expect(engine.runValidations('users/{int:userId}/posts/{int:postId}/comments'))
                 .to.deep.equals([1, 4]);
 
         });
 
         it(`should capture ending url tokens for a universal match`, function() {
-            const callback = () => {};
 
-            expect(engine.runValidations('*', callback)).to.deep.equals(['']);
+            expect(engine.runValidations('*')).to.deep.equals(['']);
         });
     });
 
-    describe('#runMiddleware(middleware, middlewareParams)', function() {
-        it(`should asynchronously run the given middleware callback passing in the request, response, next and
-        the array of middlewareParams`, function() {
+    describe('#runMiddlewares(middlewares, middlewareParams)', function() {
+        it(`should asynchronously run the given array of middleware callbacks passing in the request, response, next and
+        the array of middlewareParams to each middleware`, function() {
             const spy = sinon.spy();
-            return engine.runMiddleware(spy, [1, 2, 3]).then(() => {
+            return engine.runMiddlewares([spy], [1, 2, 3]).then(() => {
                 expect(spy.callCount).to.equals(1);
                 expect(spy.getCall(0).args[0]).to.equals(request);
                 expect(spy.getCall(0).args[1]).to.equals(response);
@@ -235,39 +223,58 @@ describe('Engine', function() {
             });
         });
 
-        it(`should resolve to false if the middleware fails the execute the next callback, it
-            should also end the response if the middleware did not end it`, function() {
-            sinon.spy(response, 'end');
-            return engine.runMiddleware(() => {}, []).then((result) => {
+        it(`should resolve to false if any of the middlewares fails to execute the next callback`, function() {
+            return engine.runMiddlewares([() => {}], []).then((result) => {
                 expect(result).to.be.false;
-                expect(response.end.callCount).to.equals(1);
-                expect(response.finished).to.be.true;
-                response.end.restore();
             });
         });
 
-        it(`should resolve to true if the middleware executed the next callback`, function() {
-            return engine.runMiddleware((req, res, next) => {next();}, []).then((result) => {
+        it(`should resolve to true if all the middlewares executed the next callback`, function() {
+            const middlewares = new Array(3).fill((req, res, next) => {
+                next();
+            });
+
+            return engine.runMiddlewares(middlewares, []).then((result) => {
                 expect(result).to.be.true;
             });
         });
     });
 
     describe('#run(callback, params, options)', function() {
-        it(`should asynchronously call the runMiddleware method on each middleware that applies to the
+
+        it(`should asynchronously call the runMiddlewares method on each middlewares that applies to the
         route, and running the route callback if all the executed middlewares executes the next
         callback`, function() {
-            const middleware = (req, res, next) => {next();};
-            const middlewares = [
-                ['/', sinon.spy(middleware), null],
-                ['/api/some-endpoint', sinon.spy(middleware), null], //does not apply
-                ['*', sinon.spy(middleware), {methods: ['POST']}], //does not apply as request is GET
-            ];
+
+            const middlewares = new Array(3).fill(sinon.spy((req, res, next) => {
+                next();
+            }));
+
+            const middlewares2 = new Array(3).fill(sinon.spy((req, res, next) => {
+                next();
+            }));
+
+            const middlewares3 = new Array(3).fill(sinon.spy((req, res, next) => {
+                next();
+            }));
+
             const callback = sinon.spy();
-            return engine.use(middlewares).run(callback, [1, 2, 4]).then(() => {
-                expect(middlewares[0][1].called).to.be.true;
-                expect(middlewares[1][1].called).to.be.false;
-                expect(middlewares[2][1].called).to.be.false;
+
+            engine.use([
+                //applies to route
+                ['/', middlewares, null],
+                //does not apply
+                ['/api/some-endpoint', middlewares2, null],
+                //applies to all routes
+                ['*', middlewares3, null],
+            ]);
+
+            return engine.run(callback, [1, 2, 4], {}).then(() => {
+                expect(middlewares[0].callCount).to.equals(3);
+
+                expect(middlewares2[0].callCount).to.equals(0);
+
+                expect(middlewares3[0].callCount).to.equals(3);
 
                 expect(callback.called).to.be.true;
             });
@@ -275,24 +282,36 @@ describe('Engine', function() {
 
         it(`should stop immediately if any of the applied middlewares fails to execute the
         next callback`, function() {
-            const middleware = (req, res, next) => {next();};
-            const middlewares = [
-                ['/', sinon.spy(middleware), null],
-                ['/', sinon.spy(() => {}), null], //did not call the next callback
-                ['*', sinon.spy(middleware), null], //should not be called
-            ];
+
+            const middlewares = new Array(3).fill(sinon.spy((req, res, next) => {
+                next();
+            }));
+
+            const middlewares2 = new Array(3).fill(sinon.spy());
+
             const callback = sinon.spy();
-            return engine.use(middlewares).run(callback, [1, 2, 4]).then(() => {
-                expect(middlewares[0][1].called).to.be.true;
-                expect(middlewares[1][1].called).to.be.true;
-                expect(middlewares[2][1].called).to.be.false;
+
+            engine.use([
+                //applies to route
+                ['/', middlewares, null],
+
+                //applies to all routes
+                ['*', middlewares2, null],
+            ]);
+
+            return engine.run(callback, [1, 2, 4], {}).then(() => {
+                expect(middlewares[0].callCount).to.equals(3);
+
+                expect(middlewares2[0].callCount).to.equals(1);
 
                 expect(callback.called).to.be.false;
             });
         });
 
         it(`should also run any localized middleware/middlewares defined on the route`, function() {
-            const middleware = sinon.spy((req, res, next) => {next();});
+            const middleware = sinon.spy((req, res, next) => {
+                next();
+            });
             const callback = sinon.spy();
 
             return engine.run(callback, [], {middlewares: new Array(5).fill(middleware)})

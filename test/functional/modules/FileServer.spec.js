@@ -1,10 +1,10 @@
 import RServer from '../../../src/main';
-import request from 'request';
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
+import request from 'request';
 import sinon from 'sinon';
 
-describe('FileServer Module', function() {
+describe('Functional: FileServer Module', function() {
     /**
      *@type {App}
     */
@@ -98,6 +98,130 @@ describe('FileServer Module', function() {
             request.get(host + 'serve-download', (err, res) => {
                 expect(app.server.logger.fatal.called).to.be.true;
                 app.server.logger.fatal.restore();
+                expect(res.statusCode).to.equals(200);
+                done();
+            });
+        });
+    });
+
+    describe('Range request', function() {
+        it(`should serve starting from the start point to the end of the file if range does not
+        have endpoint specified, with status code 206`, function(done) {
+            app.get('/serve-download', function(req, res) {
+                return res.download('test/helpers/multipart.log');
+            });
+
+            request.get(host + 'serve-download', {
+                headers: {
+                    Range: 'bytes=0-'
+                }
+            }, (err, res) => {
+                expect(res.statusCode).to.equals(206);
+                done();
+            });
+        });
+
+        it(`should serve the given range bytes only, with status code 206`, function(done) {
+            app.get('/serve-download', function(req, res) {
+                return res.download('test/helpers/multipart.log');
+            });
+
+            request.get(host + 'serve-download', {
+                headers: {
+                    Range: 'bytes=0-503'
+                }
+            }, (err, res) => {
+                expect(res.statusCode).to.equals(206);
+                done();
+            });
+        });
+
+        it(`should send 416 error status code if range is not satisfiable`, function(done) {
+            app.get('/serve-download', function(req, res) {
+                return res.download('test/helpers/multipart.log');
+            });
+
+            request.get(host + 'serve-download', {
+                headers: {
+                    Range: 'bytes=12-503444444444'
+                }
+            }, (err, res) => {
+                expect(res.statusCode).to.equals(416);
+                done();
+            });
+        });
+
+        it(`should send 416 error status code if range is not satisfiable`, function(done) {
+
+            app.get('/serve-download', function(req, res) {
+                return res.download('test/helpers/multipart.log');
+            });
+
+            request.get(host + 'serve-download', {
+                headers: {
+                    Range: 'bytes=12-503444444444'
+                }
+            }, (err, res) => {
+                expect(res.statusCode).to.equals(416);
+                done();
+            });
+        });
+
+        it(`should server the whole document with status code of 200 if the if-range header is set
+        but content negotiation failed`, function(done) {
+
+            app.get('/serve-download', function(req, res) {
+                return res.download('test/helpers/multipart.log');
+            });
+
+            request.get(host + 'serve-download', {
+                headers: {
+                    'If-Range': 'somehash',
+                    Range: 'bytes=12-56'
+                }
+            }, (err, res) => {
+                expect(res.statusCode).to.equals(200);
+                done();
+            });
+        });
+
+        it(`should server the requested range if the if-range header is set
+        and content has not changed with status code 216`, function(done) {
+
+            app.get('/serve-download', function(req, res) {
+                return res.download('test/helpers/multipart.log');
+            });
+
+            request.get(host + 'serve-download', {
+                headers: {
+                    Range: 'bytes=12-56'
+                }
+            }, (err, res) => {
+                const eTag = res.headers['etag'];
+                request.get(host + 'serve-download', {
+                    headers: {
+                        'If-Range': eTag,
+                        Range: 'bytes=12-56'
+                    }
+                }, (err, res) => {
+                    expect(res.statusCode).to.equals(206);
+                    done();
+                });
+            });
+        });
+
+        it(`should server the whole document if a multipart range request is recieved. as we
+        do not support multipart range files at the moment.`, function(done) {
+
+            app.get('/serve-download', function(req, res) {
+                return res.download('test/helpers/multipart.log');
+            });
+
+            request.get(host + 'serve-download', {
+                headers: {
+                    Range: 'bytes=12-56, 57-90, 104-500'
+                }
+            }, (err, res) => {
                 expect(res.statusCode).to.equals(200);
                 done();
             });

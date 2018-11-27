@@ -1,7 +1,7 @@
+import config from '../../../src/.server.config.js';
 import FileServer from '../../../src/modules/FileServer';
-import fs from 'fs';
-import config from '../../../src/.rsvrc.json';
 import Logger from '../../../src/modules/Logger';
+import fs from 'fs';
 import path from 'path';
 
 describe('FileServer Module', function() {
