@@ -410,8 +410,8 @@ export default {
 
         /** https credentials, use  */
         'credentials': {
-            'key': '.ssl/server.key',
-            'cert': '.ssl/server.crt',
+            'key': '.cert/server.key',
+            'cert': '.cert/server.crt',
             //'pfx': 'relativePath',
             //'passphrase': 'pfx passphrase'
         }
@@ -470,8 +470,8 @@ export default {
 
         /** https credentials, use  */
         'credentials': {
-            'key': '.ssl/server.key',
-            'cert': '.ssl/server.crt',
+            'key': '.cert/server.key',
+            'cert': '.cert/server.crt',
             //'pfx': 'relativePath',
             //'passphrase': 'pfx passphrase'
         }
