@@ -6,7 +6,7 @@
 [![npm version](https://badge.fury.io/js/r-server.svg)](https://badge.fury.io/js/r-server)
 ![npm](https://img.shields.io/npm/dt/r-server.svg)
 
-RServer is a lightweight, fully integrated [node.js](https://nodejs.org/en/docs/guides/anatomy-of-an-http-transaction/) web server, optimized for development and production needs, with inbuilt routing engine, static file server, body parser (has support for multipart and file uploads), middleware support, request-response profiler, excellent exception handling, error logging, security and lots more.
+RServer is a fully integrated [node.js](https://nodejs.org/en/docs/guides/anatomy-of-an-http-transaction/) web server, optimized for development and production needs, with inbuilt routing engine, static file server with range request support, body parser (has support for multipart and file uploads), middleware support, request-response profiler, excellent exception handling, error logging, CORS functionality, https easy setup and lots more.
 
 Despite being configurable for advanced usage, it requires no configurations to get started. It is fully compatible with [express.js](https://expressjs.com/) and provides even more functionalities out of the box.
 
@@ -58,9 +58,11 @@ R-Server gives you many excellent features out of the box, saving you the stress
 
 8. [Custom Http Error Documents](#custom-http-error-documents)
 
+9. [HTTPS Support](#https-support)
+
 ### Request Body Parser
 
-It comes with an inbuilt request body parser, that parses all forms of http request data such as **urlencoded query strings**, **application/json data**, **application/x-www-form-urlencoded data** and **multipart/form-data** formats. Parsed fields and files are made available on the request object through the `query`, `body`, `data` and `files` property. Uploaded files are stored in a tmp folder, **storage/tmp** folder by default unless otherwise stated in a config file.
+It comes with an inbuilt request body parser, that supports all forms of http request data such as **urlencoded query strings**, **application/json data**, **application/x-www-form-urlencoded data** and **multipart/form-data** formats. Parsed fields and files are made available on the request object through the `query`, `body`, `data` and `files` property. Uploaded files are stored in a tmp folder, **storage/tmp** folder by default unless otherwise stated in a config file.
 
 The `data` property is a combination of all fields in the `query` and `body` properties, with values in the `body` property winning the battle in case of conflicting field keys.
 
@@ -89,26 +91,41 @@ app.put('users/{user-id}/profile-picture', (req, res, userId) => {
 
 ### Routing Engine
 
-It provides an excellent routing engine, with parameter capturing and can incoporate data type enforcement on captured parameters. All http method verbs are made available in the router including `get`, `post`, `put`, `delete`, `options`, `head` and the universal `all` method.
+It provides an excellent routing engine, with parameter capturing and can incorporate data type enforcement on captured parameters. All http method verbs are made available in the router including `get`, `post`, `put`, `delete`, `options`, `head` and the universal `all` method.
 
 Unlike in [express.js](https://expressjs.com/), parameter capturing sections are enclosed in curly braces `{}` and you are not prevented from using hyphen in your parameter names.
 
-It also supports chained routes through the `Router#route(url)` method.
+It also supports chained routes through the `Router#route(url)` method. The callback method can be asynchronous or can return promises.
+
+**Usage Example**:
 
 ```javascript
-//import rserver
-const RServer = require('r-server');
-const fs = require('fs');
+/** get route */
+app.get(url, callback, options);
 
-//get an app instance
-const app = RServer.instance();
+/** post route */
+app.post(url, callback, options);
 
-//start the instance
-app.listen(process.env.PORT, () => {
-    console.log('listening');
-});
+/** put route */
+app.put(url, callback, options);
 
-//add some routes
+/** head route */
+app.head(url, callback, options);
+
+/** delete route */
+app.delete(url, callback, options);
+
+/** options route */
+app.options(url, callback, options);
+
+/** all method route */
+app.all(url, callback, options);
+```
+
+**Data Type Enforcement on Captured Parameter**:
+
+```javascript
+//no data type enforcement
 app.get('users/{user-id}/profile', (req, res, userId) => {
     userId = /^\d+$/.test(userId)? Number.parseInt(userId) : 0;
     if (userId === 0) {
@@ -138,12 +155,18 @@ app.get('users/{int:user-id}/profile', (req, res, userId) => {
     }
     //continue processing the request
 });
+```
 
+**Chained Routes**:
+
+```javascript
 //chained route
 app.route('users/{int:userId}')
+
     .put((req, res, userId) => {
         //update user profile
     });
+
     .delete((req, res, userId) => {
         //delete user profile
     });
@@ -151,90 +174,94 @@ app.route('users/{int:userId}')
 
 ### Static File Server
 
-It provides static file services out of the box, responding to `GET`, `HEAD`, & `OPTIONS` requests made on such static files. By default, it serves files from the `./public` folder. **It does not serve files that starts with dot `.` character or files within a folder that starts with the dot `.` character**.
+It provides static file services out of the box, responding to `GET`, `HEAD`, & `OPTIONS` requests made on such static files. By default, it serves files from the `./public` folder. **It does not serve files that starts with dot `.` character or files within a folder that starts with the dot `.` character** unless the `serveDotFiles` configuration option is set to true. It also supports byte range requests that is crucial when serving large file sizes.
 
 The list of Default documents includes `index.html`, `index.css`, `index.js`. See [configuring-rserver](#configuring-rserver) on how to configure the list of default documents and so many other options.
 
 It uses node.js inbuilt [writable & readable stream API](https://nodejs.org/api/stream.html#stream_class_stream_writable) while serving files for performance gain, user experience and minimal usage of system resources.
 
-It provides excellent content negotiation [headers](https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html) (`Cache-Control`, `ETag` & `Last-Modified` headers) and would negotiate contents by checking for the presence of the  `if-none-match` & `if-modified-since` http request headers.
+It provides excellent content negotiation [headers](https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html) (`Cache-Control`, `ETag` & `Last-Modified`) and would negotiate contents by checking for the presence of the  `if-none-match`, `if-modified-since`, & the `if-range` http request headers.
 
 ### Middleware Support
 
-It supports the use of middlewares through the `Router.use(middleware)` method and this makes it extensible. The middleware must be a `callable` (function). The middleware can be an asynchronous function or a function that returns promise.
+It supports the use of middlewares through the `Router#use(url, middlewares, options)` method and this makes it extensible. The middleware must be a `callable` (function) or an array of callable. It supports asynchronous middlewares by default. Each middleware can be an asynchronous function or a function that returns promise.
 
 ```javascript
 //middleware that runs on all request
 app.use('*', (req, res, next) => {
-    if(condition) {
-        next();
-    }
-    else {
-        return res.status(403).end();
-    }
+    if(true)
+        return next();
+    else
+        return res.status(401).end();
 });
 
 //middleware that runs on the root domain only, and only on post requests
-app.use('/', (req, res, next) => {
-    if(condition) {
-        next();
-    }
-    else {
-        return res.status(403).end();
-    }
-}, {methods: ['POST']});
+app.use('/', (req, res, next) => next(), {methods: ['POST']};
 
-//middleware that runs on all users domain, and only on post and put requests
-app.use('/users/*', (req, res, next) => {
-    if(condition) {
-        next();
-    }
-    else {
-        return res.status(403).end();
-    }
-}, {methods: ['POST', 'PUT']});
+//middleware that runs on all paths starting with /users/userId
+app.use('users/{userId}/*', (req, res, next, userid) => next());
+
+//use array of middlewares that applies to post method
+app.use(url, [middleware1, middleware2], 'POST');
 ```
 
 ### Mountable Router
 
-It gives you the same feature that `express.Router()` offers, with additional ability to specify if the mini app router should inherit the main app's middleware when it gets mounted.
-
-**call signature:**
-
-```javascript
-// inherit middlewares defaults to true
-RServer.Router(inheritMiddlewares?);
-```
+It gives you the same feature that `express.Router()` offers, with additional ability to specify if the mini app router should inherit the main app's middlewares when it gets mounted.
 
 ```javascript
 //file routes/AuthRoutes.js
-const rServer = require('r-server'),
-    router = rServer.Router(false); // do not inherit middlewares, default is true if not given
+import RServer from 'r-server';
 
-//define specific middleware for auth. runs for every auth POST request
-router.use('*', (req , res, next) => {
-    next();
-}, {method: 'POST'});
+//create a mini router, that does not inherit base app middlewares.
+const authRoutes = RServer.Router(false);
 
-router.route('login')
-    .get((req, res) => {})
-    .post((req, res) => {});
+//define specific middlewares for auth
+authRoutes.use('*', (req , res, next) => {
+    if(true)
+        return next();
+    else
+        return res.status(401).end();
+});
 
-router.route('signup')
-    .get((req, res) => {})
-    .post((req, res) => {});
+//use chained route
+authRoutes.route('login')
 
-module.exports = router;
+    .get((req, res) => {
+        return res.end('login page');
+    })
+
+    .post((req, res) => {
+        return res.end('process posted data');
+    });
+
+authRoutes.route('signup')
+
+    .get((req, res) => {
+        return res.end('signup page');
+    })
+
+    .post((req, res) => {
+        return res.end('process posted data');
+    });
+
+export default Authroutes;
 ```
 
-**import to main app:**
+**import to main app**:
 
 ```javascript
-//file app.js
-const rServer = require('r-server'),
-    authRoutes = require('routes/AuthRoutes.js'),
-    app = rServer.instance();
+import RServer from 'r-server';
+import authRoutes from './routes/authRoutes';
 
+const app = RServer.instance();
+
+//http server will listen on port process.env.PORT if set, else it listens on port 4000
+app.listen(null, () => {
+    console.log('listening');
+});
+
+//mount the auth routes
 app.mount('auth', authRoutes);
 
 //middleware will not affect auth routes, as it does not inherit it
@@ -242,18 +269,15 @@ app.use('*', (req, res, next) => {
     next();
 });
 
-app.get('/', (req, res) => {});
-app.get('/user/{int:userId}/profile', (rq, res) => {});
-
-app.listen(8000, () => {
-    console.log('listening');
+app.get('/', (req, res) => {
+    return res.end('Welcome');
 });
 ```
 
 ### Error Handling & Reporting
 
 It logs errors to a user defined error log file which defaults to **.error.log** if not overriden.
-When running in development mode, it sends error message and trace back to the client (browsers, etc) for easy of developement. In production mode, it hides the error message from the client, but still logs the error to the error log file.
+When running in development mode, it sends error message and trace back to the client (browsers, etc). In production mode, it hides the error message from the client, but still logs the error to the error log file.
 
 When using Promises, we encourage you to always have a catch method attached or always include a return statement before the promise. By returning all promises in your codes, any exception will be handled automatically for you by our internal error handler for the event loop.
 
@@ -264,8 +288,9 @@ const rServer = require('r-server'),
 const userModel = require('model/UserModel');
 
 app.get('/users', (req, res) => {
-    //notice that the usermodel promise is returned with a return statement
+    //always return promises. we will handle any errors for you
     return userModel.find().exec().then(users => {
+        //return promise
         return res.json({
             status: 'success',
             data: {
@@ -275,7 +300,7 @@ app.get('/users', (req, res) => {
     });
 });
 
-app.listen(8000, () => {
+app.listen(null, () => {
     console.log('listening');
 });
 ```
@@ -283,43 +308,38 @@ app.listen(8000, () => {
 ### Response Utility Methods
 
 Just like in express.js, there are some extended methods made available on the Response object,
-that includes `status`, `download`, `setHeader`, `setHeaders`, `json` and `redirect` methods.
+that includes the following:
 
 ```javascript
+/**
+ * set status code. returns this, so it is chainable
+*/
+res.status(statusCode: number);
 
-//end method returns promise
-app.get('/test', (req, res) => {
-    return res.end().then(status => {
-        console.log('sent');
-    });
-});
+/**
+ * set response header, returns this, so it is chainable
+*/
+res.setHeader(name: string, value: mixed);
 
-//send json response back to client
-app.get('/test', (req, res) => {
-    return res.json(data); // returns promise
-});
+/**
+ * set response headers. returns this, so it is chainable
+*/
+res.setHeaders(headers: object);
 
-//set response status code
-app.get('/test', (req, res) => {
-    return res.status(201).json(data);
-});
+/**
+ * send json response, returns promise.
+*/
+res.json(data: string|jsonObject)
 
-//set response header
-app.get('/test', (req, res) => {
-    return res.status(201).setHeader('x-header', 'x-value').json(data);
-});
+/**
+ * redirect client. returns promise
+*/
+res.redirect(absoluteOrRelativePath: string, statusCode=302)
 
-//send download
-app.get('/test', (req, res) => {
-    return res.download(relativePathToFile, suggestedDownloadSaveName).then(status => {
-        console.log('sent');
-    });
-});
-
-// redirect client
-app.get('/test', (req, res) => {
-    return res.redirect(path, status=302);
-});
+/**
+ * send download file to client. returns promise
+*/
+res.download(fileAbsoluteOrRelativePath: string, suggestedDownloadSaveName: string)
 ```
 
 ### Custom HTTP Error Documents
@@ -328,58 +348,78 @@ RServer is configurable, and allows the ability to define custom http error file
 
 ## Configuring RServer
 
-RServer uses an internal `.rsvrc.json` file that defines default server configurations for your project. the full config options is as shown below:
+RServer uses an internal `.server.config.js` file that defines default server configurations for your project. the full config options is as shown below:
 
-```json
-{
-    "env": "development",
+```javascript
+export default {
 
-    "errorLog": ".error.log",
+    'env': 'development',
 
-    "accessLog": ".access.log",
+    'errorLog': '.error.log',
 
-    "profileRequest": false,
+    'accessLog': '.access.log',
 
-    "tempDir": "storage/temp",
+    'profileRequest': false,
 
-    "publicPaths": [
-        "public"
+    'tempDir': 'storage/temp',
+
+    'publicPaths': [
+        'public'
     ],
 
-    "cacheControl": "no-cache, max-age=86400",
+    'serveDotFiles': false,
 
-    "encoding": "latin1",
+    'cacheControl': 'no-cache, max-age=86400',
 
-    "maxBufferSize": 50000000,
+    'encoding': 'latin1',
 
-    "mimeTypes": {
-        "json": "application/json",
-        "html": "text/html",
-        "xml": "text/xml",
-        "js": "text/javascript",
-        "css": "text/css",
-        "jpg": "image/jpeg",
-        "jpeg": "image/jpeg",
-        "png": "image/png",
-        "mp3": "audio/mp3",
-        "mp4": "video/mp4",
-        "pdf": "application/pdf"
+    'maxBufferSize': 50000000,
+
+    'mimeTypes': {
+        'json': 'application/json',
+        'html': 'text/html',
+        'xml': 'text/xml',
+        'js': 'text/javascript',
+        'css': 'text/css',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'mp3': 'audio/mp3',
+        'mp4': 'video/mp4',
+        'pdf': 'application/pdf'
     },
 
-    "defaultDocuments": [
-        "index.html",
-        "index.js",
-        "index.css"
+    'defaultDocuments': [
+        'index.html',
+        'index.js',
+        'index.css'
     ],
 
-    "httpErrors": {
-        "baseDir": "",
-        "404": ""
+    'httpErrors': {
+        'baseDir': '',
+        '404': ''
+    },
+
+    'https': {
+        'enabled': false,
+        /** can be overriden by setting process.env.HTTPS_PORT */
+        'port': 5000,
+
+        /** enforce https by redirecting all http request to https */
+        'enforce': true,
+
+        /** https credentials, use  */
+        'credentials': {
+            'key': '.ssl/server.key',
+            'cert': '.ssl/server.crt',
+            //'pfx': 'relativePath',
+            //'passphrase': 'pfx passphrase'
+        }
     }
-}
+};
 ```
 
-You can override these options by creating and placing a `.rsvrc.json` file in your project's root directory. You can even name it differently or place it anywhere provided you supply the file's relative path when creating an instance, like below:
+You can override these options by creating your own custom config file in your project's root directory. You can even name it differently or place it anywhere provided you supply the file's relative path when creating an instance.
 
 ```javascript
 const rServer = require('r-server'),
@@ -398,27 +438,46 @@ app2.get('/', (req, res) => {
 });
 ```
 
-The two instances above are separate, knows nothing about each other and each uses its own config file, they can even share the same config file. **Note that the config parameter can be the config object rather than a path string pointing to config file location**.
+The two instances above are separate, knows nothing about each other and each uses its own config file, they can even share the same config file. **Note that the config parameter can be the config object rather than a path string**.
 
-### Config Options Explained
+Be default, RServer will look for your custom server config file in your project root directory. The following names are supported by default.
 
-- **env**: Defines the runtime environment mode to be used. Note that it also picks the value of `process.env.NODE_ENV` if defined.
+```javascript
+[
+    '.server.json',
+    '.server.config.json',
+    '.server.config.js',
+    '.server.js'
+]
+```
 
-- **tempDir**: defines the relative path to your project's temp directory, while uploaded files gets stored temporary for the duration of a request.
+### HTTPS Support
 
-- **publicPaths**: defines the relative path(s) from where to serve out static files. Note that it does not serve out files starting with dot character.
+It is easy to setup a **https server** along with your default http server. Use the `https` config option to declare your https server configuration settings. You can use [letsencrypt](https://letsencrypt.org/) easily to obtain ssl certificates for your application. You can even enforce https for all requests.
 
-- **cacheControl**: defines cache-control header to use when negotiating static files.
+**https configuartion**:
 
-- **encoding**: defines the encoding used by your project. This should not be overriden.
+```javascript
+export default {
 
-- **maxBufferSize**: defines the maximum buffer that a given request can send to the server. If it exceeds this setting, the request will be terminated for security reasons.
+    'https': {
+        'enabled': false,
+        /** can be overriden by setting process.env.HTTPS_PORT */
+        'port': 5000,
 
-- **mimeTypes**: defines a list of file extension to their mime type map. You should not override this. More mime types are will be included, and you can help us out by increasing the list.
+        /**enforce https for all requests.*/
+        'enforce': true,
 
-- **defaultDocuments**: defines a list of default documents that should be served when a request points to a folder in one of the defined static file directories.
-
-- **httpErrors**: defines a custom map of http error documents that should be served by the web server for http server errors. The base directory is a relative path that is defined to ease you from repeating the same relative path multiple times.
+        /** https credentials, use  */
+        'credentials': {
+            'key': '.ssl/server.key',
+            'cert': '.ssl/server.crt',
+            //'pfx': 'relativePath',
+            //'passphrase': 'pfx passphrase'
+        }
+    }
+};
+```
 
 ## Contributing
 
@@ -440,6 +499,6 @@ We welcome your own contributions, ranging from code refactoring, documentation 
 
 ## About Project Maintainers
 
-This project is maintained by [harrison ifeanyichukwu](mailto:harrisonifeanyichukwu@gmail.com), a young, passionate full stack web developer, an [MDN](https://developer.mozilla.org/en-US/profiles/harrison-feanyichukwu) documentator, maintainer of w3c [xml-serializer](https://www.npmjs.com/package/@harrison-ifeanyichukwu/xml-serializer) project, node.js [Rollup-All](https://www.npmjs.com/package/r-server) plugin and other amazing projects.
+This project is maintained by **Harrison Ifeanyichukwu**, a young, passionate full stack web developer, an [MDN](https://developer.mozilla.org/en-US/profiles/harrison-feanyichukwu) documentator, maintainer of w3c [xml-serializer](https://www.npmjs.com/package/@harrison-ifeanyichukwu/xml-serializer) project, node.js [Rollup-All](https://www.npmjs.com/package/r-server) plugin and other amazing projects.
 
 He is available for hire, ready to work on amazing `PHP`, (Symphony, Drupal, Laravel), `Node.js`, `React`, `JavaScript`, `HTML5`, `CSS` and database projects. Looks forward to hearing from you soon!!!
