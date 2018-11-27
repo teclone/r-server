@@ -9,7 +9,7 @@ export default {
     /**
      * returns an app instance
      *@param {string|Object} [config] - an optional config object or a string relative path to a
-     * user defined config file defaults to ".rsvrc.json"
+     * user defined config file defaults to ".server.config.json"
      *@returns {App}
     */
     instance(config) {
