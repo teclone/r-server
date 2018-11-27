@@ -10,7 +10,7 @@ export default class Engine {
     /**
      *@param {string} url - the request url
      *@param {string} method - the request method
-     *@param {http.IncomingMessage} request - the request instance
+     *@param {Request} request - the request instance
      *@param {Response} response - the response instance
      *@param {Logger} logger - the logger instance
     */
@@ -125,52 +125,36 @@ export default class Engine {
     /**
      * validate that the options are ok
      *@private
-     *@param {routeOptions} [options] - optional configuration options
+     *@param {routeOptions|middlewareOptions} options - optional configuration options
      *@returns {boolean}
     */
-    validateOptions(options) {
-        if (!Util.isPlainObject(options))
-            return true;
+    validateOptions(overrideMethod, options) {
+        if (overrideMethod && this.method !== overrideMethod.toUpperCase())
+            return false;
 
         let result = true;
 
+        //validate methods
         const methods = Util.value(['methods', 'method'], options);
         if (methods !== undefined) {
             result = Util.makeArray(methods).some(method => {
                 return typeof method === 'string' && method.toUpperCase() === this.method;
             });
         }
-        //validate request method. the request method should be among the options.methods array
-        //if given.
-
         return result;
-    }
-
-    /**
-     *@private
-     *@description - checks if the request method is ok and that callback is a function
-     *@param {Function} callback - the callback function
-     *@param {string} [overrideMethod] - method to use
-     *@returns {boolean}
-    */
-    validateRoute(callback, overrideMethod) {
-        return Util.isCallable(callback) && (!overrideMethod ||
-            this.method === overrideMethod.toUpperCase());
     }
 
     /**
      * runs the whole processes
      *@private
      *@param {string} routeUrl - the route's url
-     *@param {Function} callback - callback function
      *@param {routeOptions} [options] - optional configuration options
      *@param {string} [overrideMethod] - a string indicating the only method allowed for the route
      *@returns {boolean|Array}
     */
-    runValidations(routeUrl, callback, options, overrideMethod) {
+    runValidations(routeUrl, options, overrideMethod) {
 
-        if (!this.validateRoute(callback, overrideMethod) || !this.validateOptions(options) ||
-            !this.matchUrl(routeUrl))
+        if (!this.validateOptions(overrideMethod, options) || !this.matchUrl(routeUrl))
             return false;
 
         //split the tokens.
@@ -195,7 +179,6 @@ export default class Engine {
                 params.push(['asterisks', urlTokens.slice(i).join('/')]);
                 break;
             }
-
             this.captureRouteParameter(routeToken, urlToken, params);
         }
 
@@ -207,23 +190,24 @@ export default class Engine {
     /**
      * asynchronously runs the middleware
     */
-    async runMiddleware(middleware, middlewareParams) {
-        let cont = false,
+    async runMiddlewares(middlewares, middlewareParams) {
+        let cont = true,
             next = function() {
                 cont = true;
             };
 
-        await middleware(this.request, this.response, next, ...middlewareParams);
-
-        //if middleware did not say continue and did not end the response, end it
-        if (!cont && !this.response.finished)
-            this.response.end();
-
+        for (const middleware of middlewares) {
+            cont = false;
+            await middleware(this.request, this.response, next, ...middlewareParams);
+            if (!cont) {
+                break;
+            }
+        }
         return cont;
     }
 
     /**
-     * asynchronously call the runMiddleware method on each middleware that applies to the
+     * asynchronously call the runMiddlewares method on each middleware that applies to the
      * route, and running the route callback if all the executed middlewares executes the next
      * callback
      *@private
@@ -232,33 +216,23 @@ export default class Engine {
      *@param {routeOptions} [options] - optional configuration options
     */
     async run(callback, params, options) {
-        options = Util.isPlainObject(options)? options : {};
-
         //run middlewares
-        for (const [url, middleware, options] of this.middlewares) {
+        for (const [url, middlewares, options] of this.middlewares) {
 
-            let middlewareParams = this.runValidations(url, middleware, options);
-            if (middlewareParams === false || await this.runMiddleware(middleware, middlewareParams))
+            let middlewareParams = this.runValidations(url, options || {});
+            if (middlewareParams === false || await this.runMiddlewares(middlewares, middlewareParams))
                 continue;
-
-            return;
+            else
+                return;
         }
 
-
+        //run route localized middlewares.
         const middlewares = Util.makeArray(
             Util.value(['middlewares', 'middleware'], options)
-        );
-        for (const middleware of middlewares) {
-            if (!Util.isCallable(middleware))
-                continue; //skip
+        ).filter(middleware => Util.isCallable(middleware));
 
-            if (await this.runMiddleware(middleware, params))
-                continue;
-
-            return;
-        }
-
-        await callback(this.request, this.response, ...params);
+        if (await this.runMiddlewares(middlewares, params))
+            await callback(this.request, this.response, ...params);
     }
 
     /**
@@ -270,32 +244,30 @@ export default class Engine {
      *@param {string} [overrideMethod] - a string indicating the only method allowed for the route
      *@returns {Promise} - the promise resolves to a boolean value
     */
-    process(routeUrl, callback, options, overrideMethod) {
+    async process(routeUrl, callback, options, overrideMethod) {
+        options = Util.isPlainObject(options)? options : {};
+
         // if it has been resolved, return
         if (this.resolved)
-            return Promise.resolve(true);
+            return true;
 
         routeUrl = this.resolveUrl(routeUrl);
-        const params = this.runValidations(routeUrl, callback, options, overrideMethod);
+        const params = this.runValidations(routeUrl, options, overrideMethod);
 
         if (!params)
-            return Promise.resolve(false);
+            return false;
 
         this.resolved = true;
-        return new Promise((resolve) => {
 
-            //here, we have our callback now
-            return this.run(callback, params, options)
-
-                .then(() => {
-                    resolve(true);
-                })
-
-                .catch(ex => {
-                    this.logger.fatal(ex, this.response);
-                    resolve(true);
-                });
-        });
+        try {
+            await this.run(callback, params, options);
+            if (!this.response.finished)
+                this.response.end();
+        }
+        catch(ex) {
+            this.logger.fatal(ex, this.response);
+        }
+        return true;
     }
 
     /**
