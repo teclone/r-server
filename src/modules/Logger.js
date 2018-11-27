@@ -1,9 +1,9 @@
 /**
  *@module Logger
 */
-import fs from 'fs';
-import { ERROR_LEVELS, ENV } from './Constants';
+import { ENV, ERROR_LEVELS } from './Constants';
 import Response from './Response';
+import fs from 'fs';
 
 export default class Logger {
 
@@ -52,7 +52,7 @@ export default class Logger {
 
     /**
      * runs the error logging
-     *@param {number} leve - the error level
+     *@param {number} level - the error level
      *@param {string} stack - the error stack trace
      *@return {this}
     */
