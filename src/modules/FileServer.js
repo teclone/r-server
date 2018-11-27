@@ -1,20 +1,22 @@
 /**
  *@module FileServer
 */
-import path from 'path';
-import fs from 'fs';
+import Util from './Util';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 export default class FileServer {
 
     /**
      *@param {string} rootDir - the project root directory
-     *@param {ServerConfig} config - the server config object
-     *@param {Array} publicPaths - array of public paths to serve static files from
-     *@param {Object} mimeTypes - object of file mime types
-     *@param {Array} defaultDocuments - array of folder default documents
-     *@param {string} cacheControl - cache control header for static files
-     *@param {}
+     *@param {Object} config - the server config object
+     *@param {Array} config.publicPaths - array of public paths to serve static files from
+     *@param {Object} config.mimeTypes - object of file mime types
+     *@param {Array} config.defaultDocuments - array of folder default documents
+     *@param {string} config.cacheControl - cache control header for static files
+     *@param {boolean} config.serveDotFiles
+     *@param {Logger} logger
     */
     constructor(rootDir, {publicPaths, mimeTypes, defaultDocuments,
         cacheControl, serveDotFiles}, logger) {
@@ -40,7 +42,7 @@ export default class FileServer {
 
     /**
      * validates range request content. returns false if 416 response code should be sent back.
-     *@returns {object}
+     *@returns {Object}
      *@private
     */
     validateRangeRequest(headers, eTag, fileMTime, fileSize) {
@@ -58,6 +60,7 @@ export default class FileServer {
                     end = fileSize - 1,
                     length = fileSize;
 
+                /* istanbul ignore else */
                 if (/^(\d+)-(\d+)$/.test(range)) {
                     start = Number.parseInt(RegExp.$1);
                     end = Number.parseInt(RegExp.$2);
@@ -233,52 +236,48 @@ export default class FileServer {
     }
 
     /**
-     * serves a static file response back to the client
-     *@param {string} url - the request url
-     *@param {string} method - the request method
-     *@param {Object} headers - the request headers
-     *@param {Response} response - the response object
+     *@param {string} filePath - request file path
     */
-    serve(url, method, headers, response) {
-        method = method.toUpperCase();
-
-        let filePath = this.validateRequest(url, method);
-        if (filePath === '')
-            return Promise.resolve(false);
+    process(filePath, request, response, status=200, headers={}) {
+        const method = request.method.toUpperCase();
 
         if (method === 'OPTIONS') {
             const methods = ['OPTIONS', 'HEAD', 'GET', 'POST'];
             return this.endResponse(response, 200, {Allow: methods.join(',')});
         }
 
-        const resHeaders = this.getDefaultHeaders(filePath);
+        const resHeaders = Util.assign({}, this.getDefaultHeaders(filePath), headers);
         if (method === 'HEAD') {
             resHeaders['Accept-Ranges'] = 'bytes';
             return this.endResponse(response, 200, resHeaders);
         }
+
+        //if it is server error file, where status code is 400 and above, end it
+        if (status >= 400)
+            return this.endStream(filePath, response, status, resHeaders);
 
         const eTag = resHeaders['ETag'],
             lastModified = resHeaders['Last-Modified'],
             fileSize = resHeaders['Content-Length'];
 
         //if it is not a range request, negotiate content
-        if (typeof headers['range'] === 'undefined') {
-            if (this.negotiateContent(headers, eTag, lastModified))
+        if (typeof request.headers['range'] === 'undefined') {
+            if (this.negotiateContent(request.headers, eTag, lastModified))
                 return this.endResponse(response, 304);
             else
                 return this.endStream(filePath, response, 200, resHeaders);
         }
 
-        const {status, ranges} = this.validateRangeRequest(
-            headers, eTag, lastModified, fileSize
+        const {status: _status, ranges} = this.validateRangeRequest(
+            request.headers, eTag, lastModified, fileSize
         );
 
         //if status is 200, we are sending everything.
-        if(status === 200)
+        if(_status === 200)
             return this.endStream(filePath, response, 200, resHeaders);
 
         //range not satisfiable
-        if (status === 416)
+        if (_status === 416)
             return this.endResponse(response, 416);
 
         //if it is a single range request, respond
@@ -293,6 +292,24 @@ export default class FileServer {
                 }
             ), {start, end});
         }
+        else {
+            //serve everything. as we dont support multipart range for now.
+            return this.endStream(filePath, response, 200, resHeaders);
+        }
+    }
+
+    /**
+     * serves a static file response back to the client
+     *@param {string} url - the request url
+     *@param {Request} request
+     *@param {Response} response - the response object
+    */
+    serve(url, request, response) {
+        let filePath = this.validateRequest(url, request.method.toUpperCase());
+        if (filePath === '')
+            return Promise.resolve(false);
+
+        return this.process(filePath, request, response);
     }
 
     /**
@@ -304,7 +321,7 @@ export default class FileServer {
      * fails or completes
      *@returns {Promise} promise resolves to true
     */
-    serveHttpErrorFile(response, status, baseDir, filePath) {
+    serveHttpErrorFile(request, response, status, baseDir, filePath) {
         if (!filePath)
             filePath = path.resolve('../httpErrors/' + status + '.html');
         else
@@ -313,8 +330,7 @@ export default class FileServer {
         if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory())
             return response.status(status).end();
 
-        const headers = this.getDefaultHeaders(filePath);
-        return this.endStream(filePath, response, status, headers);
+        return this.process(filePath, request, response, status);
     }
 
     /**
@@ -324,17 +340,17 @@ export default class FileServer {
      *@param {string} [filename] - suggested file that the browser will use in saving the file
      *@returns {Promise} - returns promise
     */
-    serveDownload(response, filePath, filename) {
+    serveDownload(request, response, filePath, filename) {
         const absPath = path.resolve(this.rootDir, filePath);
+
         if (!fs.existsSync(absPath) || fs.statSync(absPath).isDirectory())
             return Promise.reject(new Error(absPath + ' does not exists'));
 
-        const resHeaders = this.getDefaultHeaders(filePath);
         filename = typeof filename === 'string' && filename?
             filename : path.parse(absPath).base;
 
-        resHeaders['Content-Disposition'] = 'attachment; filename="' + filename + '"';
-
-        return this.endStream(absPath, response, 200, resHeaders);
+        return this.process(absPath, request, response, 200, {
+            'Content-Disposition': `attachment; filename="${filename}"`
+        });
     }
 }
