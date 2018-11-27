@@ -79,7 +79,8 @@ describe('Server Module', function() {
             });
         });
 
-        it(`should also include mounted routes while handling routes, running all routes api first`, function(done) {
+        it(`should also include mounted routes while handling routes, running all
+        routes api first`, function(done) {
             const form = {
                 name: 'Harrison',
                 password: 'passwd_243'
@@ -99,6 +100,66 @@ describe('Server Module', function() {
                 expect(JSON.parse(body)).to.deep.equals({status: 'success'});
                 done();
             });
+        });
+    });
+
+    describe('enforce https', function() {
+        it(`should enforce https by redirecting all http traffic to the
+        https address`, function(done) {
+            const app = RServer.instance({https: {enabled: true, enforce: true}});
+
+            app.get('/say-protocol', (req, res) => {
+                res.end(req.isHttps? 'https' : 'http');
+            });
+
+            app.listen(6000, function() {
+                request('http://localhost:6000/say-protocol', {rejectUnauthorized: false}, (err, res, body) => {
+                    expect(body).to.equals('https');
+                    app.close(() => {
+                        done();
+                    });
+                });
+            });
+        });
+
+        it(`should redirect to the https.redirectPort config parameter if running in production
+        mode`, function(done) {
+            const app = RServer.instance({
+                env: 'production',
+                https: {
+                    enabled: true,
+                    enforce: true,
+                    redirectPort: 443
+                }
+            });
+
+            app.get('/say-protocol', (req, res) => {
+                res.end(req.isHttps? 'https' : 'http');
+            });
+
+            app.listen(6000, function() {
+                //it should redirect to https://localhost:443/say-protocol
+                request('http://localhost:6000/say-protocol', {rejectUnauthorized: false}, (err) => {
+                    expect(err).to.be.an.instanceOf(Error);
+                    app.close(() => {
+                        done();
+                    });
+                });
+            });
+        });
+
+        it(`should redirect to the process.env.HTTPS_REDIRECT_PORT env setting if defined and
+        when running in production mode`, function() {
+            process.env.HTTPS_REDIRECT_PORT = 442;
+            const app = RServer.instance({
+                env: 'production',
+                https: {
+                    enabled: true,
+                    enforce: true,
+                }
+            });
+
+            expect(app.server.config.https.redirectPort).to.equals('442');
         });
     });
 });

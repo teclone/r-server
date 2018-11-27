@@ -13,6 +13,8 @@
         "public"
     ],
 
+    "serveDotFiles": false,
+
     "cacheControl": "no-cache, max-age=86400",
 
     "encoding": "latin1",
@@ -42,5 +44,16 @@
     "httpErrors": {
         "baseDir": "",
         "404": ""
+    },
+
+    "https": {
+        "enabled": false,
+        "port": 5000,
+        "enforce": true,
+        "redirectPort": 443,
+        "credentials": {
+            "key": ".ssl/server.key",
+            "cert": ".ssl/server.crt"
+        }
     }
 }

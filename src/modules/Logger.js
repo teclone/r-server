@@ -72,9 +72,10 @@ export default class Logger {
      *@return {this}
     */
     logAccess(req, res) {
+        const protocol = req.isHttps? 'Https' : 'Http';
         const log = `[${req.startTime.toUTCString()}] "${req.method} ${req.url}`
         +
-        ` Http/${req.httpVersion}" ${res.statusCode}\r\n`;
+        ` ${protocol}/${req.httpVersion}" ${res.statusCode}\r\n`;
 
         fs.writeSync(this.accessHandle, log);
         return this;

@@ -33,6 +33,7 @@ describe('FileServer Module', function() {
             app.server.config.httpErrors['404'] = 'test/helpers/404.html';
 
             request.get(host + 'unknown.js', (err, res, body) => {
+                console.log(err);
                 expect(res.statusCode).to.equals(404);
                 expect(body).to.equals(
                     fs.readFileSync(path.resolve(__dirname, '../../helpers/404.html')).toString()

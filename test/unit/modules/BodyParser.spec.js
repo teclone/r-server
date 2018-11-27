@@ -368,11 +368,11 @@ describe('BodyParser', function() {
                 bodyParser.parseMultiPart.restore();
             });
 
-            it(`should run no parse if the content type does not match any of the above`, function(){
+            it(`should run no parse if the content type does not match any of the above or if
+            the contentType parameter is not a string`, function(){
                 const filePath = path.resolve(__dirname, '../../helpers/multipart.log'),
                     result = bodyParser.parse(
-                        Buffer.from(fs.readFileSync(filePath, 'latin1'), 'latin1'),
-                        ''
+                        Buffer.from(fs.readFileSync(filePath, 'latin1'), 'latin1')
                     );
 
                 expect(result).deep.equals({
