@@ -1,6 +1,6 @@
 node_modules
 .nyc_output
-.ssl
+.cert
 /lib
 /dist
 /docs
