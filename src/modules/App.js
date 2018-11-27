@@ -7,7 +7,7 @@
 */
 
 /**
- *@typedef {string|string]} methods - http method or array of http methods
+ *@typedef {string|string[]} methods - http method or array of http methods
 */
 
 /**
@@ -129,12 +129,12 @@ export default class App {
      * use a middleware
      *@param {string} url - the url to apply middleware to, use null to apply globally on all
      * urls
-     *@param {Function} middleware - the middleware function
+     *@param {middlewares} middlewares
      *@param {middlewareOptions|methods} [options] - middleware options or http methods that
      * middleware applies to
     */
-    use(url, middleware, options) {
-        this.server.router.use(url, middleware, options);
+    use(url, middlewares, options) {
+        this.server.router.use(url, middlewares, options);
     }
 
     /**
