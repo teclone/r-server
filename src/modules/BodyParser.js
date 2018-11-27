@@ -2,9 +2,9 @@
  * Request body parser module
  *@module BodyParser
 */
+import Util from './Util.js';
 import fs from 'fs';
 import path from 'path';
-import Util from './Util.js';
 
 export default class {
 
@@ -182,6 +182,7 @@ export default class {
 
         /* istanbul ignore else */
         if (!boundary) {
+            /* istanbul ignore if */
             if (!/\r?\n-{2}([-a-z0-9]+)\r?\n/igm.test(string))
                 return {body, files};
 
@@ -195,6 +196,7 @@ export default class {
                 headers = [];
 
             //there are no headers, assume default header values
+            /* istanbul ignore if */
             if (/^\r?\n/.test(part)) {
                 content = part.replace(/^\r?\n/, '');
             }
