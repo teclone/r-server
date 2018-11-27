@@ -2,21 +2,17 @@
  *@module Server
 */
 
-/**
- *@typedef {Object} serverConfig
-*/
-import fs from 'fs';
-import path from 'path';
+import _config from '../.server.config.js';
+import BodyParser from './BodyParser.js';
+import Engine from './Engine.js';
+import FileServer from './FileServer.js';
+import Logger from './Logger.js';
+import Router from './Router.js';
 import Util from './Util.js';
+import fs from 'fs';
 import http from 'http';
 import https from 'https';
-import FileServer from './FileServer.js';
-import Engine from './Engine.js';
-import Router from './Router.js';
-import BodyParser from './BodyParser.js';
-import _config from '../.rsvrc.json';
-import Logger from './Logger.js';
-import { ENV } from './Constants.js';
+import path from 'path';
 
 require('./Response');
 require('./Request');
@@ -24,7 +20,7 @@ require('./Request');
 export default class {
 
     /**
-     *@param {string|serverConfig} [config] - optional config file string path or config object
+     *@param {string|object} [config] - optional config file string path or config object
     */
     constructor(config) {
 
@@ -37,7 +33,14 @@ export default class {
         else
             this.entryPath = this.getEntryPath(__dirname);
 
-        this.config = this.resolveConfig(this.entryPath, config || '.rsvrc.json');
+        const configs = config? config : [
+            '.server.json',
+            '.server.config.json',
+            '.server.config.js',
+            '.server.js'
+        ];
+
+        this.config = this.resolveConfig(this.entryPath, configs);
 
         this.fileServer = new FileServer(this.entryPath, this.config);
 
@@ -126,15 +129,25 @@ export default class {
     /**
      * resolves the configuration object
      *@param {string} entryPath - the project root path
-     *@param {string|Object} config - a config object or a string relative path to a
-     * user defined config file defaults to ".rsvrc.json"
+     *@param {string|Object} configs - a config object or a string relative path to a
+     * user defined config file defaults to ".server.config.json"
     */
-    resolveConfig(entryPath, config) {
+    resolveConfig(entryPath, configs) {
 
-        if (typeof config === 'string') {
-            const absPath = path.resolve(entryPath, config);
-            if (fs.existsSync(absPath))
-                config = require(absPath);
+        configs = Util.makeArray(configs);
+        let config = {};
+        for (let current of configs) {
+            if (Util.isObject(current)) {
+                config = current;
+                break;
+            }
+            else {
+                const absPath = path.resolve(entryPath, current);
+                if (fs.existsSync(absPath)) {
+                    config = require(absPath);
+                    break;
+                }
+            }
         }
 
         config = Util.assign(null, _config, config);
@@ -147,10 +160,6 @@ export default class {
             //overide https port with env settings if it exists
             if (process.env.HTTPS_PORT)
                 config.https.port = process.env.HTTPS_PORT;
-
-            //override https public port with env setting if it exists
-            if (process.env.HTTPS_REDIRECT_PORT)
-                config.https.redirectPort = process.env.HTTPS_REDIRECT_PORT;
         }
 
         return config;
@@ -304,7 +313,7 @@ export default class {
         if (bufferSize > this.config.maxBufferSize)
             return response.status(413).end('Entity too large');
 
-        const {url, method, headers} = request;
+        const {url, method} = request;
 
         request.files = {};
         request.query = {};
@@ -313,7 +322,7 @@ export default class {
 
         response.fileServer = this.fileServer;
 
-        return this.fileServer.serve(url, method, headers, response).then(status => {
+        return this.fileServer.serve(url, request, response).then(status => {
             if (status)
                 return;
 
@@ -325,7 +334,7 @@ export default class {
                 //send 404 response if router did not resolved
                 let httpErrors = this.config.httpErrors;
                 return this.fileServer.serveHttpErrorFile(
-                    response, 404, httpErrors.baseDir, httpErrors['404']
+                    request, response, 404, httpErrors.baseDir, httpErrors['404']
                 );
             });
         });
@@ -357,6 +366,8 @@ export default class {
 
         let bufferDetails = {buffer: [], size: 0};
 
+        response.request = request;
+
         //handle on request error
         request.on('error', Util.generateCallback(this.onRequestError, this, response));
 
@@ -380,16 +391,10 @@ export default class {
 
         //enforce https if set
         const httpsConfig = this.config.https;
-        if (httpsConfig.enabled && !request.isHttps && httpsConfig.enforce) {
-            /*
-             * if in production, use redirectPort while redirecting, which would always be 443,
-             * as likely, application will be running using a reverse proxy server.
-            */
-            const port = this.config.env === ENV.PRODUCTION? httpsConfig.redirectPort : httpsConfig.port;
+        if (httpsConfig.enabled && !request.isHttps && httpsConfig.enforce)
             response.redirect(
-                'https://' + path.join(request.hostname +  ':' + port, request.url)
+                `https://${path.join(request.hostname + ':' + httpsConfig.port, request.url)}`
             );
-        }
     }
 
     /**
