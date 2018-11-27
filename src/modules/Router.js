@@ -4,16 +4,6 @@
 import Util from './Util.js';
 import Wrapper from './Wrapper.js';
 
-/**
- *@typedef {Object} routeOptions
- *@param {Function[]} [methods] - array of http methods allowed
- *@param {Function|Function[]} [middleware] - a middleware funtion or array of middlewares to
- * apply specifically on the route
-*/
-
-/**
- *@typedef {Object} middlewareOptions
-*/
 export default class Router {
 
     /**
@@ -51,10 +41,14 @@ export default class Router {
      *@param {routeOptions} [options] - optional configuration options
     */
     set(method, url, callback, options) {
-        if (Util.isCallable(options))
-            options = {middleware: options};
+        if (Util.isCallable(options) || Util.isArray(options)) {
+            options = {
+                middlewares: Util.makeArray(options).filter(option => Util.isCallable(option))
+            };
+        }
 
-        this.routes[method].push([url, callback, options || null]);
+        if (Util.isCallable(callback))
+            this.routes[method].push([url, callback, options || null]);
     }
 
     /**
@@ -139,16 +133,18 @@ export default class Router {
      * use a middleware
      *@param {string} url - the url to apply middleware to, use null to apply globally on all
      * urls
-     *@param {Function} middleware - the middleware function
+     *@param {middlewares} middlewares - the middleware function or array of middlewares
      *@param {middlewareOptions} options - middleware optional configuration options
     */
-    use(url, middleware, options) {
-        if (Util.isCallable(middleware)) {
-
-            if (typeof url !== 'string')
-                url = '/'; //this middleware runs on the root url or the mount root url
-
-            this.middlewares.push([url, middleware, options || null]);
+    use(url, middlewares, options) {
+        middlewares = Util.makeArray(middlewares).filter(middleware => Util.isCallable(middleware));
+        if (middlewares.length > 0) {
+            if (Util.isString(options) || Util.isArray(options)) {
+                options = {
+                    methods: Util.makeArray(options).filter(option => Util.isString(option))
+                };
+            }
+            this.middlewares.push([url, middlewares, options || null]);
         }
     }
 }
