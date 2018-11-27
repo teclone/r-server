@@ -1,6 +1,8 @@
 import {expect} from 'chai';
+import request from 'request';
 
 global.expect = expect;
+global.request = request.defaults({rejectUnauthorized: false});
 
 /**
  * a workaround to istanbuls branching error on constructors that extends other constructors.

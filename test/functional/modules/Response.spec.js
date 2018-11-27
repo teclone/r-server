@@ -1,7 +1,6 @@
 import RServer from '../../../src/main';
 import fs from 'fs';
 import path from 'path';
-import request from 'request';
 
 
 describe('Functional: Response Module', function() {

@@ -1,5 +1,4 @@
 import RServer from '../../../src/main';
-import request from 'request';
 import sinon from 'sinon';
 
 

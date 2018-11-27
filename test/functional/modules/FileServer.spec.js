@@ -1,7 +1,7 @@
 import RServer from '../../../src/main';
 import fs from 'fs';
 import path from 'path';
-import request from 'request';
+import baseRequest from 'request';
 import sinon from 'sinon';
 
 describe('Functional: FileServer Module', function() {
@@ -65,7 +65,7 @@ describe('Functional: FileServer Module', function() {
 
         it(`should service options request made on public files`, function(done) {
 
-            request.options(host, (err, res) => {
+            baseRequest.options(host, {rejectUnauthorized: false}, (err, res) => {
                 expect(res.statusCode).to.equals(200);
                 done();
             });
