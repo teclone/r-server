@@ -9,14 +9,17 @@ import fs from 'fs';
 import path from 'path';
 import Util from './Util.js';
 import http from 'http';
+import https from 'https';
 import FileServer from './FileServer.js';
 import Engine from './Engine.js';
 import Router from './Router.js';
 import BodyParser from './BodyParser.js';
 import _config from '../.rsvrc.json';
 import Logger from './Logger.js';
+import { ENV } from './Constants.js';
 
 require('./Response');
+require('./Request');
 
 export default class {
 
@@ -25,7 +28,7 @@ export default class {
     */
     constructor(config) {
 
-        this.router = new Router(false); // the main router. the root router
+        this.router = new Router(false); // the main/root router
         this.mountedRouters = []; //mounted routers
 
         /* istanbul ignore else */
@@ -39,17 +42,42 @@ export default class {
         this.fileServer = new FileServer(this.entryPath, this.config);
 
         this.bodyParser = new BodyParser(
-            path.join(this.entryPath, this.config.tempDir, '/'),
+            path.resolve(this.entryPath, this.config.tempDir),
             this.config.encoding
         );
 
-        this.server = http.createServer();
-
         this.logger = new Logger(
-            path.join(this.entryPath, this.config.errorLog),
-            path.join(this.entryPath, this.config.accessLog),
+            path.resolve(this.entryPath, this.config.errorLog),
+            path.resolve(this.entryPath, this.config.accessLog),
             this.config
         );
+
+        this.httpServer = http.createServer();
+        this.httpsServer = null;
+
+        //setup https server if it is enabled
+        const httpsConfig = this.config.https;
+        if (httpsConfig.enabled) {
+            //read credentials, skip passphrase if it exists
+            const credentials = Object.entries(httpsConfig.credentials)
+                .reduce((result, [key, value]) => {
+                    /* istanbul ignore else */
+                    if (key !== 'passphrase')
+                        value = fs.readFileSync(path.resolve(this.entryPath, value));
+
+                    result[key] = value;
+                    return result;
+                }, {});
+
+            this.httpsServer = https.createServer(credentials);
+        }
+
+        //on listening and on closing counts
+        this.listeningCount = 0;
+        this.closingCount = 0;
+
+        //on close callback method
+        this.closeCallback = null;
     }
 
     /**
@@ -61,10 +89,17 @@ export default class {
     }
 
     /**
-     * returns boolean indicating if the server is listening
+     * returns boolean indicating if the http server is listening
     */
     get listening() {
-        return this.server.listening;
+        return this.httpServer.listening;
+    }
+
+    /**
+     * returns boolean indicating if the https server is listening
+    */
+    get httpsListening() {
+        return this.httpsServer && this.httpsServer.listening;
     }
 
     /**
@@ -75,14 +110,14 @@ export default class {
     getEntryPath(knownPath) {
 
         if (knownPath.indexOf('node_modules') > 0)
-            return knownPath.split('node_modules/')[0];
+            return knownPath.split('/node_modules/')[0];
 
-        let entryPath = path.join(knownPath, '../');
+        let entryPath = path.resolve(knownPath, '../');
         while (entryPath !== '/') {
             if (fs.existsSync(entryPath + '/package.json'))
                 break;
 
-            entryPath = path.join(entryPath, '../');
+            entryPath = path.resolve(entryPath, '../');
         }
 
         return entryPath;
@@ -97,7 +132,7 @@ export default class {
     resolveConfig(entryPath, config) {
 
         if (typeof config === 'string') {
-            const absPath = path.join(entryPath, config);
+            const absPath = path.resolve(entryPath, config);
             if (fs.existsSync(absPath))
                 config = require(absPath);
         }
@@ -108,6 +143,16 @@ export default class {
         if (typeof process.env.NODE_ENV !== 'undefined')
             config.env = process.env.NODE_ENV;
 
+        if (config.https.enabled) {
+            //overide https port with env settings if it exists
+            if (process.env.HTTPS_PORT)
+                config.https.port = process.env.HTTPS_PORT;
+
+            //override https public port with env setting if it exists
+            if (process.env.HTTPS_REDIRECT_PORT)
+                config.https.redirectPort = process.env.HTTPS_REDIRECT_PORT;
+        }
+
         return config;
     }
 
@@ -117,7 +162,7 @@ export default class {
      *@param {Router} router - the router instance
     */
     mount(baseUrl, router) {
-        baseUrl = baseUrl.replace(/\/+$/, '');
+        //baseUrl = baseUrl.replace(/\/+$/, '');
         const resolve = ([url, callback, options]) => {
             return [
                 path.join(baseUrl, url),
@@ -223,8 +268,10 @@ export default class {
 
         //parse the request body
         if (buffers.length > 0) {
-            let result = this.bodyParser.parse(Buffer.concat(buffers),
-                request.headers['content-type']);
+            let result = this.bodyParser.parse(
+                Buffer.concat(buffers),
+                request.headers['content-type']
+            );
 
             request.body = result.body;
             request.files = result.files;
@@ -244,13 +291,20 @@ export default class {
     */
     onRequestEnd(request, response, bufferDetails) {
 
+        //if the response is already sent, such as redirects, just return.
+        if (response.finished)
+            return;
+
         //profile the response time
         response.startTime = new Date();
 
-        if (bufferDetails.size > this.config.maxBufferSize)
+        const bufferSize = bufferDetails.size;
+
+        //if request data size exceeds max buffer, bounce with 413 status code
+        if (bufferSize > this.config.maxBufferSize)
             return response.status(413).end('Entity too large');
 
-        let {url, method, headers} = request;
+        const {url, method, headers} = request;
 
         request.files = {};
         request.query = {};
@@ -323,13 +377,37 @@ export default class {
         response.on('finish', Util.generateCallback(this.onResponseFinish, this,
             [request, response]
         ));
+
+        //enforce https if set
+        const httpsConfig = this.config.https;
+        if (httpsConfig.enabled && !request.isHttps && httpsConfig.enforce) {
+            /*
+             * if in production, use redirectPort while redirecting, which would always be 443,
+             * as likely, application will be running using a reverse proxy server.
+            */
+            const port = this.config.env === ENV.PRODUCTION? httpsConfig.redirectPort : httpsConfig.port;
+            response.redirect(
+                'https://' + path.join(request.hostname +  ':' + port, request.url)
+            );
+        }
     }
 
     /**
      * handle server close event
+     *@param {http.Server|https.Server} server - http or https server
     */
-    onClose() {
-        this.logger.info('connection closed successfully').close();
+    onClose(server) {
+        this.closingCount += 1;
+        const intro = server instanceof https.Server? 'https' : 'http';
+
+        this.logger.info( intro + ' connection closed successfully');
+
+        if (this.closingCount === 2 || this.httpsServer === null) {
+            this.logger.close();
+            const callback = this.closeCallback;
+            this.closeCallback = null;
+            callback();
+        }
     }
 
     /**
@@ -352,24 +430,35 @@ export default class {
 
     /**
      * handles server listening event
+     *@param {http.Server|https.Server} server - http or https server
+     *@param {Callable} callback - listening callback method
     */
-    onListening() {
-        let address = this.server.address();
-        this.logger.info('Server started on port ' + address.port); //info to the console
+    onListening(server, callback) {
+        this.listeningCount += 1;
+
+        const address = server.address();
+        const intro = server instanceof https.Server? 'https' : 'http';
+
+        this.logger.info(intro + ' server started on port ' + address.port);
+
+        if (this.listeningCount === 2 || this.httpsServer === null)
+            callback();
     }
 
     /**
      * binds all event handlers on the server.
+     *@param {http.Server|https.Server} server - http or https server
+     *@param {Callable} callback - listening callback method
     */
-    initServer() {
+    initServer(server, callback) {
         //handle server listening event
-        this.server.on('listening', Util.generateCallback(this.onListening, this))
+        server.on('listening', Util.generateCallback(this.onListening, this, [server, callback]))
 
             //handle on error event
             .on('error', Util.generateCallback(this.onServerError, this))
 
             //handle server close event
-            .on('close', Util.generateCallback(this.onClose, this))
+            .on('close', Util.generateCallback(this.onClose, this, server))
 
             //handle server client error
             .on('clientError', Util.generateCallback(this.onClientError, this))
@@ -383,7 +472,11 @@ export default class {
      *@param {Function} [callback] - a callback function to execute once the server closes
     */
     close(callback) {
-        this.server.close(callback);
+        this.closeCallback = Util.isCallable(callback)? callback : () => {};
+        this.httpServer.close();
+
+        if (this.httpsServer !== null)
+            this.httpsServer.close();
     }
 
     /**
@@ -392,7 +485,18 @@ export default class {
     */
     address() {
         if (this.listening)
-            return this.server.address();
+            return this.httpServer.address();
+        else
+            return null;
+    }
+
+    /**
+     * returns the bound address that the https server is listening on
+     *@returns {Object}
+    */
+    httpsAddress() {
+        if (this.httpsListening)
+            return this.httpsServer.address();
         else
             return null;
     }
@@ -409,8 +513,15 @@ export default class {
             this.logger.warn('Server already started. You must close the server first');
             return;
         }
-        this.initServer();
+
         callback = Util.isCallable(callback)? callback : () => {};
-        this.server.listen( port || process.env.PORT || 4000, callback);
+
+        this.initServer(this.httpServer, callback);
+        this.httpServer.listen( port || process.env.PORT || 4000);
+
+        if (this.httpsServer !== null) {
+            this.initServer(this.httpsServer, callback);
+            this.httpsServer.listen(this.config.https.port);
+        }
     }
 }

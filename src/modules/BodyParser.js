@@ -40,9 +40,9 @@ export default class {
             if (fs.existsSync(path))
                 fs.unlinkSync(path);
         };
-        for (let [, file] of Object.entries(files)) {
+
+        for (let [, file] of Object.entries(files))
             Util.makeArray(file.path).forEach(unlink);
-        }
 
         return true;
     }
@@ -53,9 +53,9 @@ export default class {
      *@return {Object}
     */
     resolveFieldName(fieldName) {
-        if (/^(.+)\[\]$/.test(fieldName)) {
+        if (/^(.+)\[\]$/.test(fieldName))
             return {name: RegExp.$1, isMultiValue: true};
-        }
+
         return {name: fieldName, isMultiValue: false};
     }
 
@@ -181,48 +181,43 @@ export default class {
         let body = {}, files = {};
 
         /* istanbul ignore else */
-        if (boundary)
-            boundary = '--' + boundary;
-        else if (/(-{2,}[a-z0-9]+)\r\n/i.exec(string))
+        if (!boundary) {
+            if (!/\r?\n-{2}([-a-z0-9]+)\r?\n/igm.test(string))
+                return {body, files};
+
             boundary = RegExp.$1;
-        else
-            return {body, files};
+        }
+        boundary = new RegExp('\\r?\\n--' + boundary + '(?:--|\\r?\\n)', 'gm');
 
-        //obtain the body parts, discard multipart preamble and epilogue
-        let parts = string.split(boundary).slice(1, -1);
+        //obtain body parts, discard multipart preamble and epilogue
+        string.split(boundary).slice(1, -1).forEach(part => {
+            let content = '',
+                headers = [];
 
-        for (let part of parts) {
-            //remove the first and last CRLF
-            part = part.replace(/^\r\n/, '').replace(/\r\n$/, '');
-
-            let headers = [],
-                content = '';
-
-            //if there are no headers, assume default values according to the spec
-            /* istanbul ignore if */
-            if (/^\r\n/.test(part)) {
-                content = part.replace(/^\r\n/, '');
+            //there are no headers, assume default header values
+            if (/^\r?\n/.test(part)) {
+                content = part.replace(/^\r?\n/, '');
             }
             else {
-                let lines = part.split(/\r\n/);
-
-                //a blank line separates the part headers from the part content
-                let separatorLineIndex = lines.indexOf('');
-
-                //slice out the headers and the content
-                headers = lines.slice(0, separatorLineIndex);
-                content = lines.slice(separatorLineIndex + 1).join('\r\n');
+                const [headerPart, ...bodyParts] = part.split(/\r?\n\r?\n/);
+                headers = headerPart.split(/\r?\n/);
+                content = bodyParts.join('\r\n\r\n');
             }
 
             //parse through the headers
-            let parsedHeaders = this.parsePartHeaders(headers);
+            const parsedHeaders = this.parsePartHeaders(headers);
             if (parsedHeaders.isFile) {
-                this.assignFileValue(files, parsedHeaders.fieldName, this.processFile(parsedHeaders, content));
+                this.assignFileValue(
+                    files,
+                    parsedHeaders.fieldName,
+                    this.processFile(parsedHeaders, content)
+                );
             }
             else {
                 this.assignBodyValue(body, parsedHeaders.fieldName, content);
             }
-        }
+        });
+
         return {body, files};
     }
 
@@ -280,7 +275,7 @@ export default class {
     */
     parse(buffer, contentType) {
         let content = buffer.toString(this.encoding),
-            tokens = contentType.split(/;\s*/),
+            tokens = typeof contentType === 'string'? contentType.split(/;\s*/) : [''],
             boundary = '';
 
         switch(tokens[0].toLowerCase()) {

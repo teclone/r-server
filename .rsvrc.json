@@ -1,3 +1,13 @@
 {
-    "env": "development"
+    "env": "development",
+
+    "https": {
+        "enabled": false,
+        "port": 4001,
+        "enforce": true,
+        "credentials": {
+            "key": ".ssl/server.key",
+            "cert": ".ssl/server.crt"
+        }
+    }
 }
