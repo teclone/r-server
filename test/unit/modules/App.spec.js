@@ -6,7 +6,7 @@ describe('App', function() {
     let app = null;
 
     this.beforeEach(function() {
-        app = new App('.rsvrc.json');
+        app = new App('.server.config.json');
     });
 
     describe('#constructor(config?)', function() {
@@ -161,12 +161,29 @@ describe('App', function() {
     });
 
     describe('#address()', function() {
-        it(`should return the server's bound address, it returns null if the server is currently
-        not listening for connections`, function(done) {
+        it(`should return the bound address of the app's http server, it returns null if the http
+        server is currently not listening for connections`, function(done) {
+            expect(app.address()).to.be.null;
             app.listen(null, function() {
                 expect(app.listening).to.be.true;
                 expect(app.address().port).to.equals(4000);
                 app.close(function() {
+                    done();
+                });
+            });
+        });
+    });
+
+    describe('#httpsAddress()', function() {
+        it(`should return the bound address of the app's https server, it returns null if the https
+        server is currently not listening for connections`, function(done) {
+            const testApp = new App({https: {enabled: true}});
+
+            expect(testApp.httpsAddress()).to.be.null;
+            testApp.listen(null, function() {
+                expect(testApp.httpsListening).to.be.true;
+                expect(testApp.httpsAddress().port).to.equals(5000);
+                testApp.close(function() {
                     done();
                 });
             });

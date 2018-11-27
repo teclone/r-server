@@ -43,14 +43,32 @@ describe('Router', function() {
             });
         });
 
-        it(`should resolve options to an object with the middleware key set to the given middleware callback
-        if options argument is a callable`, function() {
+        it(`should resolve options to an object with the middlewares key set to an array
+        containing the given middleware callback if options argument is a callable`, function() {
             const callback = function() {}, options = () => {};
             router.options('/', callback, options);
             expect(router.routes.options).to.be.lengthOf(1).and.to.satisfy(function(routes) {
                 let route = routes[0];
-                return route[0] === '/' && route[1] === callback && route[2].middleware === options;
+                return route[0] === '/' && route[1] === callback && route[2].middlewares[0] === options;
             });
+        });
+
+        it(`should resolve options to an object with the middlewares key set to the given
+        middleware array if options argument is an array`, function() {
+            const middlewares = [() => {}, () => {}];
+            router.options('/', () => {}, middlewares);
+
+            expect(router.routes.options).to.be.lengthOf(1).and.to.satisfy(function(routes) {
+                let route = routes[0];
+                return route[0] === '/' && route[2].middlewares[0] === middlewares[0] &&
+                    route[2].middlewares[1] === middlewares[1];
+            });
+        });
+
+        it(`should do nothing if callback is not a callable`, function() {
+            router.options('/', null);
+
+            expect(router.routes.options).to.be.lengthOf(0);
         });
     });
 
@@ -132,22 +150,42 @@ describe('Router', function() {
         });
     });
 
-    describe('#use(url, middleware, options)', function() {
-        it(`should push the given middleware url callback to the instance middlewares array,
-        defaulting the url to / if it is not a string`, function() {
-            let middleware = function() {};
-            router.use(null, middleware);
-            router.use('/tests', middleware);
+    describe('#use(url, middlewares, options)', function() {
+        it(`should turn the middlewares to array, filter out only callables, and push to the
+        instance middlewares if final array length is greater than zero`, function() {
+            const middlewares = function() {};
+            router.use('/tests', middlewares);
 
-            expect(router.middlewares).to.be.lengthOf(2);
-            expect(router.middlewares[0]).to.deep.equals(['/', middleware, null]);
-            expect(router.middlewares[1]).to.deep.equals(['/tests', middleware, null]);
+            expect(router.middlewares).to.be.lengthOf(1);
+            expect(router.middlewares[0]).to.deep.equals(['/tests', [middlewares], null]);
         });
 
         it(`should do nothing if argument is not a callable`, function() {
-            router.use(null, {middleware: () => {}});
+            router.use('', {});
 
             expect(router.middlewares).to.be.lengthOf(0);
+        });
+
+        it(`should resolve options to an object with the methods key set to an array
+        containing the given method string if options argument is a string`, function() {
+            const middleware = function() {};
+            router.use('*', middleware, 'POST');
+
+            expect(router.middlewares).to.be.lengthOf(1);
+            expect(router.middlewares[0]).to.deep.equals(['*', [middleware], {
+                methods: ['POST']
+            }]);
+        });
+
+        it(`should resolve options to an object with the methods key set to an array
+        containing the all the given methods if options argument is an array of method strings`, function() {
+            const middleware = function() {};
+            router.use('*', [middleware], ['POST', 'PUT']);
+
+            expect(router.middlewares).to.be.lengthOf(1);
+            expect(router.middlewares[0]).to.deep.equals(['*', [middleware], {
+                methods: ['POST', 'PUT']
+            }]);
         });
     });
 });

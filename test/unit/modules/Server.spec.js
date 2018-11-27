@@ -1,9 +1,9 @@
+import inbuiltConfig from '../../../src/.server.config.js';
+import Router from '../../../src/modules/Router.js';
 import Server from '../../../src/modules/Server.js';
 import path from 'path';
-import Router from '../../../src/modules/Router.js';
 import request from 'request';
 import sinon from 'sinon';
-import inbuiltConfig from '../../../src/.rsvrc.json';
 
 describe('Server', function() {
 
@@ -11,7 +11,7 @@ describe('Server', function() {
         https = null;
 
     beforeEach(function() {
-        server = new Server('.rsvrc.json');
+        server = new Server('.server.config.json');
         https = {
             enabled: true,
             port: 5000
@@ -55,7 +55,7 @@ describe('Server', function() {
             and merge it with the inbuilt default config parameters`, function() {
             const entryPath = path.join(__dirname, '../../../');
 
-            const config = server.resolveConfig(entryPath, 'test/helpers/.rsvrc.json');
+            const config = server.resolveConfig(entryPath, 'test/helpers/.server.config.json');
             expect(config.maxBufferSize).to.equals(10);
         });
 
@@ -88,7 +88,7 @@ describe('Server', function() {
     });
 
     describe('#mount(baseUrl, router)', function() {
-        it(`should mount the given router to the main app, resolving the router routes and
+        it(`should mount the given router to the main app, resolving the router routes
         and middleware urls`, function() {
             const router = new Router(true),
                 callback = () => {};
@@ -113,7 +113,7 @@ describe('Server', function() {
             ]);
 
             expect(mountedRouter.middlewares).deep.equals([
-                ['auth/*', callback, null],
+                ['auth/*', [callback], null],
             ]);
         });
 

@@ -3,7 +3,7 @@ import request from 'request';
 import sinon from 'sinon';
 
 
-describe('Logger Module', function() {
+describe('Functional: Logger Module', function() {
     /**
      *@type {App}
     */
