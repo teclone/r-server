@@ -288,4 +288,18 @@ export default {
         }
         return defaultValue;
     },
+
+    /**
+     * defines a getter property on the target object if it is not yet defined
+     *@param {Object} target - the target object
+     *@param {string} name - property name
+     *@param {Function} getter - the getter function
+     *@return {this}
+    */
+    defineGetter(target, name, getter) {
+        if (typeof target[name] === 'undefined')
+            Object.defineProperty(target, name, {get: getter});
+
+        return this;
+    }
 };

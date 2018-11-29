@@ -289,4 +289,36 @@ describe('Util module', function() {
             expect(Util.value('height', null, '5ft')).to.equal('5ft');
         });
     });
+
+    describe('.defineGetter(target, name, getter)', function() {
+        it(`should define the given getter function on the target object for the given
+            property key name if it does not exist`, function() {
+            const target = {
+                _name: 'Johnson'
+            };
+
+            Util.defineGetter(target, 'name', function() {
+                return this._name;
+            });
+
+            expect(target.name).to.equals('Johnson');
+        });
+
+        it(`should do nothing if given property key name already exists`, function() {
+            const target = {
+                _name: 'Johnson',
+                _age: '28yrs'
+            };
+
+            Util.defineGetter(target, 'name', function() {
+                return this._name;
+            });
+
+            Util.defineGetter(target, 'name', function() {
+                return this._age;
+            });
+
+            expect(target.name).to.equals('Johnson');
+        });
+    });
 });
