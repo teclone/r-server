@@ -323,7 +323,7 @@ export default class FileServer {
     */
     serveHttpErrorFile(request, response, status, baseDir, filePath) {
         if (!filePath)
-            filePath = path.resolve('../httpErrors/' + status + '.html');
+            filePath = path.resolve(__dirname, '../httpErrors/' + status + '.html');
         else
             filePath = path.resolve(this.rootDir, baseDir, filePath);
 
