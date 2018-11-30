@@ -200,6 +200,10 @@ export default class Engine {
             cont = false;
             await middleware(this.request, this.response, next, ...middlewareParams);
             if (!cont) {
+
+                if (this.response.finished)
+                    this.response.end();
+
                 break;
             }
         }
@@ -261,8 +265,8 @@ export default class Engine {
 
         try {
             await this.run(callback, params, options);
-            if (!this.response.finished)
-                this.response.end();
+            // if (!this.response.finished)
+            //     this.response.end();
         }
         catch(ex) {
             this.logger.fatal(ex, this.response);
