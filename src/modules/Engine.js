@@ -201,7 +201,7 @@ export default class Engine {
             await middleware(this.request, this.response, next, ...middlewareParams);
             if (!cont) {
 
-                if (this.response.finished)
+                if (!this.response.finished)
                     this.response.end();
 
                 break;
