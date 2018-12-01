@@ -153,9 +153,10 @@ export default class Engine {
      *@returns {boolean|Array}
     */
     runValidations(routeUrl, options, overrideMethod) {
-
         if (!this.validateOptions(overrideMethod, options) || !this.matchUrl(routeUrl))
             return false;
+
+        routeUrl = this.resolveUrl(routeUrl);
 
         //split the tokens.
         let urlTokens = this.url !== ''? this.url.split('/') : [],
@@ -200,7 +201,6 @@ export default class Engine {
             cont = false;
             await middleware(this.request, this.response, next, ...middlewareParams);
             if (!cont) {
-
                 if (!this.response.finished)
                     this.response.end();
 

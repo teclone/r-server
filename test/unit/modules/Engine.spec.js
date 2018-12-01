@@ -200,6 +200,9 @@ describe('Engine', function() {
             expect(engine.runValidations('users/{int:userId}/posts/{int:postId}/comments'))
                 .to.deep.equals([1, 4]);
 
+            engine = new Engine('/schemes/abcdef', 'GET', request, response, logger);
+            expect(engine.runValidations('schemes/{schemeCode}'))
+                .to.deep.equals(['abcdef']);
         });
 
         it(`should capture ending url tokens for a universal match`, function() {
@@ -211,7 +214,9 @@ describe('Engine', function() {
     describe('#runMiddlewares(middlewares, middlewareParams)', function() {
         it(`should asynchronously run the given array of middleware callbacks passing in the request, response, next and
         the array of middlewareParams to each middleware`, function() {
-            const spy = sinon.spy();
+            const spy = sinon.spy((req, res) => {
+                res.end();
+            });
             return engine.runMiddlewares([spy], [1, 2, 3]).then(() => {
                 expect(spy.callCount).to.equals(1);
                 expect(spy.getCall(0).args[0]).to.equals(request);
