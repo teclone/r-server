@@ -3,6 +3,7 @@
 */
 import Util from './Util.js';
 import Wrapper from './Wrapper.js';
+import path from 'path';
 
 export default class Router {
 
@@ -12,6 +13,8 @@ export default class Router {
      * middlewares should be inherited. defaults to true
     */
     constructor(inheritMiddlewares) {
+        this.basePath = '';
+
         this.routes = {
             options: [],
             head: [],
@@ -34,11 +37,23 @@ export default class Router {
     }
 
     /**
+     * resolves the url route by joining it to the base path
+     *@param {...string} urls - comma separated list of route or middleware urls. it will always
+     * be one except when called by the server module during route mounting
+     *@returns {string}
+     *@private
+    */
+    resolvePath(...urls) {
+        return path.join(this.basePath, ...urls);
+    }
+
+    /**
      * performs route rules for http OPTIONS method verb
      *@param {string} method - the route method/api in question
      *@param {string} url - the route url
      *@param {Function} callback - callback function
      *@param {routeOptions} [options] - optional configuration options
+     *@private
     */
     set(method, url, callback, options) {
         if (Util.isCallable(options) || Util.isArray(options)) {
@@ -48,7 +63,17 @@ export default class Router {
         }
 
         if (Util.isCallable(callback))
-            this.routes[method].push([url, callback, options || null]);
+            this.routes[method].push([this.resolvePath(url), callback, options || null]);
+    }
+
+    /**
+     * sets routing base path that gets prepended to all route and middleware urls
+     *@param {string} basePath - routing base path
+     *@returns {this}
+    */
+    setBasePath(basePath) {
+        this.basePath = basePath;
+        return this;
     }
 
     /**
@@ -144,7 +169,7 @@ export default class Router {
                     methods: Util.makeArray(options).filter(option => Util.isString(option))
                 };
             }
-            this.middlewares.push([url, middlewares, options || null]);
+            this.middlewares.push([this.resolvePath(url), middlewares, options || null]);
         }
     }
 }

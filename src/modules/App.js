@@ -48,6 +48,14 @@ export default class App {
     }
 
     /**
+     * sets routing base path that gets prepended to all route and middleware urls
+     *@param {string} basePath - routing base path
+    */
+    setBasePath(basePath) {
+        this.server.router.setBasePath(basePath);
+    }
+
+    /**
      * performs route rules for http OPTIONS method verb
      *@param {string} url - the route url
      *@param {Function} callback - callback function

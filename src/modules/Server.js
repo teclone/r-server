@@ -172,9 +172,9 @@ export default class {
     */
     mount(baseUrl, router) {
         //baseUrl = baseUrl.replace(/\/+$/, '');
-        const resolve = ([url, callback, options]) => {
+        const resolve = function([url, callback, options]) {
             return [
-                path.join(baseUrl, url),
+                this.router.resolvePath(baseUrl, url),
                 callback,
                 options
             ];
@@ -185,10 +185,10 @@ export default class {
 
         //resolve all routes, each apiRoutes is of the form [url, callback, options]
         for (const [api, apiRoutes] of Object.entries(router.routes))
-            router.routes[api] = apiRoutes.map(resolve);
+            router.routes[api] = apiRoutes.map(resolve, this);
 
         //resolve all middlewares. each middleware is of the format [url, callback, options]
-        router.middlewares = router.middlewares.map(resolve);
+        router.middlewares = router.middlewares.map(resolve, this);
 
         this.mountedRouters.push(router);
     }
