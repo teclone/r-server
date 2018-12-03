@@ -189,4 +189,45 @@ describe('App', function() {
             });
         });
     });
+
+    describe('#setBasePath(basePath)', function() {
+        it(`should set the app routing and middleware base path, that gets pretended to all
+            application routes, including mounted routes`, function() {
+            const authRoutes = new Router();
+
+            app.setBasePath('api/v1.0');
+
+            const callback = () => {};
+
+            authRoutes.post('/', callback);
+            authRoutes.use('/', callback);
+
+            app.use('/', callback);
+            app.get('/', callback);
+
+            app.mount('auth', authRoutes);
+
+            expect(app.server.router.routes.get[0]).to.deep.equals([
+                'api/v1.0/',
+                callback,
+                null
+            ]);
+            expect(app.server.mountedRouters[0].routes.post[0]).to.deep.equals([
+                'api/v1.0/auth/',
+                callback,
+                null
+            ]);
+
+            expect(app.server.router.middlewares[0]).to.deep.equals([
+                'api/v1.0/',
+                [callback],
+                null
+            ]);
+            expect(app.server.mountedRouters[0].middlewares[0]).to.deep.equals([
+                'api/v1.0/auth/',
+                [callback],
+                null
+            ]);
+        });
+    });
 });
