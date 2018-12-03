@@ -157,15 +157,15 @@ describe('Engine', function() {
             expect(engine.matchUrl('/')).to.be.true;
 
             //create an engine with request url of 'users/1/profile'
-            engine = new Engine('users/1/profile', 'GET', request, response, logger);
+            engine = new Engine('api/v1.0/users/1/profile', 'GET', request, response, logger);
 
-            expect(engine.matchUrl('users/{int:user-id}/profile')).to.be.true;
-            expect(engine.matchUrl('users/{int:user-id}/[profile]+')).to.be.true;
-            expect(engine.matchUrl('/users/{int:user-id}/(profile)?')).to.be.true;
+            expect(engine.matchUrl('api/v1.0/users/{int:user-id}/profile')).to.be.true;
+            expect(engine.matchUrl('api/v1.0/users/{int:user-id}/[profile]+')).to.be.true;
+            expect(engine.matchUrl('api/v1.0/users/{int:user-id}/(profile)?')).to.be.true;
             expect(engine.matchUrl('*')).to.be.true;
-            expect(engine.matchUrl('users/*')).to.be.true;
-            expect(engine.matchUrl('users/[0-9]+/{view}?')).to.be.true;
-            expect(engine.matchUrl('users/[0-9]+/profile/{optional}?')).to.be.true;
+            expect(engine.matchUrl('api/v1.0/users/*')).to.be.true;
+            expect(engine.matchUrl('api/v1.0/users/[0-9]+/{view}?')).to.be.true;
+            expect(engine.matchUrl('api/v1.0/users/[0-9]+/profile/{optional}?')).to.be.true;
         });
 
         it(`should parse the route url, convert it to a regex pattern, match it with the request
