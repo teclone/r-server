@@ -10,6 +10,12 @@ RServer is a fully integrated [node.js](https://nodejs.org/en/docs/guides/anatom
 
 Despite being configurable for advanced usage, it requires no configurations to get started. It is fully compatible with [express.js](https://expressjs.com/) and provides even more functionalities out of the box.
 
+## Newly Added Features
+
+- Ability to set route base path that will be prepended to all route urls. [here](#route-base-path)
+- Https integration and setup made easy [here](#https-support)
+- Support for [byte-range](#range-request-support) requests
+
 ## Getting Started (NPM install)
 
 ```bash
@@ -60,6 +66,8 @@ R-Server gives you many excellent features out of the box, saving you the stress
 
 9. [HTTPS Support](#https-support)
 
+10. [Range Request Support](#range-request-support)
+
 ### Request Body Parser
 
 It comes with an inbuilt request body parser, that supports all forms of http request data such as **urlencoded query strings**, **application/json data**, **application/x-www-form-urlencoded data** and **multipart/form-data** formats. Parsed fields and files are made available on the request object through the `query`, `body`, `data` and `files` property. Uploaded files are stored in a tmp folder, **storage/tmp** folder by default unless otherwise stated in a config file.
@@ -96,6 +104,10 @@ It provides an excellent routing engine, with parameter capturing and can incorp
 Unlike in [express.js](https://expressjs.com/), parameter capturing sections are enclosed in curly braces `{}` and you are not prevented from using hyphen in your parameter names.
 
 It also supports chained routes through the `Router#route(url)` method. The callback method can be asynchronous or can return promises.
+
+It also allows you to set route base path that gets prepended to all route urls and middleware urls.
+
+**Note that route urls can only be string patterns, and not regex objects**.
 
 **Usage Example**:
 
@@ -170,6 +182,24 @@ app.route('users/{int:userId}')
     .delete((req, res, userId) => {
         //delete user profile
     });
+```
+
+### Route Base Path
+
+It provides api for setting routing base path that gets prepended to all route urls and middleware urls. This is very helpful when exposing versioned api endpoints in your applications.
+
+```javascript
+app.setBasePath(basePath);
+
+//examples
+app.setBasePath('api/v2.0');
+
+//this route will be called when request is made on the endpoint /api/v2.0/auth
+app.post('auth', (req, res)=> {
+    res.end('received');
+}));
+
+app.listen(null, () => console.log('listening'));
 ```
 
 ### Static File Server
@@ -478,6 +508,10 @@ export default {
     }
 };
 ```
+
+### Range Request Support
+
+RServer will automatically detect and handle any [byte-range](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests) requests that hits the server. This is very important as it eases the server load when serving large files as browsers tend to throttle requests using range request mechanisms. The link above is a great place to read more on range requests.
 
 ## Contributing
 
