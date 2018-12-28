@@ -173,16 +173,16 @@ export default class App {
     }
 
     /**
-     *@type {boolean}
      * boolean value indicating if the http server is listening for request
+     *@type {boolean}
     */
     get listening() {
         return this.server.listening;
     }
 
     /**
-     *@type {boolean}
      * boolean value indicating if the https server is listening for request
+     *@type {boolean}
     */
     get httpsListening() {
         return this.server.httpsListening;

@@ -23,12 +23,15 @@
   },
   "keywords": [
     "web-server",
+    "https-server",
     "routing-engine",
     "static-file-server",
     "file-upload-handler",
     "mountable-routers",
     "api",
-    "body-parser"
+    "body-parser",
+    "security",
+    "error-logging"
   ],
   "author": "Harrison Ifeanyichukwu <Harrisonifeanyichukwu@gmail.com> (http://fjsfoundations.com/)",
   "license": "MIT",
