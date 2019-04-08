@@ -1,31 +1,11 @@
 {
     "srcDir": "src",
-
-    "mainModuleFileName": "main.js",
-
+    "mainModuleFileName": "main.ts",
     "mainModuleName": "RServer",
-
-    "fileExtensions": [".js"],
-
-    "exclude": [],
-
-    "include": ["*"],
-
-    "externalModules": ["fs", "path", "hash", "crypto", "http", "https"],
-
-    "copyAssets": true,
-
-    "sourcemap": false,
-
-    "distConfig": {
-        "disabled": true,
-        "format": "iife",
-        "outDir": "dist"
-    },
-
+    "fileExtensions": [
+        ".ts", ".js"
+    ],
     "libConfig": {
-        "disabled": false,
-        "format": "cjs",
-        "outDir": "lib"
+        "enabled": true
     }
 }

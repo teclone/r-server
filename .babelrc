@@ -1,29 +1,31 @@
 {
-  "env": {
-    "test": {
-      "presets": [
-        [
-          "@babel/preset-env",
-          {
-            "targets": {
-              "node": "current"
+    "env": {
+      "test": {
+        "presets": [
+          [
+            "@babel/preset-env",
+          ],
+          "@babel/preset-typescript",
+        ],
+        "plugins": [
+          "@babel/proposal-class-properties",
+          "@babel/proposal-object-rest-spread"
+          ]
+      },
+      "build": {
+        "presets": [
+          [
+            "@babel/env",
+            {
+              "modules": false,
             }
-          }
-        ]
-      ]
-    },
-    "build": {
-      "presets": [
-        [
-          "@babel/preset-env",
-          {
-            "modules": false,
-            "targets": {
-              "node": "current"
-            }
-          }
-        ]
-      ]
+          ],
+          "@babel/preset-typescript",
+        ],
+        "plugins": [
+          "@babel/proposal-class-properties",
+          "@babel/proposal-object-rest-spread"
+          ]
+      }
     }
   }
-}
