@@ -4,5 +4,6 @@ node_modules
 /lib
 /dist
 /docs
-.access.log
-.error.log
+/.log
+/typings
+/coverage
