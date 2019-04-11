@@ -12,7 +12,8 @@
     "report-coverage": "jest --coverage --coverageReporters=text-lcov | coveralls",
     "semantic-release": "semantic-release",
     "lint": "eslint ./src --fix",
-    "start": "npm run build && node server.js"
+    "start": "npm run build && node server.js",
+    "postinstall": "bash ./generate-cert"
   },
   "repository": {
     "type": "git",
@@ -47,6 +48,8 @@
     "coveralls": "3.0.3",
     "cz-conventional-changelog": "2.1.0",
     "jest": "24.3.1",
+    "js-beautify": "1.7.5",
+    "request": "2.88.0",
     "rimraf": "2.6.3",
     "rollup": "0.66.6",
     "rollup-all": "1.5.2",
@@ -55,14 +58,18 @@
     "rollup-plugin-node-resolve": "3.4.0",
     "rollup-plugin-uglify": "6.0.2",
     "semantic-release": "^15.13.3",
+    "source-map-support": "0.5.12",
     "tslint": "5.15.0",
-    "typescript": "3.3.3333",
-    "js-beautify": "1.7.5",
-    "request": "2.88.0"
+    "typescript": "3.3.3333"
   },
   "config": {
     "commitizen": {
       "path": "cz-conventional-changelog"
     }
+  },
+  "dependencies": {
+    "@babel/plugin-transform-runtime": "7.4.3",
+    "@babel/runtime": "7.4.3",
+    "@forensic-js/utils": "1.1.1"
   }
 }

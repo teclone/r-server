@@ -7,18 +7,12 @@ notifications:
 node_js:
   - "9"
   - "8"
-before_script:
-  - chmod u+x ./generate-cert
-  - ./generate-cert
 script:
   - npm run test
 jobs:
   include:
     - stage: release
       node_js: "10"
-      before_script:
-        - chmod u+x ./generate-cert
-        - ./generate-cert
       script:
         - npm run test
         - npm run build
