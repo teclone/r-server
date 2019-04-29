@@ -7,13 +7,13 @@
   "scripts": {
     "commit": "git-cz",
     "test": "BABEL_ENV=test jest",
-    "watch-test": "BABEL_ENV=test jest --watch",
-    "build": "rimraf dist lib typings && tsc && BABEL_ENV=build rollup --config",
+    "watch-test": "npm run test -- --watch",
+    "build": "rimraf dist lib typings && tsc && node ./scripts/copy-typings.js && BABEL_ENV=build rollup --config",
     "report-coverage": "jest --coverage --coverageReporters=text-lcov | coveralls",
     "semantic-release": "semantic-release",
     "lint": "eslint ./src --fix",
-    "start": "npm run build && node server.js",
-    "postinstall": "bash ./generate-cert"
+    "start": "npm run build && node app.js",
+    "postinstall": "bash ./scripts/setup.sh"
   },
   "repository": {
     "type": "git",
@@ -45,6 +45,7 @@
     "@typescript-eslint/parser": "1.6.0",
     "babel-jest": "24.3.1",
     "commitizen": "3.0.7",
+    "copy-dir": "0.4.0",
     "coveralls": "3.0.3",
     "cz-conventional-changelog": "2.1.0",
     "jest": "24.3.1",
@@ -57,7 +58,7 @@
     "rollup-plugin-commonjs": "9.3.4",
     "rollup-plugin-node-resolve": "3.4.0",
     "rollup-plugin-uglify": "6.0.2",
-    "semantic-release": "^15.13.3",
+    "semantic-release": "15.13.12",
     "source-map-support": "0.5.12",
     "tslint": "5.15.0",
     "typescript": "3.3.3333"
@@ -70,6 +71,8 @@
   "dependencies": {
     "@babel/plugin-transform-runtime": "7.4.3",
     "@babel/runtime": "7.4.3",
-    "@forensic-js/utils": "1.1.1"
+    "@forensic-js/regex": "1.0.0",
+    "@forensic-js/utils": "1.4.0",
+    "mime-types": "2.1.24"
   }
 }
