@@ -22,7 +22,7 @@ const rServerConfig: RServerConfig = {
 
     encoding: 'latin1',
 
-    maxMemory: 50000000,
+    maxMemory: '50mb',
 
     defaultDocuments: [
         'index.html',

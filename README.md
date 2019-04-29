@@ -6,9 +6,11 @@
 [![npm version](https://badge.fury.io/js/r-server.svg)](https://badge.fury.io/js/r-server)
 ![npm](https://img.shields.io/npm/dt/r-server.svg)
 
-RServer is a fully integrated [node.js](https://nodejs.org/en/docs/guides/anatomy-of-an-http-transaction/) web server, optimized for development and production needs, with inbuilt routing engine, static file server with range request support, body parser (has support for multipart and file uploads), middleware support, request-response profiler, excellent exception handling, error logging, CORS functionality, https easy setup and lots more.
+RServer is a fully integrated, Promise-based [Node.JS](https://nodejs.org/en/docs/guides/anatomy-of-an-http-transaction/) web server, optimized for development and production needs, with inbuilt **routing engine**, **static file server**, **range request support**, **body parser** (has support for multipart and file uploads), **middleware support**, **request-response** profiler, **excellent exception handling**, **error logging**, **Https easy setup** and lots more.
 
-Despite being configurable for advanced usage, it requires no configurations to get started. It is fully compatible with [express.js](https://expressjs.com/) and provides even more functionalities out of the box.
+It is fully compatible with [express.js](https://expressjs.com/), and takes minimal migration effort. It provides even more functionalities out of the box.
+
+Note: **RServer is supported starting from Node v8.12 upward**
 
 ## Newly Added Features
 
@@ -24,25 +26,22 @@ npm install r-server
 
 Create your server entry **app.js or server.js** file with some sample codes like below.
 
-```javascript
-//import rserver
-const RServer = require('r-server');
+```typescript
+const Server = require('r-server'); // import rserver
+const app = Server.create(); // create server instance
 
-//get an app instance
-const app = RServer.instance();
-
-//start the instance. if port is null, it defaults to process.env.PORT || 4000
+//start the instance. if port is null, it defaults to process.env.PORT || 8000
 app.listen(null, () => {
     console.log('listening');
 });
 
-//add some routes
+// add some route
 app.get('/', (req, res) => {
-    res.end('Hello World');
+    return res.end('Hello World');
 });
 ```
 
-Start the server by running `npm start` on the project root directory and navigate your browser to `http://localhost:port/`. **It is that simple**.
+Start the server by running `npm start` on the project root directory and navigate your browser to `http://localhost:8000/`. **It is that simple**.
 
 ## Why R-Server
 
@@ -58,7 +57,7 @@ R-Server gives you many excellent features out of the box, saving you the stress
 
 5. [Mountable Router](#mountable-router)
 
-6. [Error Handling & Reporting](#error-handling-&-reporting)
+6. [Error Handling & Logging](#error-handling-&-reporting)
 
 7. [Response Utility Methods](#response-utility-methods)
 
@@ -70,30 +69,29 @@ R-Server gives you many excellent features out of the box, saving you the stress
 
 ### Request Body Parser
 
-It comes with an inbuilt request body parser, that supports all forms of http request data such as **urlencoded query strings**, **application/json data**, **application/x-www-form-urlencoded data** and **multipart/form-data** formats. Parsed fields and files are made available on the request object through the `query`, `body`, `data` and `files` property. Uploaded files are stored in a tmp folder, **storage/tmp** folder by default unless otherwise stated in a config file.
+It comes with an inbuilt **request body parser**, that supports all forms of http request data such as **urlencoded query strings**, **application/json data**, **application/x-www-form-urlencoded data** and **multipart/form-data**.
+
+Parsed fields and files are made available on the request object through the `query`, `body`, `data` and `files` properties. Uploaded files are stored in a tmp folder, **storage/tmp** folder by default unless otherwise stated in a config file.
 
 The `data` property is a combination of all fields in the `query` and `body` properties, with values in the `body` property winning the battle in case of conflicting field keys.
 
 Multi-value fields are supported as well. They are recognised if the field name ends with the bracket notation `[]`. Note that the brackets are stripped out during the parsing. It uses the same principle like in [PHP](http://php.net/manual/en/tutorial.forms.php).
 
-```javascript
-//import rserver
-const RServer = require('r-server');
+```typescript
+const Server = require('r-server'); // import rserver
+const app = Server.create(); // create server instance
 
-//get an app instance
-const app = RServer.instance();
-
-//start the instance
-app.listen(8000, () => {
+//start the instance. if port is null, it defaults to process.env.PORT || 8000
+app.listen(null, () => {
     console.log('listening');
 });
 
-//add some routes
-app.put('users/{user-id}/profile-picture', (req, res, userId) => {
-    //retrieve the picture
+app.put('users/{userId}/profile-picture', (req, res) => {
     const picture = req.files.picture;
-    //{path: 'fileAbsPath', tmpName: 'fileTempName', size: 'fileSizeInByte', type: 'fileMimeType'}
-    res.json(picture);
+    return res.json({
+        status: 'success',
+        message: 'got your file'
+    });
 });
 ```
 
@@ -101,9 +99,9 @@ app.put('users/{user-id}/profile-picture', (req, res, userId) => {
 
 It provides an excellent routing engine, with parameter capturing and can incorporate data type enforcement on captured parameters. All http method verbs are made available in the router including `get`, `post`, `put`, `delete`, `options`, `head` and the universal `all` method.
 
-Unlike in [express.js](https://expressjs.com/), parameter capturing sections are enclosed in curly braces `{}` and you are not prevented from using hyphen in your parameter names.
+Unlike in [express.js](https://expressjs.com/), parameter capturing sections are enclosed in curly braces `{}`;
 
-It also supports chained routes through the `Router#route(url)` method. The callback method can be asynchronous or can return promises.
+It also supports chained routes through the `Router#route(url)` method. Route callbacks and Middlewares can be asynchronous in nature.
 
 It also allows you to set route base path that gets prepended to all route urls and middleware urls.
 
@@ -111,7 +109,10 @@ It also allows you to set route base path that gets prepended to all route urls 
 
 **Usage Example**:
 
-```javascript
+```typescript
+const Server = require('r-server'); // import rserver
+const app = Server.create(); // create server instance
+
 /** get route */
 app.get(url, callback, options);
 
@@ -136,43 +137,53 @@ app.all(url, callback, options);
 
 **Data Type Enforcement on Captured Parameter**:
 
-```javascript
+```typescript
 //no data type enforcement
-app.get('users/{user-id}/profile', (req, res, userId) => {
+app.get('users/{userId}', (req, res, userId) => {
     userId = /^\d+$/.test(userId)? Number.parseInt(userId) : 0;
-    if (userId === 0) {
+    if (userId !== 0) {
         return res.status(200).json({
-            status: 'failed',
             data: {
-                errors: {
-                    'userId': 'invalid user id found'
-                }
+                id: userId,
+                name: 'User Name'
             }
         });
     }
-    //continue processing the request
+    else {
+        return res.status(400).json({
+            errors: {
+                userId: 'user id not recognised'
+            }
+        });
+    }
 });
 
 //enforce data type
-app.get('users/{int:user-id}/profile', (req, res, userId) => {
-    if (userId === 0) {
+app.get('users/{int:userId}', (req, res, userId) => {
+    if (userId !== 0) {
         return res.status(200).json({
-            status: 'failed',
             data: {
-                errors: {
-                    'userId': 'invalid user id found'
-                }
+                id: userId,
+                name: 'User Name'
             }
         });
     }
-    //continue processing the request
+    else {
+        return res.status(400).json({
+            errors: {
+                userId: 'user id not recognised'
+            }
+        });
+    }
 });
 ```
 
 **Chained Routes**:
 
-```javascript
-//chained route
+```typescript
+const Server = require('r-server'); // import rserver
+const app = Server.create(); // create server instance
+
 app.route('users/{int:userId}')
 
     .put((req, res, userId) => {
@@ -180,7 +191,11 @@ app.route('users/{int:userId}')
     });
 
     .delete((req, res, userId) => {
-        //delete user profile
+        //delete user
+    });
+
+    .get((req, res, userId) => {
+        //retrieve user
     });
 ```
 
@@ -188,23 +203,38 @@ app.route('users/{int:userId}')
 
 It provides api for setting routing base path that gets prepended to all route urls and middleware urls. This is very helpful when exposing versioned api endpoints in your applications.
 
-```javascript
-app.setBasePath(basePath);
+**NB: Route base path must be set before registering routes.**
 
+```typescript
+const Server = require('r-server'); // import rserver
+const app = Server.create(); // create server instance
+
+const request = require('request');
 //examples
 app.setBasePath('api/v2.0');
 
 //this route will be called when request is made on the endpoint /api/v2.0/auth
 app.post('auth', (req, res)=> {
-    res.end('received');
+    return res.end('received');
 }));
 
-app.listen(null, () => console.log('listening'));
+describe(`setBasePath(basePath: string)`, function() {
+    it(`should append the basePath to all route urls`, function(done) {
+        app.listen(null, () => {
+            request.post(`http://localhost:8000/auth`, {}, (err, res, body) => {
+                expect(body).toEqual('received');
+                app.close(() => {
+                    done();
+                });
+            });
+        });
+    });
+});
 ```
 
 ### Static File Server
 
-It provides static file services out of the box, responding to `GET`, `HEAD`, & `OPTIONS` requests made on such static files. By default, it serves files from the `./public` folder. **It does not serve files that starts with dot `.` character or files within a folder that starts with the dot `.` character** unless the `serveDotFiles` configuration option is set to true. It also supports byte range requests that is crucial when serving large file sizes.
+It provides public static file services out of the box, responding to **GET**, **HEAD**, & **OPTIONS** requests made on such static files. By default, it serves files from the `./public` folder. **It does not serve files that starts with dot `.` character or files within a folder that starts with the dot `.` character** unless the `serveHiddenFiles` configuration option is set to true. It also supports byte range requests that is crucial when serving large files.
 
 The list of Default documents includes `index.html`, `index.css`, `index.js`. See [configuring-rserver](#configuring-rserver) on how to configure the list of default documents and so many other options.
 
@@ -214,162 +244,150 @@ It provides excellent content negotiation [headers](https://www.w3.org/Protocols
 
 ### Middleware Support
 
-It supports the use of middlewares through the `Router#use(url, middlewares, options)` method and this makes it extensible. The middleware must be a `callable` (function) or an array of callable. It supports asynchronous middlewares by default. Each middleware can be an asynchronous function or a function that returns promise.
+It supports the use of middlewares making it easy to run security or pluggable modules/methods and this makes it extensible. One can register global/standalone middlewares or localized route based middlewares. Middlewares can be a single or an array of javascript functions. Middlewares can be asynchronous functions too, that return promises.
 
-```javascript
-//middleware that runs on all request
+```typescript
+const Server = require('r-server'); // import rserver
+const app = Server.create(); // create server instance
+
+//standalone middleware, runs on all request methods
 app.use('*', (req, res, next) => {
-    if(true)
-        return next();
-    else
-        return res.status(401).end();
+    //check if auth token is present in the header and set the req.user property
+
+    next(); //execute next to pass control or next middleware
 });
 
-//middleware that runs on the root domain only, and only on post requests
-app.use('/', (req, res, next) => next(), {methods: ['POST']};
+//standalone middleware, runs on root domain and only on post request
+app.use('/', (req, res, next) => next(), {method: 'post'};
 
-//middleware that runs on all paths starting with /users/userId
-app.use('users/{userId}/*', (req, res, next, userid) => next());
+//standalone middleware that runs on all paths starting with /users/{userId}
+app.use('users/{userId}/*', (req, res, next, userId) => next());
 
-//use array of middlewares that applies to post method
-app.use(url, [middleware1, middleware2], 'POST');
+//route localized middleware
+app.get('auth/login', (req, res) => {res.end()}, (req, res, next) => {
+    //redirect user to homepage if user is logged in
+    if (req.user) {
+        res.redirect('/');
+    }
+    else {
+        next();
+    }
+});
 ```
 
 ### Mountable Router
 
 It gives you the same feature that `express.Router()` offers, with additional ability to specify if the mini app router should inherit the main app's middlewares when it gets mounted.
 
-```javascript
-//file routes/AuthRoutes.js
-import RServer from 'r-server';
+**File routes/AuthRoutes.js**:
 
-//create a mini router, that does not inherit base app middlewares.
-const authRoutes = RServer.Router(false);
+```javascript
+const Server = require('r-server'); // import rserver
+const authRoutes = Server.Router(true); // create a mountable router
 
 //define specific middlewares for auth
 authRoutes.use('*', (req , res, next) => {
-    if(true)
-        return next();
-    else
-        return res.status(401).end();
+    // if user is logged in, redirect to homepage
+    if (req.user) {
+        res.redirect('/');
+    }
+    else {
+        next();
+    }
 });
 
-//use chained route
-authRoutes.route('login')
+authRoutes.post('signup', (req, res) => {
+    // process account creation
+});
 
-    .get((req, res) => {
-        return res.end('login page');
-    })
+authRoutes.post('login', (req, res) => {
+    //process login
+});
 
-    .post((req, res) => {
-        return res.end('process posted data');
-    });
-
-authRoutes.route('signup')
-
-    .get((req, res) => {
-        return res.end('signup page');
-    })
-
-    .post((req, res) => {
-        return res.end('process posted data');
-    });
+authRoutes.post('reset-password', (req, res) => {
+    // process password reset
+});
 
 export default Authroutes;
 ```
 
-**import to main app**:
+**File app.js**:
 
 ```javascript
-import RServer from 'r-server';
-import authRoutes from './routes/authRoutes';
+const Server = require('r-server');
+const authRoutes = require('./routes/authRoutes');
 
-const app = RServer.instance();
+const app = RServer.create();
+
+app.mount('/auth', authRoutes);
+
+app.get('/', (req, res) => {
+    return res.end('Welcome');
+});
 
 //http server will listen on port process.env.PORT if set, else it listens on port 4000
 app.listen(null, () => {
     console.log('listening');
 });
-
-//mount the auth routes
-app.mount('auth', authRoutes);
-
-//middleware will not affect auth routes, as it does not inherit it
-app.use('*', (req, res, next) => {
-    next();
-});
-
-app.get('/', (req, res) => {
-    return res.end('Welcome');
-});
 ```
 
 ### Error Handling & Reporting
 
-It logs errors to a user defined error log file which defaults to **.error.log** if not overriden.
-When running in development mode, it sends error message and trace back to the client (browsers, etc). In production mode, it hides the error message from the client, but still logs the error to the error log file.
+It logs errors to a user defined error log file which defaults to **.log/error.log** if not overriden.
+When running in development mode, it sends error message and traces back to the client (browsers, etc). In production mode, it hides the error message from the client, but still logs the error to the error log file.
 
-When using Promises, we encourage you to always have a catch method attached or always include a return statement before the promise. By returning all promises in your codes, any exception will be handled automatically for you by our internal error handler for the event loop.
-
-```javascript
-const rServer = require('r-server'),
-    app = rServer.instance();
-
-const userModel = require('model/UserModel');
-
-app.get('/users', (req, res) => {
-    //always return promises. we will handle any errors for you
-    return userModel.find().exec().then(users => {
-        //return promise
-        return res.json({
-            status: 'success',
-            data: {
-                users
-            }
-        });
-    });
-});
-
-app.listen(null, () => {
-    console.log('listening');
-});
-```
+By design, route callbacks are made to return promises, this helps bubble up any error up to our internal error handler for the event loop.
 
 ### Response Utility Methods
 
-Just like in express.js, there are some extended methods made available on the Response object,
-that includes the following:
+Just like in **express.js**, there are some extended methods made available on the Response object, that includes the following:
 
-```javascript
-/**
- * set status code. returns this, so it is chainable
-*/
-res.status(statusCode: number);
+```typescript
 
 /**
- * set response header, returns this, so it is chainable
-*/
-res.setHeader(name: string, value: mixed);
+ * ends the response with optional response data, and optional data encoding
+ */
+end(data?, encoding?: string): Promise<boolean>;
 
 /**
- * set response headers. returns this, so it is chainable
-*/
-res.setHeaders(headers: object);
+ * sets response header
+ */
+setHeader(name: string, value: string | number | string[]): this;
 
 /**
- * send json response, returns promise.
-*/
-res.json(data: string|jsonObject)
+ * sets multiple response headers
+ */
+setHeaders(headers: {[p: string]: string | number | string[]}): this;
 
 /**
- * redirect client. returns promise
-*/
-res.redirect(absoluteOrRelativePath: string, statusCode=302)
+ * removes a single set response header at a time. function is chainable
+ */
+removeHeader(name: string): this;
 
 /**
- * send download file to client. returns promise
-*/
-res.download(fileAbsoluteOrRelativePath: string, suggestedDownloadSaveName: string)
+ * remove response headers that are already set. function is chainable
+ */
+removeHeaders(...names: string[]): this;
+
+/**
+ * sets response status code
+ */
+status(code: number): this;
+
+/**
+ * sends json response back to the client.
+ */
+json(data: object | string): Promise<boolean>;
+
+/**
+ * Redirect client to the given url
+ */
+redirect(path: string, status: number = 302): Promise<boolean>;
+
+/**
+ * sends a file download attachment to the client
+ */
+download(filePath: string, filename?: string): Promise<boolean>;
 ```
 
 ### Custom HTTP Error Documents
@@ -378,108 +396,88 @@ RServer is configurable, and allows the ability to define custom http error file
 
 ## Configuring RServer
 
-RServer uses an internal `.server.config.js` file that defines default server configurations for your project. the full config options is as shown below:
+RServer uses an internal `.server.ts` file that defines default server configurations for your project. the full config options is as shown below:
 
-```javascript
-export default {
+```typescript
+import { RServerConfig } from './@types';
 
-    'env': 'development',
+const rServerConfig: RServerConfig = {
 
-    'errorLog': '.error.log',
+    env: 'dev',
 
-    'accessLog': '.access.log',
+    errorLog: '.log/error.log',
 
-    'profileRequest': false,
+    accessLog: '.log/access.log',
 
-    'tempDir': 'storage/temp',
+    profileRequest: true,
 
-    'publicPaths': [
+    tempDir: 'storage/temp',
+
+    publicPaths: [
         'public'
     ],
 
-    'serveDotFiles': false,
+    serveHiddenFiles: false,
 
-    'cacheControl': 'no-cache, max-age=86400',
+    cacheControl: 'no-cache, max-age=86400',
 
-    'encoding': 'latin1',
+    encoding: 'latin1',
 
-    'maxBufferSize': 50000000,
+    maxMemory: '50mb',
 
-    'mimeTypes': {
-        'json': 'application/json',
-        'html': 'text/html',
-        'xml': 'text/xml',
-        'js': 'text/javascript',
-        'css': 'text/css',
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'mp3': 'audio/mp3',
-        'mp4': 'video/mp4',
-        'pdf': 'application/pdf'
-    },
-
-    'defaultDocuments': [
+    defaultDocuments: [
         'index.html',
         'index.js',
         'index.css'
     ],
 
-    'httpErrors': {
-        'baseDir': '',
-        '404': ''
+    httpErrors: {
+        baseDir: '',
+        404: '',
+        500: ''
     },
 
-    'https': {
-        'enabled': false,
-        /** can be overriden by setting process.env.HTTPS_PORT */
-        'port': 5000,
+    https: {
+        enabled: false,
+        /* can be overriden by setting process.env.HTTPS_PORT */
+        port: 9000,
 
-        /** enforce https by redirecting all http request to https */
-        'enforce': true,
+        /* enforce https by redirecting all http request to https */
+        enforce: true,
 
-        /** https credentials, use  */
-        'credentials': {
-            'key': '.cert/server.key',
-            'cert': '.cert/server.crt',
+        /* https credentials, use  */
+        credentials: {
+            key: '.cert/server.key',
+            cert: '.cert/server.crt',
             //'pfx': 'relativePath',
-            //'passphrase': 'pfx passphrase'
+            passphrase: 'pfx passphrase'
         }
     }
-};
+}
+
+export default rServerConfig;
 ```
 
 You can override these options by creating your own custom config file in your project's root directory. You can even name it differently or place it anywhere provided you supply the file's relative path when creating an instance.
 
-```javascript
-const rServer = require('r-server'),
-    app = rServer.instance(configPath),
-    app2 = rServer.instance(configPath2);
+```typescript
+const Server = require('r-server');
+const app1 = RServer.create(configPath1);
+const app2 = RServer.create(configPath2);
 
-app.listen(4000);
-app2.listen(9000);
+app1.listen(4000);
+app2.listen(5000);
 
-app.get('/', (req, res) => {
-    res.end('This is app on port 4000');
+app1.get('/', (req, res) => {
+    return res.end('This is app on port 4000');
 });
 
 app2.get('/', (req, res) => {
-    res.end('This is app2 on port 9000');
+    return res.end('This is app2 on port 5000');
 });
 ```
 
 The two instances above are separate, knows nothing about each other and each uses its own config file, they can even share the same config file. **Note that the config parameter can be the config object rather than a path string**.
-
-Be default, RServer will look for your custom server config file in your project root directory. The following names are supported by default.
-
-```javascript
-[
-    '.server.json',
-    '.server.config.json',
-    '.server.config.js',
-    '.server.js'
-]
-```
 
 ### HTTPS Support
 
@@ -487,31 +485,69 @@ It is easy to setup a **https server** along with your default http server. Use 
 
 **https configuartion**:
 
-```javascript
-export default {
+```typescript
+import { RServerConfig } from './@types';
 
-    'https': {
-        'enabled': false,
-        /** can be overriden by setting process.env.HTTPS_PORT */
-        'port': 5000,
+const rServerConfig: RServerConfig = {
 
-        /**enforce https for all requests.*/
-        'enforce': true,
+    env: 'dev',
 
-        /** https credentials, use  */
-        'credentials': {
-            'key': '.cert/server.key',
-            'cert': '.cert/server.crt',
+    errorLog: '.log/error.log',
+
+    accessLog: '.log/access.log',
+
+    profileRequest: true,
+
+    tempDir: 'storage/temp',
+
+    publicPaths: [
+        'public'
+    ],
+
+    serveHiddenFiles: false,
+
+    cacheControl: 'no-cache, max-age=86400',
+
+    encoding: 'latin1',
+
+    maxMemory: '50mb',
+
+    defaultDocuments: [
+        'index.html',
+        'index.js',
+        'index.css'
+    ],
+
+    httpErrors: {
+        baseDir: '',
+        404: '',
+        500: ''
+    },
+
+    https: {
+        enabled: false,
+        /* can be overriden by setting process.env.HTTPS_PORT */
+        port: 9000,
+
+        /* enforce https by redirecting all http request to https */
+        enforce: true,
+
+        /* https credentials */
+        credentials: {
+            key: '.cert/server.key',
+            cert: '.cert/server.crt',
             //'pfx': 'relativePath',
-            //'passphrase': 'pfx passphrase'
+            //passphrase: 'pfx passphrase'
         }
     }
-};
+}
+
+export default rServerConfig;
 ```
 
 ### Range Request Support
 
-RServer will automatically detect and handle any [byte-range](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests) requests that hits the server. This is very important as it eases the server load when serving large files as browsers tend to throttle requests using range request mechanisms. The link above is a great place to read more on range requests.
+RServer will automatically detect and handle any [byte-range](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests) requests that hits the server. This is very important as it eases the server load when serving large files as browsers tend to throttle requests using range request mechanism. Visit this [link to read more](https://tools.ietf.org/html/rfc7233) on range requests.
 
 ## Contributing
 
@@ -534,5 +570,3 @@ We welcome your own contributions, ranging from code refactoring, documentation 
 ## About Project Maintainers
 
 This project is maintained by **Harrison Ifeanyichukwu**, a young, passionate full stack web developer, an [MDN](https://developer.mozilla.org/en-US/profiles/harrison-feanyichukwu) documentator, maintainer of w3c [xml-serializer](https://www.npmjs.com/package/@harrison-ifeanyichukwu/xml-serializer) project, node.js [Rollup-All](https://www.npmjs.com/package/r-server) plugin and other amazing projects.
-
-He is available for hire, ready to work on amazing `PHP`, (Symphony, Drupal, Laravel), `Node.js`, `React`, `JavaScript`, `HTML5`, `CSS` and database projects. Looks forward to hearing from you soon!!!
