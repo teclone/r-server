@@ -1,0 +1,9 @@
+node_modules
+.nyc_output
+.cert
+/lib
+/dist
+/docs
+/.log
+/typings
+/coverage
