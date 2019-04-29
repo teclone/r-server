@@ -28,7 +28,7 @@ export default class Response extends ServerResponse {
      * @param data optional data to send. either string or buffer
      * @param encoding data encoding if not buffer
      */
-    end(data?, encoding?: string): void | Promise<boolean> {
+    end(data?, encoding?: string): Promise<boolean> {
         return new Promise((resolve) => {
             if (encoding) {
                 super.end(data, encoding, () => {
