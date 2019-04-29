@@ -1,5 +1,5 @@
 import Router from '../../src/modules/Router';
-import { dummyCallback, dummyMiddleware } from '../../tests/helper';
+import { dummyCallback, dummyMiddleware } from '../helpers';
 import { Method } from '../../src/@types';
 import Wrapper from '../../src/modules/Wrapper';
 
