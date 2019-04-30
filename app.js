@@ -12,7 +12,7 @@ app.post('/', function(req, res) {
 
 //send download
 app.get('/download', (req, res) => {
-    return res.download('package.json');
+    return res.download('media/image.jpg');
 });
 
 app.listen();
