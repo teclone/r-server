@@ -173,12 +173,6 @@ export default class FileServer {
             return this.endResponse(response, 200, resHeaders);
         }
 
-        //method is get
-        if (status >= 400) {
-            //serve http error document
-            return this.endStream(filePath, response, status, resHeaders);
-        }
-
         const eTag = resHeaders['ETag'];
         const lastModified = resHeaders['Last-Modified'];
         const fileSize = Number.parseInt(resHeaders['Content-Length']);
@@ -204,6 +198,7 @@ export default class FileServer {
             }
 
             //range request is not satisfiable
+            delete resHeaders['Content-Disposition'];
             if (ranges.length === 0) {
                 return this.endResponse(response, 416, {
                     'Content-Range': `bytes */${fileSize}`
@@ -274,21 +269,20 @@ export default class FileServer {
     /**
      * serves a static file response back to the client
      */
-    serve(url: Url, method: Method, request: Request, response: Response): Promise<boolean> {
-        const filePath = this.validateRequest(stripSlashes(url), method);
+    serve(url: Url, request: Request, response: Response): Promise<boolean> {
+        const filePath = this.validateRequest(stripSlashes(url), request.method);
         if (isNull(filePath)) {
             return Promise.resolve(false);
         }
         else {
-            return this.process(method, filePath, request, response);
+            return this.process(request.method, filePath, request, response);
         }
     }
 
     /**
      * serves server http error files. such as 504, 404, etc
      */
-    serveHttpErrorFile(method: Method, request: Request,
-        response: Response, status: number): Promise<boolean> {
+    serveHttpErrorFile(response: Response, status: number): Promise<boolean> {
 
         const httpErrors = this.config.httpErrors;
         let filePath = '';
@@ -304,15 +298,15 @@ export default class FileServer {
             return response.status(status).end();
         }
         else {
-            return this.process(method, filePath, request, response, status);
+            return this.endStream(filePath, response, status, this.getDefaultHeaders(filePath));
         }
     }
 
     /**
      * serves file intended for download to the client
      */
-    serveDownload(method: Method, request: Request, response: Response,
-        filePath: string, filename?: string): Promise<boolean> {
+    serveDownload(request: Request, response: Response, filePath: string,
+        filename?: string): Promise<boolean> {
 
         let found = true;
         let absPath = resolvePaths(this.entryPath, filePath);
@@ -333,7 +327,7 @@ export default class FileServer {
         }
         else {
             filename = isString(filename)? filename : path.parse(absPath).base;
-            return this.process(method, absPath, request, response, 200, {
+            return this.process(request.method, absPath, request, response, 200, {
                 'Content-Disposition': `attachment; filename="${filename}"`
             });
         }
