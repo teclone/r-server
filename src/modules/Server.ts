@@ -84,7 +84,13 @@ export default class {
         };
         if (server.listening) {
             const {address, port} = server.address() as AddressInfo;
-            result.address = `${result.name.toLowerCase()}://${address === '::'? '127.0.0.1' : address}:${port}/`
+            /* istanbul ignore else */
+            if (address === '::') {
+                result.address = `${result.name.toLowerCase()}://localhost:${port}/`;
+            }
+            else {
+                result.address = `${result.name.toLowerCase()}://${address}:${port}/`;
+            }
         }
         return result;
     }
@@ -226,7 +232,12 @@ export default class {
 
         //parse the request body
         if(request.buffer.length > 0) {
-            const result = this.bodyParser.parse(request.buffer, request.headers['content-type'] || 'text/plain');
+            let contentType = 'text/plain';
+            /* istanbul ignore else */
+            if (request.headers['content-type']) {
+                contentType = request.headers['content-type'];
+            }
+            const result = this.bodyParser.parse(request.buffer, contentType);
             request.body = result.body;
             request.files = result.files;
         }
@@ -250,14 +261,13 @@ export default class {
             }
 
             let {url, method} = request;
-            method = (method as string).toLowerCase();
 
             this.parseRequestData(request, url as string);
             return this.cordinateRoutes(url as string, method as string, request, response).then(status => {
                 if (!status) {
-                    return this.fileServer.serve(url as string, method as Method, request, response).then(status => {
+                    return this.fileServer.serve(url as string, request, response).then(status => {
                         if (!status) {
-                            return this.fileServer.serveHttpErrorFile((method as string) as Method, request, response, 404);
+                            return this.fileServer.serveHttpErrorFile(response, 404);
                         }
                         return true;
                     });
@@ -291,6 +301,7 @@ export default class {
      */
     private onRequest(request: Request, response: Response, server: HttpServer | HttpsServer) {
 
+        request.method = request.method.toLowerCase() as Method;
         request.startedAt = new Date();
         request.hostname = (request.headers['host'] as string).replace(/:\d+$/, '');
         request.encrypted = server instanceof HttpsServer;

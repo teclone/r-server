@@ -1,5 +1,5 @@
 import {IncomingMessage} from 'http';
-import { Files, Data } from '../@types';
+import { Files, Data, Method } from '../@types';
 import { Socket } from 'net';
 
 export default class Request extends IncomingMessage {
@@ -23,6 +23,8 @@ export default class Request extends IncomingMessage {
     encrypted: boolean = false;
 
     hostname: string = '';
+
+    method: Method = 'all';
 
     constructor(socket: Socket) {
         super(socket);

@@ -33,3 +33,7 @@ export const closeServer = (server: Server, done: () => any) => {
         done();
     });
 };
+
+export const resolvePath = (filePath: string) => {
+    return path.resolve(entryPath, filePath);
+};

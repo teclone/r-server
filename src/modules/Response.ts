@@ -117,11 +117,8 @@ export default class Response extends ServerResponse {
      * @param filename - suggested file download name
      */
     download(filePath: string, filename?: string): Promise<boolean> {
-        const request = this.request as Request;
-        const method = (request.method as string).toLowerCase();
-
         return (this.fileServer as FileServer).serveDownload(
-            method as Method, this.request as Request, this, filePath, filename
+            this.request as Request, this, filePath, filename
         );
     }
 }
