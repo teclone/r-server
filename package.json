@@ -7,13 +7,13 @@
   "scripts": {
     "commit": "git-cz",
     "test": "BABEL_ENV=test jest",
-    "watch-test": "npm run test -- --watch",
+    "watch-test": "BABEL_ENV=test jest --watch",
     "build": "rimraf dist lib typings && tsc && node ./scripts/copy-typings.js && BABEL_ENV=build rollup --config",
     "report-coverage": "jest --coverage --coverageReporters=text-lcov | coveralls",
     "semantic-release": "semantic-release",
     "lint": "eslint ./src --fix",
     "start": "npm run build && node app.js",
-    "postinstall": "bash ./scripts/setup.sh"
+    "postinstall": "bash ./scripts/gen-ssl-cert.sh && node ./scripts/create-unreadable.js"
   },
   "repository": {
     "type": "git",

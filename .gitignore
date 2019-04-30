@@ -7,3 +7,4 @@ node_modules
 /.log
 /typings
 /coverage
+/tests/helpers/unreadable.txt
