@@ -156,10 +156,11 @@ export default class {
             const content = others.join(BLANK_LINE);
             const headers = this.parseHeaders(header.split(crlfPattern));
 
-            if (headers.isFile) {
+            /* istanbul ignore else */
+            if (headers.isFile && headers.fileName) {
                 this.assignFileValue(files, headers.fieldName, this.processFile(headers, content));
             }
-            else {
+            else if (!headers.isFile) {
                 this.assignBodyValue(body, headers.fieldName, content);
             }
         });
