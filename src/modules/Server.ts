@@ -4,7 +4,6 @@ import Engine from './Engine';
 import FileServer from './FileServer';
 import Logger from './Logger';
 import Router from './Router';
-import { joinPaths } from './Util';
 import * as fs from 'fs';
 import { Server as HttpServer, createServer as createHttpServer} from 'http';
 import {Server as HttpsServer, createServer as createHttpsServer} from 'https';
@@ -13,6 +12,7 @@ import Response from './Response';
 import Request from './Request';
 import { Config, RServerConfig, RouteInstance, MiddlewareInstance, ListenerCallback, Url, Method, Callback, Middleware, CallbackOptions, MiddlewareOptions} from '../@types';
 import {isString, copy, isNumber, scopeCallback, expandToNumeric} from '@forensic-js/utils';
+import {joinPaths, getEntryPath} from '@forensic-js/node-utils';
 import { AddressInfo} from 'net';
 import Wrapper from './Wrapper';
 
@@ -46,12 +46,7 @@ export default class {
     constructor(config: string | Config) {
 
         /* istanbul ignore else */
-        if (require.main) {
-            this.entryPath = this.getEntryPath(require.main.filename);
-        }
-        else {
-            this.entryPath = this.getEntryPath(__dirname);
-        }
+        this.entryPath = getEntryPath();
 
         this.config = this.resolveConfig(this.entryPath, config);
         this.logger = new Logger(this.entryPath, this.config);
@@ -93,27 +88,6 @@ export default class {
             }
         }
         return result;
-    }
-
-    /**
-     * returns the project's entry path
-     */
-    private getEntryPath(knownPath: string): string {
-
-        /* istanbul ignore if */
-        if (knownPath.indexOf('node_modules') > 0) {
-            return knownPath.split('/node_modules/')[0];
-        }
-
-        let entryPath = path.resolve(knownPath, '../');
-        while (entryPath !== '/') {
-            if (fs.existsSync(entryPath + '/package.json')) {
-                break;
-            }
-            entryPath = path.resolve(entryPath, '../');
-        }
-
-        return entryPath;
     }
 
     /**

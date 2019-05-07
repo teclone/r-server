@@ -1,19 +1,19 @@
 {
   "name": "r-server",
   "version": "0.0.0-development",
-  "description": "A lightweight, extensible node.js web-server with inbuilt routing-engine, static file server, file upload handler, request body parser, middleware support and lots more",
+  "description": "A lightweight, extensible web-server with inbuilt routing-engine, static file server, file upload handler, request body parser, middleware support and lots more",
   "main": "lib/main",
-  "typings": "typings/main",
+  "typings": "lib/typings/main",
   "scripts": {
     "commit": "git-cz",
     "test": "BABEL_ENV=test jest",
     "watch-test": "BABEL_ENV=test jest --watch",
-    "build": "rimraf dist lib typings && tsc && node ./scripts/copy-typings.js && BABEL_ENV=build rollup --config",
-    "report-coverage": "jest --coverage --coverageReporters=text-lcov | coveralls",
-    "semantic-release": "semantic-release",
+    "build": "rimraf lib && tsc && BABEL_ENV=build rollup --config",
     "lint": "eslint ./src --fix",
     "start": "npm run build && node app.js",
-    "postinstall": "bash ./scripts/gen-ssl-cert.sh && node ./scripts/create-unreadable.js"
+    "postinstall": "bash ./scripts/gen-ssl-cert.sh && node ./scripts/create-unreadable.js",
+    "report-coverage": "jest --coverage --coverageReporters=text-lcov | coveralls",
+    "semantic-release": "semantic-release"
   },
   "repository": {
     "type": "git",
@@ -21,14 +21,16 @@
   },
   "keywords": [
     "web-server",
+    "router",
     "routing-engine",
     "static-file-server",
     "file-upload-handler",
+    "range-request-server",
     "mountable-routers",
     "api",
     "body-parser"
   ],
-  "author": "Harrison Ifeanyichukwu <Harrisonifeanyichukwu@gmail.com> (http://fjsfoundations.com/)",
+  "author": "Harrison Ifeanyichukwu <Harrisonifeanyichukwu@gmail.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/harrison-ifeanyichukwu/r-server/issues"
@@ -45,7 +47,6 @@
     "@typescript-eslint/parser": "1.6.0",
     "babel-jest": "24.3.1",
     "commitizen": "3.0.7",
-    "copy-dir": "0.4.0",
     "coveralls": "3.0.3",
     "cz-conventional-changelog": "2.1.0",
     "jest": "24.3.1",
@@ -53,14 +54,13 @@
     "request": "2.88.0",
     "rimraf": "2.6.3",
     "rollup": "0.66.6",
-    "rollup-all": "1.5.2",
+    "rollup-all": "1.6.8",
     "rollup-plugin-babel": "4.3.2",
     "rollup-plugin-commonjs": "9.3.4",
     "rollup-plugin-node-resolve": "3.4.0",
     "rollup-plugin-uglify": "6.0.2",
     "semantic-release": "15.13.12",
     "source-map-support": "0.5.12",
-    "tslint": "5.15.0",
     "typescript": "3.3.3333"
   },
   "config": {
@@ -71,8 +71,9 @@
   "dependencies": {
     "@babel/plugin-transform-runtime": "7.4.3",
     "@babel/runtime": "7.4.3",
-    "@forensic-js/regex": "1.0.0",
-    "@forensic-js/utils": "1.4.0",
+    "@forensic-js/node-utils": "1.0.0",
+    "@forensic-js/regex": "1.0.1",
+    "@forensic-js/utils": "1.5.2",
     "mime-types": "2.1.24"
   }
 }

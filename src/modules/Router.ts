@@ -4,7 +4,7 @@ import {
     Callback, CallbackOptions, Middleware, Url, Method,
     MiddlewareOptions, MiddlewareInstance, Routes
 } from '../@types';
-import { joinPaths } from './Util';
+import { joinPaths } from '@forensic-js/node-utils';
 
 export default class Router {
 

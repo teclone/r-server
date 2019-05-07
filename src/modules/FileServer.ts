@@ -6,7 +6,7 @@ import Request from './Request';
 import Response from './Response';
 import { isNull, copy, isUndefined, isString, stripSlashes } from '@forensic-js/utils';
 import { IncomingHttpHeaders } from 'http';
-import { resolvePaths } from './Util';
+import { resolvePaths } from '@forensic-js/node-utils';
 import mime from 'mime-types';
 import { ALLOWED_METHODS } from './Constants';
 import Logger from './Logger';

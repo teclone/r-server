@@ -2,7 +2,6 @@ import {ServerResponse} from 'http';
 import {isString} from '@forensic-js/utils';
 import FileServer from './FileServer';
 import Request from './Request';
-import { Method } from '../@types';
 
 export default class Response extends ServerResponse {
 
