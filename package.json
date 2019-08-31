@@ -59,7 +59,7 @@
     "rollup-plugin-commonjs": "9.3.4",
     "rollup-plugin-node-resolve": "3.4.0",
     "rollup-plugin-uglify": "6.0.2",
-    "semantic-release": "15.13.14",
+    "semantic-release": "15.13.24",
     "source-map-support": "0.5.12",
     "typescript": "3.3.3333"
   },
