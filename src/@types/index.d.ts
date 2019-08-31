@@ -106,20 +106,20 @@ export type Parameter = string | number | boolean;
 export type Next = () => void;
 
 export type Callback = <
-  Req extends Request = Request,
-  Res extends Response = Response
+  Rq extends Request = Request,
+  Rs extends Response = Response
 >(
-  request: Req,
-  response: Res,
+  request: Rq,
+  response: Rs,
   ...parameters: Parameter[]
 ) => Promise<boolean>;
 
 export type Middleware = <
-  Req extends Request = Request,
-  Res extends Response = Response
+  Rq extends Request = Request,
+  Rs extends Response = Response
 >(
-  request: Req,
-  response: Res,
+  request: Rq,
+  response: Rs,
   next: Next,
   ...parameters: Parameter[]
 ) => void;
