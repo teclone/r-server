@@ -6,17 +6,17 @@ import { uglify } from 'rollup-plugin-uglify';
 import rollupAll from 'rollup-all';
 
 const plugins = [
-    resolve({
-        extensions: ['.ts', '.js'],
-    }),
-    commonjs({
-        include: 'node_modules/**'
-    }),
-    babel({
-        exclude: 'node_modules/**',
-        extensions: ['.ts', '.js'],
-        runtimeHelpers: true
-    }),
+  resolve({
+    extensions: ['.ts', '.js']
+  }),
+  commonjs({
+    include: 'node_modules/**'
+  }),
+  babel({
+    exclude: 'node_modules/**',
+    extensions: ['.ts', '.js'],
+    runtimeHelpers: true
+  })
 ];
 
 export default rollupAll.getExports(uglify(), plugins);

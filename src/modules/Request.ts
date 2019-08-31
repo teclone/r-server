@@ -1,32 +1,31 @@
-import {IncomingMessage} from 'http';
+import { IncomingMessage } from 'http';
 import { Files, Data, Method } from '../@types';
 import { Socket } from 'net';
 
 export default class Request extends IncomingMessage {
+  startedAt: Date | null = null;
 
-    startedAt: Date | null = null;
+  endedAt: Date | null = null;
 
-    endedAt: Date | null = null;
+  files: Files = {};
 
-    files: Files = {};
+  query: Data = {};
 
-    query: Data = {};
+  body: Data = {};
 
-    body: Data = {};
+  data: Data = {};
 
-    data: Data = {};
+  buffer: Buffer = Buffer.alloc(0);
 
-    buffer: Buffer = Buffer.alloc(0);
+  entityTooLarge: boolean = false;
 
-    entityTooLarge: boolean = false;
+  encrypted: boolean = false;
 
-    encrypted: boolean = false;
+  hostname: string = '';
 
-    hostname: string = '';
+  method: Method = 'all';
 
-    method: Method = 'all';
-
-    constructor(socket: Socket) {
-        super(socket);
-    }
+  constructor(socket: Socket) {
+    super(socket);
+  }
 }
