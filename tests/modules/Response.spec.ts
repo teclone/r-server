@@ -1,49 +1,49 @@
-import Server from '../../src/modules/Server';
+import App from '../../src/modules/App';
 import request from 'request';
 import { httpHost, closeServer } from '../helpers';
 
 describe('Response', function() {
-  let server: Server = null;
+  let app: App = null;
 
   beforeEach(() => {
-    server = new Server({});
+    app = new App({});
   });
 
   describe(`#end(data?, encoding?: string): Promise<boolean>`, function() {
     it(`should end the response and return a promise which resolves to true`, function(done) {
-      server.get('/', (req, res) => {
+      app.get('/', (req, res) => {
         return res.end().then(result => {
           expect(result).toEqual(true);
           return true;
         });
       });
-      server.listen(null, () => {
+      app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(server, done);
+          closeServer(app, done);
           expect(body).toEqual('');
         });
       });
     });
 
     it(`can accept a data string or buffer to send back to client`, function(done) {
-      server.get('/', (req, res) => {
+      app.get('/', (req, res) => {
         return res.end('got it');
       });
-      server.listen(null, () => {
+      app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(server, done);
+          closeServer(app, done);
           expect(body).toEqual('got it');
         });
       });
     });
 
     it(`can accept data encoding as second argument`, function(done) {
-      server.get('/', (req, res) => {
+      app.get('/', (req, res) => {
         return res.end('got it', 'utf8');
       });
-      server.listen(null, () => {
+      app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(server, done);
+          closeServer(app, done);
           expect(body).toEqual('got it');
         });
       });
@@ -57,24 +57,24 @@ describe('Response', function() {
     const jsonString = JSON.stringify(jsonObject);
 
     it(`should send a json response back to the client`, function(done) {
-      server.get('/', (req, res) => {
+      app.get('/', (req, res) => {
         return res.json(jsonString);
       });
-      server.listen(null, () => {
+      app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(server, done);
+          closeServer(app, done);
           expect(body).toEqual(jsonString);
         });
       });
     });
 
     it(`should automatically stringify the json object before sending`, function(done) {
-      server.get('/', (req, res) => {
+      app.get('/', (req, res) => {
         return res.json(jsonObject);
       });
-      server.listen(null, () => {
+      app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(server, done);
+          closeServer(app, done);
           expect(body).toEqual(jsonString);
         });
       });
@@ -95,15 +95,15 @@ describe('Response', function() {
     const stringifiedUsers = JSON.stringify(users);
 
     it(`should redirect the client to the new path`, function(done) {
-      server.get('/', (req, res) => {
+      app.get('/', (req, res) => {
         return res.redirect('/users');
       });
-      server.get('/users', (req, res) => {
+      app.get('/users', (req, res) => {
         return res.json(users);
       });
-      server.listen(null, () => {
+      app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(server, done);
+          closeServer(app, done);
           expect(body).toEqual(stringifiedUsers);
         });
       });
@@ -112,12 +112,12 @@ describe('Response', function() {
 
   describe(`#download(filePath: string, filename?: string): Promise<boolean>`, function() {
     it(`should send a download attachment back to the client`, function(done) {
-      server.get('/', (req, res) => {
+      app.get('/', (req, res) => {
         return res.download('media/image.jpg', 'preview.jpg');
       });
-      server.listen(null, () => {
+      app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(server, done);
+          closeServer(app, done);
           expect(res.headers).toHaveProperty('content-disposition');
         });
       });
