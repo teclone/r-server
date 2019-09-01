@@ -8,12 +8,14 @@ import {
 import request from 'request';
 import * as path from 'path';
 import * as fs from 'fs';
-import Server from '../../src/modules/Server';
+import App from '../../src/modules/App';
 import Router from '../../src/modules/Router';
 import { Method } from '../../src/@types';
 import Wrapper from '../../src/modules/Wrapper';
 
-describe(`Server`, function() {
+describe(`App`, function() {
+  let app: App = null;
+
   const getTemplate = (method: Method) => {
     return function() {
       const banner =
@@ -23,8 +25,8 @@ describe(`Server`, function() {
           : 'http ' + method.toUpperCase() + ' method');
 
       it(banner, function() {
-        const spy = jest.spyOn(server.getRouter(), method);
-        server[method]('/', dummyCallback);
+        const spy = jest.spyOn(app.getRouter(), method);
+        app[method]('/', dummyCallback);
 
         expect(spy.mock.calls[0][0]).toEqual('/');
         expect(spy.mock.calls[0][1]).toEqual(dummyCallback);
@@ -34,31 +36,29 @@ describe(`Server`, function() {
     };
   };
 
-  let server: Server = null;
-
   beforeEach(function() {
-    server = new Server({});
+    app = new App({});
   });
 
   describe('#constructor(config: string | Config)', function() {
-    it(`should create an Rserver instance`, function() {
-      expect(server).toBeInstanceOf(Server);
+    it(`should create an Rapp instance`, function() {
+      expect(app).toBeInstanceOf(App);
     });
 
-    it(`should setup https server if https is enabled`, function() {
-      const server = new Server(httpsEnabledConfig);
-      expect(server).toBeInstanceOf(Server);
+    it(`should setup https app if https is enabled`, function() {
+      const app = new App(httpsEnabledConfig);
+      expect(app).toBeInstanceOf(App);
     });
 
     it(`should resolve the env settings and prioritize the value of process.env.NODE_ENV
         if set ahead of config's env value`, function() {
       process.env.NODE_ENV = 'production';
-      let server = new Server(httpsEnabledConfig);
-      expect(server.getConfig().env).toEqual('prod');
+      let app = new App(httpsEnabledConfig);
+      expect(app.getConfig().env).toEqual('prod');
 
       process.env.NODE_ENV = 'development';
-      server = new Server(httpsEnabledConfig);
-      expect(server.getConfig().env).toEqual('dev');
+      app = new App(httpsEnabledConfig);
+      expect(app.getConfig().env).toEqual('dev');
 
       process.env.NODE_ENV = '';
     });
@@ -66,41 +66,41 @@ describe(`Server`, function() {
     it(`should resolve the env settings and prioritize the value of process.env.HTTPS_PORT
         if set ahead of config's https.port value`, function() {
       process.env.HTTPS_PORT = '6000';
-      let server = new Server({ https: { port: 5000, enabled: true } });
-      expect(server.getConfig().https.port).toEqual(6000);
+      let app = new App({ https: { port: 5000, enabled: true } });
+      expect(app.getConfig().https.port).toEqual(6000);
 
       process.env.HTTPS_PORT = '';
     });
   });
 
   describe('#listening', function() {
-    it(`should return true if https or http server is listening for connection`, function() {
-      expect(server.listening).toBeFalsy();
+    it(`should return true if https or http app is listening for connection`, function() {
+      expect(app.listening).toBeFalsy();
     });
   });
 
   describe('#getRouter(): Router', function() {
-    it(`should return the server instance main router`, function() {
-      expect(server.getRouter()).toBeInstanceOf(Router);
+    it(`should return the app instance main router`, function() {
+      expect(app.getRouter()).toBeInstanceOf(Router);
     });
   });
 
   describe('#getMountedRouters(): Router[]', function() {
-    it(`should return an array of the server instance mounted routers`, function() {
-      expect(server.getMountedRouters()).toEqual([]);
+    it(`should return an array of the app instance mounted routers`, function() {
+      expect(app.getMountedRouters()).toEqual([]);
     });
   });
 
   describe('#getConfig()', function() {
-    it(`should return the resolved server config object`, function() {
-      expect(server.getConfig()).toHaveProperty('env');
+    it(`should return the resolved app config object`, function() {
+      expect(app.getConfig()).toHaveProperty('env');
     });
   });
 
   describe('#setBasePath(path: string)', function() {
     it(`should call the main router to set the global base path for all registered routes`, function() {
-      const spy = jest.spyOn(server.getRouter(), 'setBasePath');
-      server.setBasePath('api/v1');
+      const spy = jest.spyOn(app.getRouter(), 'setBasePath');
+      app.setBasePath('api/v1');
 
       expect(spy.mock.calls[0][0]).toEqual('api/v1');
       spy.mockRestore();
@@ -151,7 +151,7 @@ describe(`Server`, function() {
 
   describe('#route(url: Url): Wrapper', function() {
     it(`should create and return a Route Wrapper for the given url`, function() {
-      expect(server.route('user')).toBeInstanceOf(Wrapper);
+      expect(app.route('user')).toBeInstanceOf(Wrapper);
     });
   });
 
@@ -159,9 +159,9 @@ describe(`Server`, function() {
         options: Method | Method[] | MiddlewareOptions | null = null)`, function() {
     it(`should call main router to register a middleware to be called whenever the
             given route url is visited`, function() {
-      const spy = jest.spyOn(server.getRouter(), 'use');
+      const spy = jest.spyOn(app.getRouter(), 'use');
 
-      server.use('/', dummyMiddleware);
+      app.use('/', dummyMiddleware);
       expect(spy.mock.calls[0][0]).toEqual('/');
       spy.mockRestore();
     });
@@ -170,25 +170,25 @@ describe(`Server`, function() {
   describe('#mount(baseUrl: Url, router: Router)', function() {
     it(`should resolve all routes registered in the mountable router and store the router
         inside the mountedRouters array`, function() {
-      server.setBasePath('api/v1');
-      server.get('login', dummyCallback);
+      app.setBasePath('api/v1');
+      app.get('login', dummyCallback);
 
       const router = new Router(true);
       router.get('/', dummyCallback);
       router.get('{id}', dummyCallback);
       router.get('{id}/posts', dummyCallback);
 
-      server.mount('users', router);
+      app.mount('users', router);
 
-      expect(server.getMountedRouters()).toHaveLength(1);
-      expect(server.getRouter().getRoutes().get[0][0]).toEqual('api/v1/login');
-      expect(server.getMountedRouters()[0].getRoutes().get[0][0]).toEqual(
+      expect(app.getMountedRouters()).toHaveLength(1);
+      expect(app.getRouter().getRoutes().get[0][0]).toEqual('api/v1/login');
+      expect(app.getMountedRouters()[0].getRoutes().get[0][0]).toEqual(
         'api/v1/users'
       );
-      expect(server.getMountedRouters()[0].getRoutes().get[1][0]).toEqual(
+      expect(app.getMountedRouters()[0].getRoutes().get[1][0]).toEqual(
         'api/v1/users/{id}'
       );
-      expect(server.getMountedRouters()[0].getRoutes().get[2][0]).toEqual(
+      expect(app.getMountedRouters()[0].getRoutes().get[2][0]).toEqual(
         'api/v1/users/{id}/posts'
       );
     });
@@ -196,43 +196,43 @@ describe(`Server`, function() {
 
   describe('#listen(port?: number | null, callback: ListenerCallback = () => {})', function() {
     it(`should start the application at the given port, calling the callback method once the
-            server gets started`, function(done) {
-      server.listen(3000, () => {
-        expect(server.address().http.port).toEqual(3000);
-        closeServer(server, done);
+            app gets started`, function(done) {
+      app.listen(3000, () => {
+        expect(app.address().http.port).toEqual(3000);
+        closeServer(app, done);
       });
     });
 
     it(`should use the value of process.env.PORT if set over any given port parameter`, function(done) {
       process.env.PORT = '5000';
-      server.listen(3000, () => {
-        expect(server.address().http.port).toEqual(5000);
+      app.listen(3000, () => {
+        expect(app.address().http.port).toEqual(5000);
         process.env.PORT = '';
-        closeServer(server, done);
+        closeServer(app, done);
       });
     });
 
-    it(`should start up the https server if enabled at a default of 9000`, function(done) {
-      const server = new Server(httpsEnabledConfig);
-      server.listen(3000, () => {
-        expect(server.address().http.port).toEqual(3000);
-        expect(server.address().https.port).toEqual(9000);
-        closeServer(server, done);
+    it(`should start up the https app if enabled at a default of 9000`, function(done) {
+      const app = new App(httpsEnabledConfig);
+      app.listen(3000, () => {
+        expect(app.address().http.port).toEqual(3000);
+        expect(app.address().https.port).toEqual(9000);
+        closeServer(app, done);
       });
     });
 
     it(`should default http port parameter to 8000 if no port is given and process.env.PORT is not
         set`, function(done) {
-      server.listen(null, () => {
-        expect(server.address().http.port).toEqual(8000);
-        closeServer(server, done);
+      app.listen(null, () => {
+        expect(app.address().http.port).toEqual(8000);
+        closeServer(app, done);
       });
     });
 
     it(`should default callback argument to a dummy callback if not provided`, function(done) {
       const close = () => {
-        if (server.listening) {
-          closeServer(server, done);
+        if (app.listening) {
+          closeServer(app, done);
         } else {
           schedule();
         }
@@ -241,37 +241,37 @@ describe(`Server`, function() {
         setTimeout(close, 20);
       };
 
-      server.listen();
+      app.listen();
       schedule();
     });
 
-    it(`should do nothing if server is already listening`, function(done) {
-      server.listen(null, () => {
+    it(`should do nothing if app is already listening`, function(done) {
+      app.listen(null, () => {
         expect(function() {
-          server.listen();
+          app.listen();
         }).not.toThrow();
-        closeServer(server, done);
+        closeServer(app, done);
       });
     });
   });
 
   describe('#close(callback: ListenerCallback = () => {})', function() {
-    it(`should close and stop servers from listening for further connections`, function(done) {
-      const server = new Server(httpsEnabledConfig);
-      server.listen(null, () => {
-        expect(server.listening).toBeTruthy();
-        server.close(() => {
-          expect(server.listening).toBeFalsy();
+    it(`should close and stop apps from listening for further connections`, function(done) {
+      const app = new App(httpsEnabledConfig);
+      app.listen(null, () => {
+        expect(app.listening).toBeTruthy();
+        app.close(() => {
+          expect(app.listening).toBeFalsy();
           done();
         });
       });
     });
 
-    it(`should skip closing https server if it is not enabled`, function(done) {
-      server.listen(null, () => {
-        expect(server.listening).toBeTruthy();
-        server.close(() => {
-          expect(server.listening).toBeFalsy();
+    it(`should skip closing https app if it is not enabled`, function(done) {
+      app.listen(null, () => {
+        expect(app.listening).toBeTruthy();
+        app.close(() => {
+          expect(app.listening).toBeFalsy();
           done();
         });
       });
@@ -279,7 +279,7 @@ describe(`Server`, function() {
 
     it(`should default callback to a dummy callback if not provided`, function(done) {
       const close = () => {
-        if (!server.listening) {
+        if (!app.listening) {
           done();
         } else {
           schedule();
@@ -290,128 +290,128 @@ describe(`Server`, function() {
         setTimeout(close, 20);
       };
 
-      server.listen(null, () => {
-        server.close();
+      app.listen(null, () => {
+        app.close();
         schedule();
       });
     });
 
-    it(`should do nothing if server is not listening`, function() {
+    it(`should do nothing if app is not listening`, function() {
       expect(function() {
-        server.close();
+        app.close();
       }).not.toThrow();
     });
   });
 
   describe('#address(): {http: AddressInfo | null, https: AddressInfo | null}', function() {
-    it(`should return server address info that contains info for both http and https
-            server`, function() {
-      const address = server.address();
+    it(`should return app address info that contains info for both http and https
+            app`, function() {
+      const address = app.address();
       expect(address).toHaveProperty('http');
       expect(address).toHaveProperty('https');
     });
 
-    it(`each server address should be null when it is not listening for connections`, function() {
-      const address = server.address();
+    it(`each app address should be null when it is not listening for connections`, function() {
+      const address = app.address();
       expect(address.http).toBeNull();
       expect(address.https).toBeNull();
     });
 
-    it(`each server address should be an AddressInfo when it is listening for connections`, function(done) {
-      const server = new Server(httpsEnabledConfig);
-      server.listen(null, () => {
-        expect(server.address().http).not.toBeNull();
-        expect(server.address().https).not.toBeNull();
+    it(`each app address should be an AddressInfo when it is listening for connections`, function(done) {
+      const app = new App(httpsEnabledConfig);
+      app.listen(null, () => {
+        expect(app.address().http).not.toBeNull();
+        expect(app.address().https).not.toBeNull();
 
-        closeServer(server, done);
+        closeServer(app, done);
       });
     });
   });
 
-  describe('Server Error', function() {
-    it(`should handle server error such as trying to listen on an already taken port and
+  describe('App Error', function() {
+    it(`should handle app error such as trying to listen on an already taken port and
         log warning message to the console`, function(done) {
-      const server2 = new Server({});
-      server.listen(null, function() {
+      const app2 = new App({});
+      app.listen(null, function() {
         expect(function() {
-          server2.listen(null);
+          app2.listen(null);
         }).not.toThrow();
-        closeServer(server, done);
+        closeServer(app, done);
       });
     });
   });
 
   // describe('Client Error', function() {
-  //     it (`should handle every client error on the server by simply ending the socket`, function(done) {
-  //         server.listen(null, function() {
+  //     it (`should handle every client error on the app by simply ending the socket`, function(done) {
+  //         app.listen(null, function() {
   //             expect(function() {
-  //                 server.httpServer.emit('clientError');
-  //                 closeServer(server, done);
+  //                 app.httpApp.emit('clientError');
+  //                 closeServer(app, done);
   //             }).not.toThrow();
   //         });
   //     });
   // });
 
   describe('Request Error', function() {
-    it(`should handle every request error on the server by simply ending the response`, function(done) {
-      const server = new Server({
+    it(`should handle every request error on the app by simply ending the response`, function(done) {
+      const app = new App({
         env: 'prod'
       });
 
-      server.get('say-hi', (req, res) => {
+      app.get('say-hi', (req, res) => {
         expect(function() {
           req.emit('error', 'something went bad');
         }).not.toThrow();
         return res.end();
       });
 
-      server.listen(null, function() {
+      app.listen(null, function() {
         request.get(`${httpHost}say-hi`, (err, res) => {
           expect(res.statusCode).toEqual(500);
-          closeServer(server, done);
+          closeServer(app, done);
         });
       });
     });
   });
 
   describe('Response Error', function() {
-    it(`should handle every response error on the server by simply ending the response`, function(done) {
-      const server = new Server({
+    it(`should handle every response error on the app by simply ending the response`, function(done) {
+      const app = new App({
         env: 'prod'
       });
 
-      server.get('say-hi', (req, res) => {
+      app.get('say-hi', (req, res) => {
         expect(function() {
           res.emit('error', 'something went bad');
         }).not.toThrow();
         return res.end();
       });
 
-      server.listen(null, function() {
+      app.listen(null, function() {
         request.get(`${httpHost}say-hi`, (err, res) => {
           expect(res.statusCode).toEqual(500);
-          closeServer(server, done);
+          closeServer(app, done);
         });
       });
     });
   });
 
   describe('413 Response code', function() {
-    it(`should send 413 error code if request data exceeds server maxMemory value`, function(done) {
-      const server = new Server({
+    it(`should send 413 error code if request data exceeds app maxMemory value`, function(done) {
+      const app = new App({
         maxMemory: 10
       });
       const form = {
         name: 'Harrison',
         password: 'passwd_243'
       };
-      server.post('/process-data', (req, res) => {
+      app.post('/process-data', (req, res) => {
         return res.json(req.body);
       });
-      server.listen(null, function() {
+      app.listen(null, function() {
         request.post(`${httpHost}process-data`, { form }, (err, res) => {
           expect(res.statusCode).toEqual(413);
-          closeServer(server, done);
+          closeServer(app, done);
         });
       });
     });
@@ -419,24 +419,24 @@ describe(`Server`, function() {
 
   describe(`enforce https`, function() {
     it(`should enforce https by redirecting all http requests to the https address`, function(done) {
-      const server = new Server({
+      const app = new App({
         https: {
           enabled: true,
           enforce: true
         }
       });
 
-      server.get('/say-protocol', (req, res) => {
+      app.get('/say-protocol', (req, res) => {
         return res.end(req.encrypted ? 'https' : 'http');
       });
 
-      server.listen(null, function() {
+      app.listen(null, function() {
         request(
           `${httpHost}say-protocol`,
           { rejectUnauthorized: false },
           (err, res, body) => {
             expect(body).toEqual('https');
-            closeServer(server, done);
+            closeServer(app, done);
           }
         );
       });
@@ -446,10 +446,10 @@ describe(`Server`, function() {
   describe(`serve static file`, function() {
     it(`should serve static public file if file exists`, function(done) {
       const filePath = path.resolve(__dirname, '../../public/index.html');
-      server.listen(null, function() {
+      app.listen(null, function() {
         request.get(`${httpHost}index.html`, null, (err, res, body) => {
           expect(body).toEqual(fs.readFileSync(filePath, 'utf8'));
-          closeServer(server, done);
+          closeServer(app, done);
         });
       });
     });
@@ -458,10 +458,10 @@ describe(`Server`, function() {
   describe(`serve 404 http error file`, function() {
     it(`should serve 404 http error file if request path does not exist`, function(done) {
       const filePath = path.resolve(__dirname, '../../src/httpErrors/404.html');
-      server.listen(null, function() {
+      app.listen(null, function() {
         request.get(`${httpHost}index1.html`, null, (err, res, body) => {
           expect(body).toEqual(fs.readFileSync(filePath, 'utf8'));
-          closeServer(server, done);
+          closeServer(app, done);
         });
       });
     });
@@ -474,13 +474,13 @@ describe(`Server`, function() {
         name: 'Harrison',
         password: 'passwd_243'
       };
-      server.post('/check-data', (req, res) => {
+      app.post('/check-data', (req, res) => {
         return res.json(req.body);
       });
-      server.listen(null, function() {
+      app.listen(null, function() {
         request.post(`${httpHost}check-data`, { form }, (err, res, body) => {
           expect(JSON.parse(body)).toEqual(form);
-          closeServer(server, done);
+          closeServer(app, done);
         });
       });
     });
@@ -489,11 +489,11 @@ describe(`Server`, function() {
   describe(`main routing`, function() {
     it(`should start the routing engine on the main router if request path did not map
         to a public file, and run the matching registered all method route if any`, function(done) {
-      server.all('/hi', function(req, res) {
+      app.all('/hi', function(req, res) {
         return res.end();
       });
       const host = `${httpHost}hi`;
-      server.listen(null, function() {
+      app.listen(null, function() {
         request.get(`${host}`, function(err, res, body) {
           expect(res.statusCode).toEqual(200);
           request.post(`${host}`, function(err, res, body) {
@@ -504,7 +504,7 @@ describe(`Server`, function() {
                 expect(res.statusCode).toEqual(200);
                 request.head(`${host}`, function(err, res, body) {
                   expect(res.statusCode).toEqual(200);
-                  closeServer(server, done);
+                  closeServer(app, done);
                 });
               });
             });
@@ -519,14 +519,14 @@ describe(`Server`, function() {
       const callback = (req, res) => {
         return res.end();
       };
-      server.get('/get', callback);
-      server.post('/post', callback);
-      server.put('/put', callback);
-      server.delete('/delete', callback);
-      server.head('/head', callback);
-      server.options('/options', callback);
+      app.get('/get', callback);
+      app.post('/post', callback);
+      app.put('/put', callback);
+      app.delete('/delete', callback);
+      app.head('/head', callback);
+      app.options('/options', callback);
 
-      server.listen(null, function() {
+      app.listen(null, function() {
         request.get(`${httpHost}get`, function(err, res, body) {
           expect(res.statusCode).toEqual(200);
           request.post(`${httpHost}post`, function(err, res, body) {
@@ -543,7 +543,7 @@ describe(`Server`, function() {
                     body
                   ) {
                     expect(res.statusCode).toEqual(200);
-                    closeServer(server, done);
+                    closeServer(app, done);
                   });
                 });
               });
@@ -563,10 +563,10 @@ describe(`Server`, function() {
         return res.end();
       });
 
-      server.mount('users', router);
+      app.mount('users', router);
 
       const host = `${httpHost}users/1`;
-      server.listen(null, function() {
+      app.listen(null, function() {
         request.get(`${host}`, function(err, res, body) {
           expect(res.statusCode).toEqual(200);
           request.post(`${host}`, function(err, res, body) {
@@ -577,7 +577,7 @@ describe(`Server`, function() {
                 expect(res.statusCode).toEqual(200);
                 request.head(`${host}`, function(err, res, body) {
                   expect(res.statusCode).toEqual(200);
-                  closeServer(server, done);
+                  closeServer(app, done);
                 });
               });
             });
@@ -601,9 +601,9 @@ describe(`Server`, function() {
       router.head('/head', callback);
       router.options('/options', callback);
 
-      server.mount('users', router);
+      app.mount('users', router);
 
-      server.listen(null, function() {
+      app.listen(null, function() {
         request.get(`${httpHost}users/get`, function(err, res, body) {
           expect(res.statusCode).toEqual(200);
           request.post(`${httpHost}users/post`, function(err, res, body) {
@@ -620,7 +620,7 @@ describe(`Server`, function() {
                     body
                   ) {
                     expect(res.statusCode).toEqual(200);
-                    closeServer(server, done);
+                    closeServer(app, done);
                   });
                 });
               });

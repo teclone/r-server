@@ -1,16 +1,16 @@
 import main from '../src/main';
 import Router from '../src/modules/Router';
-import Server from '../src/modules/Server';
+import App from '../src/modules/App';
 
 describe(`Main`, function() {
   describe('.create(config: string | Config = ".server.js")', function() {
-    it(`should create and return an R Server instance`, function() {
-      expect(main.create()).toBeInstanceOf(Server);
+    it(`should create and return an R App instance`, function() {
+      expect(main.create()).toBeInstanceOf(App);
     });
 
     it(`should accept an optional config object or string denoting config file location`, function() {
-      expect(main.create({ env: 'prod' })).toBeInstanceOf(Server);
-      expect(main.create('.server.json')).toBeInstanceOf(Server);
+      expect(main.create({ env: 'prod' })).toBeInstanceOf(App);
+      expect(main.create('.server.json')).toBeInstanceOf(App);
     });
   });
 

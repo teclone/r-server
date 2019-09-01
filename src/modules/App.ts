@@ -37,7 +37,7 @@ import { joinPaths, getEntryPath } from '@forensic-js/node-utils';
 import { AddressInfo } from 'net';
 import Wrapper from './Wrapper';
 
-export default class {
+export default class App {
   private httpServer: HttpServer = createHttpServer({
     ServerResponse: Response,
     IncomingMessage: Request
@@ -487,7 +487,7 @@ export default class {
   options(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ) {
     this.router.options(url, callback, options);
   }
@@ -502,7 +502,7 @@ export default class {
   head(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ) {
     this.router.head(url, callback, options);
   }
@@ -517,7 +517,7 @@ export default class {
   get(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ) {
     this.router.get(url, callback, options);
   }
@@ -532,7 +532,7 @@ export default class {
   post(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ) {
     this.router.post(url, callback, options);
   }
@@ -546,7 +546,7 @@ export default class {
   put(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ) {
     this.router.put(url, callback, options);
   }
@@ -561,7 +561,7 @@ export default class {
   delete(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ) {
     this.router.delete(url, callback, options);
   }
@@ -576,7 +576,7 @@ export default class {
   all(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ) {
     this.router.all(url, callback, options);
   }
@@ -599,7 +599,7 @@ export default class {
   use(
     url: Url,
     middleware: Middleware | Middleware[],
-    options: Method | Method[] | MiddlewareOptions | null = null
+    options?: Method | Method[] | MiddlewareOptions
   ) {
     this.router.use(url, middleware, options);
   }

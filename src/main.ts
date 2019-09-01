@@ -1,14 +1,14 @@
-import Server from './modules/Server';
+import App from './modules/App';
 import Router from './modules/Router';
 import { Config } from './@types';
 
 export default {
   /**
-   * creates an r server instance
+   * creates an r server app instance
    * @param config - config file location or configuration object, defaults to .server.js
    */
-  create(config: string | Config = '.server.js'): Server {
-    return new Server(config);
+  create(config: string | Config = '.server.js'): App {
+    return new App(config);
   },
 
   /**
