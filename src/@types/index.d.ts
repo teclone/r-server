@@ -105,24 +105,15 @@ export type Parameter = string | number | boolean;
 
 export type Next = () => void;
 
-export type Callback = <
+export type Callback<
   Rq extends Request = Request,
   Rs extends Response = Response
->(
-  request: Rq,
-  response: Rs,
-  ...parameters: Parameter[]
-) => Promise<boolean>;
+> = (request: Rq, response: Rs, ...parameters: Parameter[]) => Promise<boolean>;
 
-export type Middleware = <
+export type Middleware<
   Rq extends Request = Request,
   Rs extends Response = Response
->(
-  request: Rq,
-  response: Rs,
-  next: Next,
-  ...parameters: Parameter[]
-) => void;
+> = (request: Rq, response: Rs, next: Next, ...parameters: Parameter[]) => void;
 
 export type ListenerCallback = () => void;
 

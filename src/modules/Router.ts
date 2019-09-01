@@ -3,7 +3,8 @@ import {
   isObject,
   isNull,
   isBoolean,
-  stripSlashes
+  stripSlashes,
+  isUndefined
 } from '@forensic-js/utils';
 import Wrapper from './Wrapper';
 import {
@@ -63,9 +64,9 @@ export default class Router {
     method: Method,
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
-    const resolvedOptions = isNull(options)
+    const resolvedOptions = isUndefined(options)
       ? null
       : {
           middleware: isObject<CallbackOptions>(options)
@@ -115,7 +116,7 @@ export default class Router {
   options(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     return this.set('options', url, callback, options);
   }
@@ -130,7 +131,7 @@ export default class Router {
   head(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     return this.set('head', url, callback, options);
   }
@@ -145,7 +146,7 @@ export default class Router {
   get(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     return this.set('get', url, callback, options);
   }
@@ -160,7 +161,7 @@ export default class Router {
   post(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     return this.set('post', url, callback, options);
   }
@@ -175,7 +176,7 @@ export default class Router {
   put(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     return this.set('put', url, callback, options);
   }
@@ -190,7 +191,7 @@ export default class Router {
   delete(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     return this.set('delete', url, callback, options);
   }
@@ -205,7 +206,7 @@ export default class Router {
   all(
     url: Url,
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     return this.set('all', url, callback, options);
   }
@@ -228,10 +229,10 @@ export default class Router {
   use(
     url: Url,
     middleware: Middleware | Middleware[],
-    options: Method | Method[] | MiddlewareOptions | null = null
+    options?: Method | Method[] | MiddlewareOptions
   ): this {
     middleware = makeArray(middleware);
-    const resolvedOptions = isNull(options)
+    const resolvedOptions = isUndefined(options)
       ? null
       : {
           method: isObject<MiddlewareOptions>(options)
