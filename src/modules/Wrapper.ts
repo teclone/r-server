@@ -19,7 +19,7 @@ export default class Wrapper {
    */
   options(
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     this.router.options(this.url, callback, options);
     return this;
@@ -33,7 +33,7 @@ export default class Wrapper {
    */
   head(
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     this.router.head(this.url, callback, options);
     return this;
@@ -47,7 +47,7 @@ export default class Wrapper {
    */
   get(
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     this.router.get(this.url, callback, options);
     return this;
@@ -61,7 +61,7 @@ export default class Wrapper {
    */
   post(
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     this.router.post(this.url, callback, options);
     return this;
@@ -75,7 +75,7 @@ export default class Wrapper {
    */
   put(
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     this.router.put(this.url, callback, options);
     return this;
@@ -89,7 +89,7 @@ export default class Wrapper {
    */
   delete(
     callback: Callback,
-    options: Middleware | Middleware[] | CallbackOptions | null = null
+    options?: Middleware | Middleware[] | CallbackOptions
   ): this {
     this.router.delete(this.url, callback, options);
     return this;
