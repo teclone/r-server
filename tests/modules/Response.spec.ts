@@ -123,4 +123,64 @@ describe('Response', function() {
       });
     });
   });
+
+  describe(`#jsonSuccess(statusCode: number = 200, message: string = 'success', data: object = {}): Promise<boolean>`, function() {
+
+    it(`should send success json data back to the client`, function(done) {
+      app.get('/', (req, res) => {
+        return res.jsonSuccess(200, 'user created successfully', {user: {id: 1}});
+      });
+      app.listen(null, () => {
+        request(httpHost, {json: true}, (err, res, body) => {
+          closeServer(app, done);
+          expect(body.status).toEqual('success');
+          expect(body.message).toEqual('user created successfully');
+        });
+      });
+    });
+
+    it(`should default the statusCode to 200, message string to 'request successful' and data object to empty object`, function(done) {
+      app.get('/', (req, res) => {
+        return res.jsonSuccess();
+      });
+      app.listen(null, () => {
+        request(httpHost, {json: true}, (err, res, body) => {
+          closeServer(app, done);
+          expect(res.statusCode).toEqual(200);
+          expect(body.status).toEqual('success');
+          expect(body.message).toEqual('request successful');
+        });
+      });
+    });
+  });
+
+  describe(`#jsonError(statusCode: number = 400, message: string = 'request failed', errors: object = {}): Promise<boolean>`, function() {
+
+    it(`should send error json data back to the client`, function(done) {
+      app.get('/', (req, res) => {
+        return res.jsonError(403, 'permission denied', {});
+      });
+      app.listen(null, () => {
+        request(httpHost, {json: true}, (err, res, body) => {
+          closeServer(app, done);
+          expect(body.status).toEqual('error');
+          expect(body.message).toEqual('permission denied');
+        });
+      });
+    });
+
+    it(`should default the statusCode to 400, message string to 'request failed' and erros object to empty object`, function(done) {
+      app.get('/', (req, res) => {
+        return res.jsonError();
+      });
+      app.listen(null, () => {
+        request(httpHost, {json: true}, (err, res, body) => {
+          closeServer(app, done);
+          expect(res.statusCode).toEqual(400);
+          expect(body.status).toEqual('error');
+          expect(body.message).toEqual('request failed');
+        });
+      });
+    });
+  });
 });

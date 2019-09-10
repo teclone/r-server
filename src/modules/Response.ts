@@ -123,4 +123,32 @@ export default class Response extends ServerResponse {
       filename
     );
   }
+
+  /**
+   * sends json error data back to the client
+   * @param statusCode http error status code, defaults to 400
+   * @param message short message to return to client
+   * @param errorData error data object, defaults to empty object
+   */
+  jsonError(statusCode: number = 400, message: string = 'request failed', errors: object = {}): Promise<boolean> {
+    return this.status(statusCode).json({
+      status: 'error',
+      message,
+      errors
+    });
+  }
+
+  /**
+   * sends json success data back to the client
+   * @param statusCode http status code, defaults to 200
+   * @param message short message to return to client
+   * @param successData success data object, default to empty object
+   */
+  jsonSuccess(statusCode: number = 200, message: string = 'request successful', data: object = {}): Promise<boolean> {
+    return this.status(statusCode).json({
+      status: 'success',
+      message,
+      data
+    });
+  }
 }
