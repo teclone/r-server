@@ -7,16 +7,23 @@ import rollupAll from 'rollup-all';
 
 const plugins = [
   resolve({
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
   }),
   commonjs({
-    include: 'node_modules/**'
+    include: 'node_modules/**',
   }),
   babel({
     exclude: 'node_modules/**',
     extensions: ['.ts', '.js'],
-    runtimeHelpers: true
-  })
+    runtimeHelpers: true,
+  }),
 ];
 
-export default rollupAll.getExports(uglify(), plugins);
+export default rollupAll.getExports(uglify(), plugins, {
+  moduleName: 'RServer',
+  entryFile: 'main.ts',
+  assets: ['httpErrors/**'],
+  libConfig: {
+    enabled: true,
+  },
+});
