@@ -8,7 +8,7 @@ import {
   ResolvedMiddlewareOptions,
   Middleware,
   Next,
-  Parameter
+  Parameter,
 } from '../@types';
 import Response from './Response';
 import Request from './Request';
@@ -32,13 +32,7 @@ export default class Engine {
 
   private logger: Logger;
 
-  constructor(
-    url: Url,
-    method: string,
-    request: Request,
-    response: Response,
-    logger: Logger
-  ) {
+  constructor(url: Url, method: string, request: Request, response: Response, logger: Logger) {
     this.resolved = false;
     this.request = request;
     this.response = response;
@@ -59,14 +53,9 @@ export default class Engine {
   /**
    * capture route parameters
    */
-  private captureParameter(
-    routeToken: string,
-    urlToken: string,
-    parameters: RouteParameter[]
-  ): RouteParameter[] {
+  private captureParameter(routeToken: string, urlToken: string, parameters: RouteParameter[]): RouteParameter[] {
     const processToken = (token: string, value: string) => {
-      const [dataType, name] =
-        token.indexOf(':') > -1 ? token.split(':') : ['string', token];
+      const [dataType, name] = token.indexOf(':') > -1 ? token.split(':') : ['string', token];
       let result: string | number | boolean = value;
 
       switch (dataType.toLowerCase()) {
@@ -83,16 +72,7 @@ export default class Engine {
         case 'bool':
         case 'boolean':
           result = result.toLowerCase();
-          result = ![
-            '0',
-            'false',
-            '',
-            'null',
-            'nil',
-            'undefined',
-            'no',
-            'none'
-          ].includes(value);
+          result = !['0', 'false', '', 'null', 'nil', 'undefined', 'no', 'none'].includes(value);
           break;
       }
       if (Number.isNaN(result as number)) {
@@ -101,7 +81,7 @@ export default class Engine {
       return {
         name,
         dataType,
-        value: result
+        value: result,
       };
     };
 
@@ -152,7 +132,7 @@ export default class Engine {
         parameters.push({
           name: '*',
           dataType: 'string',
-          value: urlTokens.slice(i).join('/')
+          value: urlTokens.slice(i).join('/'),
         });
         break;
       } else {
@@ -192,9 +172,7 @@ export default class Engine {
   /**
    * validate that the middleware method matches request method
    */
-  private validateMiddleware(
-    options: ResolvedMiddlewareOptions | null
-  ): boolean {
+  private validateMiddleware(options: ResolvedMiddlewareOptions | null): boolean {
     if (isObject<ResolvedMiddlewareOptions>(options)) {
       return options.method.includes(this.method as Method);
     } else {
@@ -216,10 +194,7 @@ export default class Engine {
   /**
    * asynchronously runs the middleware
    */
-  private async runMiddlewares(
-    middlewares: Middleware[],
-    parameters: Parameter[]
-  ) {
+  private async runMiddlewares(middlewares: Middleware[], parameters: Parameter[]) {
     let proceed: boolean = true;
 
     const next: Next = () => {
@@ -243,29 +218,22 @@ export default class Engine {
    * asynchronously runs the matching route
    */
   private async runRoute(route: RouteInstance, parameters: RouteParameter[]) {
-    for (const [url, middlewares, options] of this.middlewares) {
+    for (const [, url, middlewares, options] of this.middlewares) {
       const middlewareUrl = stripSlashes(url);
       if (this.validateMiddleware(options) && this.matchUrl(middlewareUrl)) {
         const middlewareParameters = this.captureParameters(middlewareUrl);
-        if (
-          !(await this.runMiddlewares(
-            middlewares,
-            middlewareParameters.map(this.getParameterValue)
-          ))
-        ) {
+        if (!(await this.runMiddlewares(middlewares, middlewareParameters.map(this.getParameterValue)))) {
           return;
         }
       }
     }
 
-    const [, callback, routeOptions] = route;
+    const [, , callback, routeOptions] = route;
     const parameterValues = parameters.map(this.getParameterValue);
 
     //run localised middlewares if any
     if (isObject<ResolvedCallbackOptions>(routeOptions)) {
-      if (
-        !(await this.runMiddlewares(routeOptions.middleware, parameterValues))
-      ) {
+      if (!(await this.runMiddlewares(routeOptions.middleware, parameterValues))) {
         return;
       }
     }
@@ -277,12 +245,8 @@ export default class Engine {
    * processes the route
    */
   private async process(route: RouteInstance, overrideMethod?: Method) {
-    const routeUrl = stripSlashes(route[0]);
-    if (
-      !this.resolved &&
-      this.validateRoute(overrideMethod) &&
-      this.matchUrl(routeUrl)
-    ) {
+    const routeUrl = stripSlashes(route[1]);
+    if (!this.resolved && this.validateRoute(overrideMethod) && this.matchUrl(routeUrl)) {
       this.resolved = true;
       const parameters = this.captureParameters(routeUrl);
       try {

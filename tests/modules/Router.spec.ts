@@ -14,18 +14,16 @@ describe('Router', function() {
     return function() {
       const banner =
         'should store the given route rule for ' +
-        (method === 'all'
-          ? 'all http method verbs'
-          : 'http ' + method.toUpperCase() + ' method');
+        (method === 'all' ? 'all http method verbs' : 'http ' + method.toUpperCase() + ' method');
 
       it(banner, function() {
         expect(router.getRoutes()[method].length).toEqual(0);
 
         router[method]('/', dummyCallback);
         expect(router.getRoutes()[method].length).toEqual(1);
-        expect(router.getRoutes()[method][0][0]).toEqual('');
-        expect(router.getRoutes()[method][0][1]).toEqual(dummyCallback);
-        expect(router.getRoutes()[method][0][2]).toBeNull();
+        expect(router.getRoutes()[method][0][1]).toEqual('');
+        expect(router.getRoutes()[method][0][2]).toEqual(dummyCallback);
+        expect(router.getRoutes()[method][0][3]).toBeNull();
       });
 
       it(`can take a middleware callback or array of middleware callbacks as
@@ -34,10 +32,10 @@ describe('Router', function() {
 
         router[method]('/users/', dummyCallback, dummyMiddleware);
         expect(router.getRoutes()[method].length).toEqual(1);
-        expect(router.getRoutes()[method][0][0]).toEqual('users');
-        expect(router.getRoutes()[method][0][1]).toEqual(dummyCallback);
-        expect(router.getRoutes()[method][0][2]).toEqual({
-          middleware: [dummyMiddleware]
+        expect(router.getRoutes()[method][0][1]).toEqual('users');
+        expect(router.getRoutes()[method][0][2]).toEqual(dummyCallback);
+        expect(router.getRoutes()[method][0][3]).toEqual({
+          middleware: [dummyMiddleware],
         });
       });
 
@@ -47,10 +45,10 @@ describe('Router', function() {
 
         router[method]('/', dummyCallback, [dummyMiddleware]);
         expect(router.getRoutes()[method].length).toEqual(1);
-        expect(router.getRoutes()[method][0][0]).toEqual('');
-        expect(router.getRoutes()[method][0][1]).toEqual(dummyCallback);
-        expect(router.getRoutes()[method][0][2]).toEqual({
-          middleware: [dummyMiddleware]
+        expect(router.getRoutes()[method][0][1]).toEqual('');
+        expect(router.getRoutes()[method][0][2]).toEqual(dummyCallback);
+        expect(router.getRoutes()[method][0][3]).toEqual({
+          middleware: [dummyMiddleware],
         });
       });
 
@@ -59,13 +57,13 @@ describe('Router', function() {
         expect(router.getRoutes()[method].length).toEqual(0);
 
         router[method]('/users', dummyCallback, {
-          middleware: dummyMiddleware
+          middleware: dummyMiddleware,
         });
         expect(router.getRoutes()[method].length).toEqual(1);
-        expect(router.getRoutes()[method][0][0]).toEqual('users');
-        expect(router.getRoutes()[method][0][1]).toEqual(dummyCallback);
-        expect(router.getRoutes()[method][0][2]).toEqual({
-          middleware: [dummyMiddleware]
+        expect(router.getRoutes()[method][0][1]).toEqual('users');
+        expect(router.getRoutes()[method][0][2]).toEqual(dummyCallback);
+        expect(router.getRoutes()[method][0][3]).toEqual({
+          middleware: [dummyMiddleware],
         });
       });
     };
@@ -165,9 +163,9 @@ describe('Router', function() {
 
       router.use('/', dummyMiddleware);
       expect(router.getMiddlewares().length).toEqual(1);
-      expect(router.getMiddlewares()[0][0]).toEqual('');
-      expect(router.getMiddlewares()[0][1]).toEqual([dummyMiddleware]);
-      expect(router.getMiddlewares()[0][2]).toBeNull();
+      expect(router.getMiddlewares()[0][1]).toEqual('');
+      expect(router.getMiddlewares()[0][2]).toEqual([dummyMiddleware]);
+      expect(router.getMiddlewares()[0][3]).toBeNull();
     });
 
     it(`can accept a http method argument as options, specifying the which request method type
@@ -176,9 +174,9 @@ describe('Router', function() {
       router.use('/users', dummyMiddleware, 'get');
 
       expect(router.getMiddlewares().length).toEqual(1);
-      expect(router.getMiddlewares()[0][0]).toEqual('users');
-      expect(router.getMiddlewares()[0][1]).toEqual([dummyMiddleware]);
-      expect(router.getMiddlewares()[0][2]).toEqual({ method: ['get'] });
+      expect(router.getMiddlewares()[0][1]).toEqual('users');
+      expect(router.getMiddlewares()[0][2]).toEqual([dummyMiddleware]);
+      expect(router.getMiddlewares()[0][3]).toEqual({ method: ['get'] });
     });
 
     it(`can accept an array of http method arguments as options too`, function() {
@@ -186,10 +184,10 @@ describe('Router', function() {
       router.use('/', dummyMiddleware, ['get', 'post']);
 
       expect(router.getMiddlewares().length).toEqual(1);
-      expect(router.getMiddlewares()[0][0]).toEqual('');
-      expect(router.getMiddlewares()[0][1]).toEqual([dummyMiddleware]);
-      expect(router.getMiddlewares()[0][2]).toEqual({
-        method: ['get', 'post']
+      expect(router.getMiddlewares()[0][1]).toEqual('');
+      expect(router.getMiddlewares()[0][2]).toEqual([dummyMiddleware]);
+      expect(router.getMiddlewares()[0][3]).toEqual({
+        method: ['get', 'post'],
       });
     });
 
@@ -198,10 +196,10 @@ describe('Router', function() {
       router.use('/', dummyMiddleware, { method: ['get', 'post'] });
 
       expect(router.getMiddlewares().length).toEqual(1);
-      expect(router.getMiddlewares()[0][0]).toEqual('');
-      expect(router.getMiddlewares()[0][1]).toEqual([dummyMiddleware]);
-      expect(router.getMiddlewares()[0][2]).toEqual({
-        method: ['get', 'post']
+      expect(router.getMiddlewares()[0][1]).toEqual('');
+      expect(router.getMiddlewares()[0][2]).toEqual([dummyMiddleware]);
+      expect(router.getMiddlewares()[0][3]).toEqual({
+        method: ['get', 'post'],
       });
     });
   });

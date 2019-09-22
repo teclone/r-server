@@ -40,9 +40,7 @@ export interface RServerConfig {
 
     enforce: boolean;
 
-    credentials:
-      | { key: string; cert: string }
-      | { pfx: string; passphrase: string };
+    credentials: { key: string; cert: string } | { pfx: string; passphrase: string };
   };
 }
 
@@ -84,36 +82,34 @@ export interface Config {
 
     enforce?: boolean;
 
-    credentials?:
-      | { key: string; cert: string }
-      | { pfx: string; passphrase: string };
+    credentials?: { key: string; cert: string } | { pfx: string; passphrase: string };
   };
 }
 
-export type Method =
-  | 'get'
-  | 'post'
-  | 'put'
-  | 'head'
-  | 'options'
-  | 'delete'
-  | 'all';
+export type Method = 'get' | 'post' | 'put' | 'head' | 'options' | 'delete' | 'all';
 
 export type Url = string;
+
+export type RouteId = number;
+
+export type MiddlewareId = number;
 
 export type Parameter = string | number | boolean;
 
 export type Next = () => void;
 
-export type Callback<
-  Rq extends Request = Request,
-  Rs extends Response = Response
-> = (request: Rq, response: Rs, ...parameters: Parameter[]) => Promise<boolean>;
+export type Callback<Rq extends Request = Request, Rs extends Response = Response> = (
+  request: Rq,
+  response: Rs,
+  ...parameters: Parameter[]
+) => Promise<boolean>;
 
-export type Middleware<
-  Rq extends Request = Request,
-  Rs extends Response = Response
-> = (request: Rq, response: Rs, next: Next, ...parameters: Parameter[]) => void;
+export type Middleware<Rq extends Request = Request, Rs extends Response = Response> = (
+  request: Rq,
+  response: Rs,
+  next: Next,
+  ...parameters: Parameter[]
+) => void;
 
 export type ListenerCallback = () => void;
 
@@ -133,13 +129,9 @@ export interface ResolvedMiddlewareOptions {
   method: Method[];
 }
 
-export type RouteInstance = [Url, Callback, null | ResolvedCallbackOptions];
+export type RouteInstance = [RouteId, Url, Callback, null | ResolvedCallbackOptions];
 
-export type MiddlewareInstance = [
-  Url,
-  Middleware[],
-  null | ResolvedMiddlewareOptions
-];
+export type MiddlewareInstance = [MiddlewareId, Url, Middleware[], null | ResolvedMiddlewareOptions];
 
 export interface File {
   name: string;

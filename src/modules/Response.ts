@@ -116,12 +116,7 @@ export default class Response extends ServerResponse {
    * @param filename - suggested file download name
    */
   download(filePath: string, filename?: string): Promise<boolean> {
-    return (this.fileServer as FileServer).serveDownload(
-      this.request as Request,
-      this,
-      filePath,
-      filename
-    );
+    return (this.fileServer as FileServer).serveDownload(this.request as Request, this, filePath, filename);
   }
 
   /**
@@ -134,7 +129,7 @@ export default class Response extends ServerResponse {
     return this.status(statusCode).json({
       status: 'error',
       message,
-      errors
+      errors,
     });
   }
 
@@ -148,7 +143,7 @@ export default class Response extends ServerResponse {
     return this.status(statusCode).json({
       status: 'success',
       message,
-      data
+      data,
     });
   }
 }

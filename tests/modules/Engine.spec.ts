@@ -38,17 +38,13 @@ describe('Engine', function() {
       const middleware3 = jest.fn();
 
       const middlewares = [
-        ['*', [middleware1], null] as MiddlewareInstance,
-        [
-          '/users',
-          [middleware2],
-          { method: ['options'] }
-        ] as MiddlewareInstance,
-        ['/users', [middleware3], { method: ['get'] }] as MiddlewareInstance
+        [1, '*', [middleware1], null] as MiddlewareInstance,
+        [2, '/users', [middleware2], { method: ['options'] }] as MiddlewareInstance,
+        [3, '/users', [middleware3], { method: ['get'] }] as MiddlewareInstance,
       ];
       engine.use(middlewares);
 
-      return engine.get(['users', dummyCallback, null]).then(status => {
+      return engine.get([1, 'users', dummyCallback, null]).then(status => {
         expect(status).toBeTruthy();
         expect(middleware1.mock.calls).toHaveLength(1);
         expect(middleware2.mock.calls).toHaveLength(0);
@@ -66,12 +62,12 @@ describe('Engine', function() {
       const middleware2 = jest.fn(dummyMiddleware);
 
       const middlewares = [
-        ['*', [middleware1], null] as MiddlewareInstance,
-        ['/users', [middleware2], { method: ['get'] }] as MiddlewareInstance
+        [1, '*', [middleware1], null] as MiddlewareInstance,
+        [2, '/users', [middleware2], { method: ['get'] }] as MiddlewareInstance,
       ];
       engine.use(middlewares);
 
-      return engine.get(['users', dummyCallback, null]).then(status => {
+      return engine.get([3, 'users', dummyCallback, null]).then(status => {
         expect(status).toBeTruthy();
         expect(middleware1.mock.calls).toHaveLength(1);
         expect(middleware2.mock.calls).toHaveLength(0);
@@ -86,12 +82,12 @@ describe('Engine', function() {
       const middleware2 = jest.fn(dummyMiddleware);
 
       const middlewares = [
-        ['*', [middleware1], null] as MiddlewareInstance,
-        ['/users', [middleware2], { method: ['get'] }] as MiddlewareInstance
+        [1, '*', [middleware1], null] as MiddlewareInstance,
+        [2, '/users', [middleware2], { method: ['get'] }] as MiddlewareInstance,
       ];
       engine.use(middlewares);
 
-      return engine.get(['users', dummyCallback, null]).then(status => {
+      return engine.get([3, 'users', dummyCallback, null]).then(status => {
         expect(status).toBeTruthy();
         expect(middleware1.mock.calls).toHaveLength(1);
         expect(middleware1.mock.calls[0][1].finished).toBeTruthy();
@@ -106,7 +102,7 @@ describe('Engine', function() {
       const engine = createEngine('/users/1', 'get');
       const routeCallback = jest.fn(dummyCallback);
 
-      return engine.get(['users/{id}', routeCallback, null]).then(status => {
+      return engine.get([1, 'users/{id}', routeCallback, null]).then(status => {
         expect(status).toBeTruthy();
         expect(routeCallback).toHaveBeenCalledTimes(1);
         expect(routeCallback.mock.calls[0][2]).toEqual('1');
@@ -118,14 +114,12 @@ describe('Engine', function() {
       const engine = createEngine('/flights/nga-usa', 'get');
       const routeCallback = jest.fn(dummyCallback);
 
-      return engine
-        .get(['flights/{from}-{to}', routeCallback, null])
-        .then(status => {
-          expect(status).toBeTruthy();
-          expect(routeCallback).toHaveBeenCalledTimes(1);
-          expect(routeCallback.mock.calls[0][2]).toEqual('nga');
-          expect(routeCallback.mock.calls[0][3]).toEqual('usa');
-        });
+      return engine.get([1, 'flights/{from}-{to}', routeCallback, null]).then(status => {
+        expect(status).toBeTruthy();
+        expect(routeCallback).toHaveBeenCalledTimes(1);
+        expect(routeCallback.mock.calls[0][2]).toEqual('nga');
+        expect(routeCallback.mock.calls[0][3]).toEqual('usa');
+      });
     });
 
     it(`should capture double route parameters separated by dot symbol and pass along to
@@ -133,105 +127,89 @@ describe('Engine', function() {
       const engine = createEngine('/flights/nga.usa', 'get');
       const routeCallback = jest.fn(dummyCallback);
 
-      return engine
-        .get(['flights/{from}.{to}', routeCallback, null])
-        .then(status => {
-          expect(status).toBeTruthy();
-          expect(routeCallback).toHaveBeenCalledTimes(1);
-          expect(routeCallback.mock.calls[0][2]).toEqual('nga');
-          expect(routeCallback.mock.calls[0][3]).toEqual('usa');
-        });
+      return engine.get([1, 'flights/{from}.{to}', routeCallback, null]).then(status => {
+        expect(status).toBeTruthy();
+        expect(routeCallback).toHaveBeenCalledTimes(1);
+        expect(routeCallback.mock.calls[0][2]).toEqual('nga');
+        expect(routeCallback.mock.calls[0][3]).toEqual('usa');
+      });
     });
 
     it(`should convert captured parameter to integer an integer if int data type is specified`, function() {
       const engine = createEngine('/users/1', 'get');
       const routeCallback = jest.fn(dummyCallback);
 
-      return engine
-        .get(['users/{int:id}', routeCallback, null])
-        .then(status => {
-          expect(status).toBeTruthy();
-          expect(routeCallback).toHaveBeenCalledTimes(1);
-          expect(routeCallback.mock.calls[0][2]).toEqual(1);
-        });
+      return engine.get([1, 'users/{int:id}', routeCallback, null]).then(status => {
+        expect(status).toBeTruthy();
+        expect(routeCallback).toHaveBeenCalledTimes(1);
+        expect(routeCallback.mock.calls[0][2]).toEqual(1);
+      });
     });
 
     it(`should default the converted captured parameter to 0 if it is not a number`, function() {
       const engine = createEngine('/users/harrison', 'get');
       const routeCallback = jest.fn(dummyCallback);
 
-      return engine
-        .get(['users/{int:id}', routeCallback, null])
-        .then(status => {
-          expect(status).toBeTruthy();
-          expect(routeCallback).toHaveBeenCalledTimes(1);
-          expect(routeCallback.mock.calls[0][2]).toEqual(0);
-        });
+      return engine.get([1, 'users/{int:id}', routeCallback, null]).then(status => {
+        expect(status).toBeTruthy();
+        expect(routeCallback).toHaveBeenCalledTimes(1);
+        expect(routeCallback.mock.calls[0][2]).toEqual(0);
+      });
     });
 
     it(`should convert captured parameter to floating value if float data type is specified`, function() {
       const engine = createEngine('/amount/50.25', 'get');
       const routeCallback = jest.fn(dummyCallback);
 
-      return engine
-        .get(['amount/{float:value}', routeCallback, null])
-        .then(status => {
-          expect(status).toBeTruthy();
-          expect(routeCallback).toHaveBeenCalledTimes(1);
-          expect(routeCallback.mock.calls[0][2]).toEqual(50.25);
-        });
+      return engine.get([1, 'amount/{float:value}', routeCallback, null]).then(status => {
+        expect(status).toBeTruthy();
+        expect(routeCallback).toHaveBeenCalledTimes(1);
+        expect(routeCallback.mock.calls[0][2]).toEqual(50.25);
+      });
     });
 
     it(`should convert captured parameter to floating value if numeric data type is specified`, function() {
       const engine = createEngine('/amount/50.25', 'get');
       const routeCallback = jest.fn(dummyCallback);
 
-      return engine
-        .get(['amount/{numeric:value}', routeCallback, null])
-        .then(status => {
-          expect(status).toBeTruthy();
-          expect(routeCallback).toHaveBeenCalledTimes(1);
-          expect(routeCallback.mock.calls[0][2]).toEqual(50.25);
-        });
+      return engine.get([1, 'amount/{numeric:value}', routeCallback, null]).then(status => {
+        expect(status).toBeTruthy();
+        expect(routeCallback).toHaveBeenCalledTimes(1);
+        expect(routeCallback.mock.calls[0][2]).toEqual(50.25);
+      });
     });
 
     it(`should convert captured parameter to floating value if number data type is specified`, function() {
       const engine = createEngine('/amount/50.25', 'get');
       const routeCallback = jest.fn(dummyCallback);
 
-      return engine
-        .get(['amount/{number:value}', routeCallback, null])
-        .then(status => {
-          expect(status).toBeTruthy();
-          expect(routeCallback).toHaveBeenCalledTimes(1);
-          expect(routeCallback.mock.calls[0][2]).toEqual(50.25);
-        });
+      return engine.get([1, 'amount/{number:value}', routeCallback, null]).then(status => {
+        expect(status).toBeTruthy();
+        expect(routeCallback).toHaveBeenCalledTimes(1);
+        expect(routeCallback.mock.calls[0][2]).toEqual(50.25);
+      });
     });
 
     it(`should convert captured parameter to boolean if boolean data type is specified`, function() {
       const engine = createEngine('/agreement/false', 'get');
       const routeCallback = jest.fn(dummyCallback);
 
-      return engine
-        .get(['agreement/{boolean:value}', routeCallback, null])
-        .then(status => {
-          expect(status).toBeTruthy();
-          expect(routeCallback).toHaveBeenCalledTimes(1);
-          expect(routeCallback.mock.calls[0][2]).toBeFalsy();
-        });
+      return engine.get([1, 'agreement/{boolean:value}', routeCallback, null]).then(status => {
+        expect(status).toBeTruthy();
+        expect(routeCallback).toHaveBeenCalledTimes(1);
+        expect(routeCallback.mock.calls[0][2]).toBeFalsy();
+      });
     });
 
     it(`should convert captured parameter to boolean if bool data type is specified`, function() {
       const engine = createEngine('/agreement/true', 'get');
       const routeCallback = jest.fn(dummyCallback);
 
-      return engine
-        .get(['agreement/{bool:value}', routeCallback, null])
-        .then(status => {
-          expect(status).toBeTruthy();
-          expect(routeCallback).toHaveBeenCalledTimes(1);
-          expect(routeCallback.mock.calls[0][2]).toBeTruthy();
-        });
+      return engine.get([1, 'agreement/{bool:value}', routeCallback, null]).then(status => {
+        expect(status).toBeTruthy();
+        expect(routeCallback).toHaveBeenCalledTimes(1);
+        expect(routeCallback.mock.calls[0][2]).toBeTruthy();
+      });
     });
   });
 
@@ -239,16 +217,14 @@ describe('Engine', function() {
     it(`should match optional ending routes which are identified by the presence of
         the question mark character at the end of the route`, function() {
       const engine = createEngine('/flights', 'get');
-      return engine
-        .get(['/flights/{from}-{to}?', dummyCallback, null])
-        .then(status => {
-          expect(status).toBeTruthy();
-        });
+      return engine.get([1, '/flights/{from}-{to}?', dummyCallback, null]).then(status => {
+        expect(status).toBeTruthy();
+      });
     });
 
     it(`should treat home route as empty string while matching`, function() {
       const engine = createEngine('/', 'get');
-      return engine.get(['/', dummyCallback, null]).then(status => {
+      return engine.get([1, '/', dummyCallback, null]).then(status => {
         expect(status).toBeTruthy();
       });
     });
@@ -257,11 +233,9 @@ describe('Engine', function() {
   describe(`route validation`, function() {
     it(`should validate that request method matches route method`, function() {
       const engine = createEngine('/users', 'get');
-      return engine
-        .options(['/users/id?', dummyCallback, null])
-        .then(status => {
-          expect(status).toBeFalsy();
-        });
+      return engine.options([1, '/users/id?', dummyCallback, null]).then(status => {
+        expect(status).toBeFalsy();
+      });
     });
   });
 
@@ -270,7 +244,7 @@ describe('Engine', function() {
         method and url matches`, function() {
       const engine = createEngine('/users', 'options');
       const callback = jest.fn(dummyCallback);
-      return engine.options(['users', callback, null]).then(status => {
+      return engine.options([1, 'users', callback, null]).then(status => {
         expect(status).toBeTruthy();
         expect(callback.mock.calls).toHaveLength(1);
       });
@@ -288,11 +262,12 @@ describe('Engine', function() {
 
       return engine
         .options([
+          1,
           'users',
           callback,
           {
-            middleware: [middleware1, middleware2, middleware3]
-          }
+            middleware: [middleware1, middleware2, middleware3],
+          },
         ])
         .then(status => {
           expect(status).toBeTruthy();
@@ -316,11 +291,12 @@ describe('Engine', function() {
 
       return engine
         .options([
+          1,
           'users',
           callback,
           {
-            middleware: [middleware1, middleware2, middleware3]
-          }
+            middleware: [middleware1, middleware2, middleware3],
+          },
         ])
         .then(status => {
           expect(status).toBeTruthy();
@@ -338,7 +314,7 @@ describe('Engine', function() {
       const callback = (req, res) => {
         throw new Error('something went bad');
       };
-      return engine.options(['users', callback, null]).then(status => {
+      return engine.options([1, 'users', callback, null]).then(status => {
         expect(status).toBeTruthy();
       });
     });

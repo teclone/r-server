@@ -1,10 +1,4 @@
-import {
-  httpHost,
-  dummyCallback,
-  dummyMiddleware,
-  closeServer,
-  httpsEnabledConfig
-} from '../helpers';
+import { httpHost, dummyCallback, dummyMiddleware, closeServer, httpsEnabledConfig } from '../helpers';
 import request from 'request';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -20,9 +14,7 @@ describe(`App`, function() {
     return function() {
       const banner =
         'should call main router to store the given route rule for ' +
-        (method === 'all'
-          ? 'all http method verbs'
-          : 'http ' + method.toUpperCase() + ' method');
+        (method === 'all' ? 'all http method verbs' : 'http ' + method.toUpperCase() + ' method');
 
       it(banner, function() {
         const spy = jest.spyOn(app.getRouter(), method);
@@ -181,16 +173,66 @@ describe(`App`, function() {
       app.mount('users', router);
 
       expect(app.getMountedRouters()).toHaveLength(1);
-      expect(app.getRouter().getRoutes().get[0][0]).toEqual('api/v1/login');
-      expect(app.getMountedRouters()[0].getRoutes().get[0][0]).toEqual(
-        'api/v1/users'
-      );
-      expect(app.getMountedRouters()[0].getRoutes().get[1][0]).toEqual(
-        'api/v1/users/{id}'
-      );
-      expect(app.getMountedRouters()[0].getRoutes().get[2][0]).toEqual(
-        'api/v1/users/{id}/posts'
-      );
+      expect(app.getRouter().getRoutes().get[0][1]).toEqual('api/v1/login');
+      expect(app.getMountedRouters()[0].getRoutes().get[0][1]).toEqual('api/v1/users');
+      expect(app.getMountedRouters()[0].getRoutes().get[1][1]).toEqual('api/v1/users/{id}');
+      expect(app.getMountedRouters()[0].getRoutes().get[2][1]).toEqual('api/v1/users/{id}/posts');
+    });
+  });
+
+  describe('#removeRoute(id: RouteId)', function() {
+    it(`should find the route with the given id and remove it, returning true if route with id exists`, function() {
+      const routeId = app.get('login', dummyCallback);
+      expect(app.removeRoute(routeId)).toBeTruthy();
+    });
+
+    it(`should also search in mounted routers, returning true if router is found`, function() {
+      const router = new Router(true);
+      const routeId = router.get('profile', dummyCallback);
+      app.mount('user', router);
+
+      expect(app.removeRoute(routeId)).toBeTruthy();
+    });
+
+    it(`should also search in mounted routers, returning false if router is not found`, function() {
+      const router = new Router(true);
+      router.get('profile', dummyCallback);
+      app.mount('user', router);
+
+      expect(app.removeRoute(0)).toBeFalsy();
+    });
+
+    it(`should find the route with the given id and remove it, returning false if route with id does not exists`, function() {
+      app.get('login', dummyCallback);
+      expect(app.removeRoute(-1)).toBeFalsy();
+    });
+  });
+
+  describe('#removeMiddleware(id: MiddlewareId)', function() {
+    it(`should find the middleware with the given id and remove it, returning true if route with id exists`, function() {
+      const middlewareId = app.use('*', dummyMiddleware);
+      expect(app.removeMiddleware(middlewareId)).toBeTruthy();
+    });
+
+    it(`should also search in mounted routers, returning true if middleware exists`, function() {
+      const router = new Router(true);
+      const middlewareId = router.use('profile', dummyMiddleware);
+      app.mount('user', router);
+
+      expect(app.removeMiddleware(middlewareId)).toBeTruthy();
+    });
+
+    it(`should also search in mounted routers, returning false if middleware does not exist`, function() {
+      const router = new Router(true);
+      router.use('profile', dummyMiddleware);
+      app.mount('user', router);
+
+      expect(app.removeMiddleware(-1)).toBeFalsy();
+    });
+
+    it(`should find the middleware with the given id and remove it, returning false if middleware with id does not exist`, function() {
+      app.use('*', dummyMiddleware);
+      expect(app.removeMiddleware(0)).toBeFalsy();
     });
   });
 
@@ -355,7 +397,7 @@ describe(`App`, function() {
   describe('Request Error', function() {
     it(`should handle every request error on the app by simply ending the response`, function(done) {
       const app = new App({
-        env: 'prod'
+        env: 'prod',
       });
 
       app.get('say-hi', (req, res) => {
@@ -377,7 +419,7 @@ describe(`App`, function() {
   describe('Response Error', function() {
     it(`should handle every response error on the app by simply ending the response`, function(done) {
       const app = new App({
-        env: 'prod'
+        env: 'prod',
       });
 
       app.get('say-hi', (req, res) => {
@@ -399,11 +441,11 @@ describe(`App`, function() {
   describe('413 Response code', function() {
     it(`should send 413 error code if request data exceeds app maxMemory value`, function(done) {
       const app = new App({
-        maxMemory: 10
+        maxMemory: 10,
       });
       const form = {
         name: 'Harrison',
-        password: 'passwd_243'
+        password: 'passwd_243',
       };
       app.post('/process-data', (req, res) => {
         return res.json(req.body);
@@ -422,8 +464,8 @@ describe(`App`, function() {
       const app = new App({
         https: {
           enabled: true,
-          enforce: true
-        }
+          enforce: true,
+        },
       });
 
       app.get('/say-protocol', (req, res) => {
@@ -431,14 +473,10 @@ describe(`App`, function() {
       });
 
       app.listen(null, function() {
-        request(
-          `${httpHost}say-protocol`,
-          { rejectUnauthorized: false },
-          (err, res, body) => {
-            expect(body).toEqual('https');
-            closeServer(app, done);
-          }
-        );
+        request(`${httpHost}say-protocol`, { rejectUnauthorized: false }, (err, res, body) => {
+          expect(body).toEqual('https');
+          closeServer(app, done);
+        });
       });
     });
   });
@@ -472,7 +510,7 @@ describe(`App`, function() {
         on the request object`, function(done) {
       const form = {
         name: 'Harrison',
-        password: 'passwd_243'
+        password: 'passwd_243',
       };
       app.post('/check-data', (req, res) => {
         return res.json(req.body);
@@ -537,11 +575,7 @@ describe(`App`, function() {
                 expect(res.statusCode).toEqual(200);
                 request.head(`${httpHost}head`, function(err, res, body) {
                   expect(res.statusCode).toEqual(200);
-                  request.options(`${httpHost}options`, function(
-                    err,
-                    res,
-                    body
-                  ) {
+                  request.options(`${httpHost}options`, function(err, res, body) {
                     expect(res.statusCode).toEqual(200);
                     closeServer(app, done);
                   });
@@ -614,11 +648,7 @@ describe(`App`, function() {
                 expect(res.statusCode).toEqual(200);
                 request.head(`${httpHost}users/head`, function(err, res, body) {
                   expect(res.statusCode).toEqual(200);
-                  request.options(`${httpHost}users/options`, function(
-                    err,
-                    res,
-                    body
-                  ) {
+                  request.options(`${httpHost}users/options`, function(err, res, body) {
                     expect(res.statusCode).toEqual(200);
                     closeServer(app, done);
                   });
