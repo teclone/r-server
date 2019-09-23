@@ -128,6 +128,7 @@ export default class Response extends ServerResponse {
   jsonError(statusCode: number = 400, message: string = 'request failed', errors: object = {}): Promise<boolean> {
     return this.status(statusCode).json({
       status: 'error',
+      code: statusCode,
       message,
       errors,
     });
@@ -142,6 +143,7 @@ export default class Response extends ServerResponse {
   jsonSuccess(statusCode: number = 200, message: string = 'request successful', data: object = {}): Promise<boolean> {
     return this.status(statusCode).json({
       status: 'success',
+      code: statusCode,
       message,
       data,
     });
