@@ -1,6 +1,6 @@
 import { resolvePaths, mkDirSync } from '@forensic-js/node-utils';
 import * as fs from 'fs';
-import { RServerConfig, Data, Files, MultipartHeaders, File, FileCollection } from '../typings/index';
+import { RServerConfig, Data, Files, MultipartHeaders, File, FileCollection } from '../@types/index';
 import { isArray, isNull, generateRandomText, isObject, makeArray } from '@forensic-js/utils';
 import { CRLF, BLANK_LINE } from './Constants';
 

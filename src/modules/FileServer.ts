@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { RServerConfig, Url, Headers, Range, Method } from '../typings';
+import { RServerConfig, Url, Headers, Range, Method } from '../@types';
 import Request from './Request';
 import Response from './Response';
 import { isNull, copy, isUndefined, isString, stripSlashes } from '@forensic-js/utils';

@@ -1,6 +1,6 @@
 import App from './modules/App';
 import Router from './modules/Router';
-import { Config } from './typings';
+import { Config } from './@types';
 
 export default {
   /**

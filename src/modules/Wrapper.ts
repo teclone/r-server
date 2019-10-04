@@ -1,5 +1,5 @@
 import Router from './Router';
-import { Callback, CallbackOptions, Middleware } from '../typings';
+import { Callback, CallbackOptions, Middleware } from '../@types';
 
 export default class Wrapper {
   private router: Router;

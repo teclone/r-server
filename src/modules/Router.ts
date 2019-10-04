@@ -12,7 +12,7 @@ import {
   RouteId,
   MiddlewareId,
   RouteInstance,
-} from '../typings';
+} from '../@types';
 import { joinPaths } from '@forensic-js/node-utils';
 import { assignMiddlewareId, assignRouteId } from './Constants';
 

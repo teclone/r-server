@@ -1,4 +1,4 @@
-import { RServerConfig } from './typings';
+import { RServerConfig } from './@types';
 
 const rServerConfig: RServerConfig = {
   env: 'dev',

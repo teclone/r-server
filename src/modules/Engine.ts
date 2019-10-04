@@ -9,7 +9,7 @@ import {
   Middleware,
   Next,
   Parameter,
-} from '../typings';
+} from '../@types';
 import Response from './Response';
 import Request from './Request';
 import Logger from './Logger';

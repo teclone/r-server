@@ -1,7 +1,7 @@
 import { ERROR_LEVELS } from './Constants';
 import Response from './Response';
 import * as fs from 'fs';
-import { RServerConfig } from '../typings';
+import { RServerConfig } from '../@types';
 import { resolvePaths, mkDirSync } from '@forensic-js/node-utils';
 import Request from './Request';
 import { EOL } from 'os';
