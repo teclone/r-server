@@ -1,20 +1,7 @@
 import { resolvePaths, mkDirSync } from '@forensic-js/node-utils';
 import * as fs from 'fs';
-import {
-  RServerConfig,
-  Data,
-  Files,
-  MultipartHeaders,
-  File,
-  FileCollection
-} from '../@types/index';
-import {
-  isArray,
-  isNull,
-  generateRandomText,
-  isObject,
-  makeArray
-} from '@forensic-js/utils';
+import { RServerConfig, Data, Files, MultipartHeaders, File, FileCollection } from '../typings/index';
+import { isArray, isNull, generateRandomText, isObject, makeArray } from '@forensic-js/utils';
 import { CRLF, BLANK_LINE } from './Constants';
 
 export default class {
@@ -72,7 +59,7 @@ export default class {
             size: [],
             type: [],
             name: [],
-            tmpName: []
+            tmpName: [],
           };
 
       for (const [key, current] of Object.entries(value)) {
@@ -95,7 +82,7 @@ export default class {
       tmpName,
       path: filePath,
       size: fs.statSync(filePath).size,
-      type: headers.type
+      type: headers.type,
     };
   }
 
@@ -109,7 +96,7 @@ export default class {
       type: 'text/plain',
       fileName: '',
       fieldName: generateRandomText(8),
-      encoding: this.config.encoding
+      encoding: this.config.encoding,
     };
 
     for (const header of headers) {
@@ -179,11 +166,7 @@ export default class {
 
         /* istanbul ignore else */
         if (headers.isFile && headers.fileName) {
-          this.assignFileValue(
-            files,
-            headers.fieldName,
-            this.processFile(headers, content)
-          );
+          this.assignFileValue(files, headers.fieldName, this.processFile(headers, content));
         } else if (!headers.isFile) {
           this.assignBodyValue(body, headers.fieldName, content);
         }
@@ -213,11 +196,7 @@ export default class {
       const pairs = string.split('&');
       for (const pair of pairs) {
         const [name, value] = pair.split('=');
-        this.assignBodyValue(
-          body,
-          decodeURIComponent(name),
-          decodeURIComponent(value || '')
-        );
+        this.assignBodyValue(body, decodeURIComponent(name), decodeURIComponent(value || ''));
       }
     }
     return body;

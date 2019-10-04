@@ -24,7 +24,7 @@ import {
   MiddlewareOptions,
   RouteId,
   MiddlewareId,
-} from '../@types';
+} from '../typings';
 import { isString, copy, isNumber, scopeCallback, expandToNumeric } from '@forensic-js/utils';
 import { joinPaths, getEntryPath } from '@forensic-js/node-utils';
 import { AddressInfo } from 'net';

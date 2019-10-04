@@ -1,7 +1,7 @@
 import { ERROR_LEVELS } from './Constants';
 import Response from './Response';
 import * as fs from 'fs';
-import { RServerConfig } from '../@types';
+import { RServerConfig } from '../typings';
 import { resolvePaths, mkDirSync } from '@forensic-js/node-utils';
 import Request from './Request';
 import { EOL } from 'os';
@@ -22,14 +22,8 @@ export default class Logger {
     mkDirSync(errorLogPath);
     mkDirSync(accessLogPath);
 
-    this.errorLogHandle = fs.openSync(
-      resolvePaths(entryPath, this.config.errorLog),
-      'a'
-    );
-    this.accessLogHandle = fs.openSync(
-      resolvePaths(entryPath, this.config.accessLog),
-      'a'
-    );
+    this.errorLogHandle = fs.openSync(resolvePaths(entryPath, this.config.errorLog), 'a');
+    this.accessLogHandle = fs.openSync(resolvePaths(entryPath, this.config.accessLog), 'a');
   }
 
   /**
@@ -46,10 +40,7 @@ export default class Logger {
    */
   logError(level: string, err: Error) {
     const now = new Date();
-    fs.writeSync(
-      this.errorLogHandle,
-      `[${now.toUTCString()}] [${level}] ${err.toString()}${EOL}`
-    );
+    fs.writeSync(this.errorLogHandle, `[${now.toUTCString()}] [${level}] ${err.toString()}${EOL}`);
     return this;
   }
 
@@ -70,24 +61,15 @@ export default class Logger {
   profile(req: Request, res: Response) {
     this.logAccess(req, res);
     if (this.config.env === 'dev' && this.config.profileRequest) {
-      const requestTime =
-        (req.endedAt as Date).getTime() - (req.startedAt as Date).getTime();
-      const responseTime =
-        (res.endedAt as Date).getTime() - (res.startedAt as Date).getTime();
+      const requestTime = (req.endedAt as Date).getTime() - (req.startedAt as Date).getTime();
+      const responseTime = (res.endedAt as Date).getTime() - (res.startedAt as Date).getTime();
 
       const template =
         res.statusCode >= 400
           ? '%s: %s \x1b[31m%d\x1b[0m ~%dms ~%dms\x1b[0m'
           : '%s: %s \x1b[32m%d\x1b[0m ~%dms ~%dms\x1b[0m';
 
-      console.log(
-        template,
-        req.method,
-        req.url,
-        res.statusCode,
-        requestTime,
-        responseTime
-      );
+      console.log(template, req.method, req.url, res.statusCode, requestTime, responseTime);
     }
     return this;
   }

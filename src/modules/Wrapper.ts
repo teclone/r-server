@@ -1,5 +1,5 @@
 import Router from './Router';
-import { Callback, CallbackOptions, Middleware } from '../@types';
+import { Callback, CallbackOptions, Middleware } from '../typings';
 
 export default class Wrapper {
   private router: Router;
@@ -17,10 +17,7 @@ export default class Wrapper {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  options(
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ): this {
+  options(callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): this {
     this.router.options(this.url, callback, options);
     return this;
   }
@@ -31,10 +28,7 @@ export default class Wrapper {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  head(
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ): this {
+  head(callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): this {
     this.router.head(this.url, callback, options);
     return this;
   }
@@ -45,10 +39,7 @@ export default class Wrapper {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  get(
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ): this {
+  get(callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): this {
     this.router.get(this.url, callback, options);
     return this;
   }
@@ -59,10 +50,7 @@ export default class Wrapper {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  post(
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ): this {
+  post(callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): this {
     this.router.post(this.url, callback, options);
     return this;
   }
@@ -73,10 +61,7 @@ export default class Wrapper {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  put(
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ): this {
+  put(callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): this {
     this.router.put(this.url, callback, options);
     return this;
   }
@@ -87,10 +72,7 @@ export default class Wrapper {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  delete(
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ): this {
+  delete(callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): this {
     this.router.delete(this.url, callback, options);
     return this;
   }

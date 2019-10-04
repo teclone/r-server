@@ -1,6 +1,6 @@
 import App from './modules/App';
 import Router from './modules/Router';
-import { Config } from './@types';
+import { Config } from './typings';
 
 export default {
   /**
@@ -17,5 +17,5 @@ export default {
    */
   Router(inheritMiddlewares: boolean = true): Router {
     return new Router(inheritMiddlewares);
-  }
+  },
 };

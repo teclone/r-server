@@ -1,4 +1,4 @@
-import { RServerConfig } from './@types';
+import { RServerConfig } from './typings';
 
 const rServerConfig: RServerConfig = {
   env: 'dev',
@@ -26,7 +26,7 @@ const rServerConfig: RServerConfig = {
   httpErrors: {
     baseDir: '',
     404: '',
-    500: ''
+    500: '',
   },
 
   https: {
@@ -42,9 +42,9 @@ const rServerConfig: RServerConfig = {
       key: '.cert/server.key',
       cert: '.cert/server.crt',
       //'pfx': 'relativePath',
-      passphrase: 'pfx passphrase'
-    }
-  }
+      passphrase: 'pfx passphrase',
+    },
+  },
 };
 
 export default rServerConfig;

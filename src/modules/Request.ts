@@ -1,5 +1,5 @@
 import { IncomingMessage } from 'http';
-import { Files, Data, Method } from '../@types';
+import { Files, Data, Method } from '../typings';
 import { Socket } from 'net';
 
 export default class Request extends IncomingMessage {

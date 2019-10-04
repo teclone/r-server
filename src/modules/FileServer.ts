@@ -1,16 +1,10 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { RServerConfig, Url, Headers, Range, Method } from '../@types';
+import { RServerConfig, Url, Headers, Range, Method } from '../typings';
 import Request from './Request';
 import Response from './Response';
-import {
-  isNull,
-  copy,
-  isUndefined,
-  isString,
-  stripSlashes
-} from '@forensic-js/utils';
+import { isNull, copy, isUndefined, isString, stripSlashes } from '@forensic-js/utils';
 import { IncomingHttpHeaders } from 'http';
 import { resolvePaths } from '@forensic-js/node-utils';
 import mime from 'mime-types';
@@ -33,12 +27,7 @@ export default class FileServer {
   /**
    * ends the response.
    */
-  private endResponse(
-    response: Response,
-    status: number,
-    headers: Headers,
-    data?: any
-  ) {
+  private endResponse(response: Response, status: number, headers: Headers, data?: any) {
     return response
       .status(status)
       .setHeaders(headers)
@@ -48,13 +37,7 @@ export default class FileServer {
   /**
    * ends the streaming response
    */
-  private endStream(
-    filePath: string,
-    response: Response,
-    status: number,
-    headers: Headers,
-    options?: object
-  ) {
+  private endStream(filePath: string, response: Response, status: number, headers: Headers, options?: object) {
     const readStream = fs.createReadStream(filePath, options);
     response.status(status).setHeaders(headers);
 
@@ -77,12 +60,7 @@ export default class FileServer {
    * validates range request content.
    * @see https://tools.ietf.org/html/rfc7233
    */
-  private validateRangeRequest(
-    headers: IncomingHttpHeaders,
-    eTag: string,
-    fileMTime: string,
-    fileSize: number
-  ) {
+  private validateRangeRequest(headers: IncomingHttpHeaders, eTag: string, fileMTime: string, fileSize: number) {
     const result: {
       isMultiRange: boolean;
       statusCode: number;
@@ -90,7 +68,7 @@ export default class FileServer {
     } = {
       isMultiRange: false,
       statusCode: 206,
-      ranges: []
+      ranges: [],
     };
     const ifRange = headers['if-range'];
 
@@ -102,9 +80,7 @@ export default class FileServer {
     }
 
     //we are not sending everything
-    const ranges = (headers['range'] as string)
-      .replace(/^\s*[^=]*=\s*/, '')
-      .split(/,\s*/);
+    const ranges = (headers['range'] as string).replace(/^\s*[^=]*=\s*/, '').split(/,\s*/);
     result.isMultiRange = ranges.length > 0;
 
     for (const range of ranges) {
@@ -145,20 +121,10 @@ export default class FileServer {
   /**
    * check if file is not modified
    */
-  private fileNotModified(
-    headers: IncomingHttpHeaders,
-    eTag: string,
-    fileMTime: string
-  ): boolean {
-    if (
-      !isUndefined(headers['if-none-match']) &&
-      headers['if-none-match'] === eTag
-    ) {
+  private fileNotModified(headers: IncomingHttpHeaders, eTag: string, fileMTime: string): boolean {
+    if (!isUndefined(headers['if-none-match']) && headers['if-none-match'] === eTag) {
       return true;
-    } else if (
-      !isUndefined(headers['if-modified-since']) &&
-      headers['if-modified-since'] === fileMTime
-    ) {
+    } else if (!isUndefined(headers['if-modified-since']) && headers['if-modified-since'] === fileMTime) {
       return true;
     } else {
       return false;
@@ -181,13 +147,11 @@ export default class FileServer {
   private getDefaultHeaders(filePath: string) {
     const stat = fs.statSync(filePath);
     return {
-      'Content-Type':
-        mime.lookup(path.parse(filePath).ext.substring(1)) ||
-        'application/octet-stream',
+      'Content-Type': mime.lookup(path.parse(filePath).ext.substring(1)) || 'application/octet-stream',
       'Last-Modified': stat.mtime.toString(),
       'Content-Length': stat.size.toString(),
       ETag: this.computeETag(stat.mtime),
-      'Cache-Control': this.config.cacheControl
+      'Cache-Control': this.config.cacheControl,
     };
   }
 
@@ -204,15 +168,11 @@ export default class FileServer {
   ) {
     if (method === 'options') {
       return this.endResponse(response, 200, {
-        Allow: ALLOWED_METHODS.join(',')
+        Allow: ALLOWED_METHODS.join(','),
       });
     }
 
-    const resHeaders = copy(
-      {},
-      this.getDefaultHeaders(filePath) as Headers,
-      headers
-    );
+    const resHeaders = copy({}, this.getDefaultHeaders(filePath) as Headers, headers);
     if (method === 'head') {
       resHeaders['Accept-Ranges'] = 'bytes';
       return this.endResponse(response, 200, resHeaders);
@@ -231,12 +191,7 @@ export default class FileServer {
       }
     } else {
       //we are dealing with range request
-      const { statusCode, ranges } = this.validateRangeRequest(
-        request.headers,
-        eTag,
-        lastModified,
-        fileSize
-      );
+      const { statusCode, ranges } = this.validateRangeRequest(request.headers, eTag, lastModified, fileSize);
 
       //we are sending everything
       if (statusCode === 200) {
@@ -247,7 +202,7 @@ export default class FileServer {
       delete resHeaders['Content-Disposition'];
       if (ranges.length === 0) {
         return this.endResponse(response, 416, {
-          'Content-Range': `bytes */${fileSize}`
+          'Content-Range': `bytes */${fileSize}`,
         });
       }
 
@@ -258,7 +213,7 @@ export default class FileServer {
         resHeaders['Content-Range'] = `bytes ${start}-${end}/${fileSize}`;
         return this.endStream(filePath, response, 206, resHeaders, {
           start,
-          end
+          end,
         });
       }
 
@@ -333,11 +288,7 @@ export default class FileServer {
     let filePath = '';
 
     if (httpErrors[status]) {
-      filePath = resolvePaths(
-        this.entryPath,
-        httpErrors.baseDir,
-        httpErrors[status]
-      );
+      filePath = resolvePaths(this.entryPath, httpErrors.baseDir, httpErrors[status]);
     } else {
       filePath = resolvePaths(__dirname, `../httpErrors/${status}.html`);
     }
@@ -345,24 +296,14 @@ export default class FileServer {
     if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
       return response.status(status).end();
     } else {
-      return this.endStream(
-        filePath,
-        response,
-        status,
-        this.getDefaultHeaders(filePath)
-      );
+      return this.endStream(filePath, response, status, this.getDefaultHeaders(filePath));
     }
   }
 
   /**
    * serves file intended for download to the client
    */
-  serveDownload(
-    request: Request,
-    response: Response,
-    filePath: string,
-    filename?: string
-  ): Promise<boolean> {
+  serveDownload(request: Request, response: Response, filePath: string, filename?: string): Promise<boolean> {
     let found = true;
     let absPath = resolvePaths(this.entryPath, filePath);
 
@@ -382,7 +323,7 @@ export default class FileServer {
     } else {
       filename = isString(filename) ? filename : path.parse(absPath).base;
       return this.process(request.method, absPath, request, response, 200, {
-        'Content-Disposition': `attachment; filename="${filename}"`
+        'Content-Disposition': `attachment; filename="${filename}"`,
       });
     }
   }
