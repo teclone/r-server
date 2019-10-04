@@ -1,6 +1,6 @@
 import { resolvePaths, mkDirSync } from '@forensic-js/node-utils';
 import * as fs from 'fs';
-import { RServerConfig, Data, Files, MultipartHeaders, File, FileCollection } from '../@types/index';
+import { RServerConfig, Data, Files, MultipartHeaders, FileEntry, FileEntryCollection } from '../@types/index';
 import { isArray, isNull, generateRandomText, isObject, makeArray } from '@forensic-js/utils';
 import { CRLF, BLANK_LINE } from './Constants';
 
@@ -46,13 +46,13 @@ export default class {
   /**
    * stores a file into the given files object
    */
-  private assignFileValue(files: Files, fieldName: string, value: File) {
+  private assignFileValue(files: Files, fieldName: string, value: FileEntry) {
     const { name, isMultiValue } = this.resolveFieldName(fieldName);
 
-    let target: File | FileCollection = value;
+    let target: FileEntry | FileEntryCollection = value;
     if (isMultiValue) {
       const previous = files[name];
-      target = isObject<FileCollection>(previous)
+      target = isObject<FileEntryCollection>(previous)
         ? previous
         : {
             path: [],
@@ -72,7 +72,7 @@ export default class {
   /**
    * processes and stores file
    */
-  private processFile(headers: MultipartHeaders, content: string): File {
+  private processFile(headers: MultipartHeaders, content: string): FileEntry {
     const tmpName = generateRandomText(16) + '.tmp';
     const filePath = resolvePaths(this.entryPath, this.config.tempDir, tmpName);
 

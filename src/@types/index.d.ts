@@ -133,7 +133,7 @@ export type RouteInstance = [RouteId, Url, Callback, null | ResolvedCallbackOpti
 
 export type MiddlewareInstance = [MiddlewareId, Url, Middleware[], null | ResolvedMiddlewareOptions];
 
-export interface File {
+export interface FileEntry {
   name: string;
   tmpName: string;
   path: string;
@@ -141,7 +141,7 @@ export interface File {
   type: string;
 }
 
-export interface FileCollection {
+export interface FileEntryCollection {
   name: string[];
   tmpName: string[];
   path: string[];
@@ -150,7 +150,7 @@ export interface FileCollection {
 }
 
 export interface Files {
-  [fieldName: string]: File | FileCollection;
+  [fieldName: string]: FileEntry | FileEntryCollection;
 }
 
 export interface Data {
