@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import { RServerConfig, Data, Files, MultipartHeaders, FileEntry, FileEntryCollection } from '../@types/index';
 import { isArray, isNull, generateRandomText, isObject, makeArray } from '@forensic-js/utils';
 import { CRLF, BLANK_LINE } from './Constants';
+import uuidv1 from 'uuid/v1';
 
 export default class {
   private entryPath: string;
@@ -59,7 +60,6 @@ export default class {
             size: [],
             type: [],
             name: [],
-            tmpName: [],
           };
 
       for (const [key, current] of Object.entries(value)) {
@@ -73,13 +73,12 @@ export default class {
    * processes and stores file
    */
   private processFile(headers: MultipartHeaders, content: string): FileEntry {
-    const tmpName = generateRandomText(16) + '.tmp';
+    const tmpName = uuidv1() + '.tmp';
     const filePath = resolvePaths(this.entryPath, this.config.tempDir, tmpName);
 
     fs.writeFileSync(filePath, content, headers.encoding);
     return {
       name: headers.fileName.replace(/\.\./g, ''),
-      tmpName,
       path: filePath,
       size: fs.statSync(filePath).size,
       type: headers.type,

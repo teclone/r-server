@@ -135,7 +135,6 @@ export type MiddlewareInstance = [MiddlewareId, Url, Middleware[], null | Resolv
 
 export interface FileEntry {
   name: string;
-  tmpName: string;
   path: string;
   size: number;
   type: string;
@@ -143,7 +142,6 @@ export interface FileEntry {
 
 export interface FileEntryCollection {
   name: string[];
-  tmpName: string[];
   path: string[];
   size: number[];
   type: string[];

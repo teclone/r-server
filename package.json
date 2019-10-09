@@ -75,6 +75,7 @@
     "@forensic-js/node-utils": "1.0.0",
     "@forensic-js/regex": "1.0.1",
     "@forensic-js/utils": "2.0.0",
-    "mime-types": "2.1.24"
+    "mime-types": "2.1.24",
+    "uuid": "3.3.3"
   }
 }
