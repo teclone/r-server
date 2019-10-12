@@ -1,6 +1,9 @@
 import { RServerConfig } from './@types';
+import * as path from 'path';
 
 const rServerConfig: RServerConfig = {
+  entryPath: path.resolve(__dirname, '../'),
+
   env: 'dev',
 
   errorLog: '.log/error.log',

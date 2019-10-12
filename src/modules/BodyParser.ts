@@ -6,16 +6,13 @@ import { CRLF, BLANK_LINE } from './Constants';
 import uuidv1 from 'uuid/v1';
 
 export default class {
-  private entryPath: string;
-
   private config: RServerConfig;
 
-  constructor(entryPath: string, config: RServerConfig) {
-    this.entryPath = entryPath;
+  constructor(config: RServerConfig) {
     this.config = config;
 
     //create file storage dir
-    mkDirSync(resolvePaths(this.entryPath, this.config.tempDir));
+    mkDirSync(resolvePaths(this.config.entryPath, this.config.tempDir));
   }
 
   /**
@@ -57,6 +54,7 @@ export default class {
         ? previous
         : {
             path: [],
+            key: [],
             size: [],
             type: [],
             name: [],
@@ -73,12 +71,13 @@ export default class {
    * processes and stores file
    */
   private processFile(headers: MultipartHeaders, content: string): FileEntry {
-    const tmpName = uuidv1() + '.tmp';
-    const filePath = resolvePaths(this.entryPath, this.config.tempDir, tmpName);
+    const key = uuidv1() + '.tmp';
+    const filePath = resolvePaths(this.config.entryPath, this.config.tempDir, key);
 
     fs.writeFileSync(filePath, content, headers.encoding);
     return {
       name: headers.fileName.replace(/\.\./g, ''),
+      key,
       path: filePath,
       size: fs.statSync(filePath).size,
       type: headers.type,

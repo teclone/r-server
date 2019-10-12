@@ -3,6 +3,8 @@ import Request from '../modules/Request';
 import Response from '../modules/Response';
 
 export interface RServerConfig {
+  entryPath: string;
+
   env: 'dev' | 'prod';
 
   errorLog: string;
@@ -104,6 +106,13 @@ export type Callback<Rq extends Request = Request, Rs extends Response = Respons
   ...parameters: Parameter[]
 ) => Promise<boolean>;
 
+export type ErrorCallback<Rq extends Request = Request, Rs extends Response = Response> = (
+  err: Error,
+  request: Rq,
+  response: Rs,
+  code?: number
+) => Promise<boolean>;
+
 export type Middleware<Rq extends Request = Request, Rs extends Response = Response> = (
   request: Rq,
   response: Rs,
@@ -134,16 +143,56 @@ export type RouteInstance = [RouteId, Url, Callback, null | ResolvedCallbackOpti
 export type MiddlewareInstance = [MiddlewareId, Url, Middleware[], null | ResolvedMiddlewareOptions];
 
 export interface FileEntry {
+  /**
+   * file name in user machine as it was uploaded
+   */
   name: string;
+
+  /**
+   * generated file name used in storing the file
+   */
+  key: string;
+
+  /**
+   * file absolute path in storage
+   */
   path: string;
+
+  /**
+   * file size in bytes
+   */
   size: number;
+
+  /**
+   * file mime type as supplied by the client
+   */
   type: string;
 }
 
 export interface FileEntryCollection {
+  /**
+   * file names in user machine as it was uploaded
+   */
   name: string[];
+
+  /**
+   * generated file names used in storing the file
+   */
+  key: string[];
+
+  /**
+   * file absolute paths in storage
+   */
   path: string[];
+
+  /**
+   * file sizes in bytes
+   */
   size: number[];
+
+  /**
+   * file mimes type as supplied by the client
+   */
   type: string[];
 }
 

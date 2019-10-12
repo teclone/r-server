@@ -1,8 +1,17 @@
 import App from './modules/App';
 import Router from './modules/Router';
-import { Config } from './@types';
+import { Config, ErrorCallback } from './@types';
+import { setErrorCallback } from './modules/Utils';
 
 export default {
+  /**
+   * sets the global callback error handler
+   * @param errorCallback global error callback
+   */
+  setGlobalErrorCallback(errorCallback: ErrorCallback) {
+    setErrorCallback(errorCallback);
+  },
+
   /**
    * creates an r server app instance
    * @param config - config file location or configuration object, defaults to .server.js

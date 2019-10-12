@@ -13,17 +13,17 @@ export default class Logger {
 
   private accessLogHandle: number;
 
-  constructor(entryPath: string, config: RServerConfig) {
+  constructor(config: RServerConfig) {
     this.config = config;
 
-    const errorLogPath = resolvePaths(entryPath, this.config.errorLog);
-    const accessLogPath = resolvePaths(entryPath, this.config.accessLog);
+    const errorLogPath = resolvePaths(this.config.entryPath, this.config.errorLog);
+    const accessLogPath = resolvePaths(this.config.entryPath, this.config.accessLog);
 
     mkDirSync(errorLogPath);
     mkDirSync(accessLogPath);
 
-    this.errorLogHandle = fs.openSync(resolvePaths(entryPath, this.config.errorLog), 'a');
-    this.accessLogHandle = fs.openSync(resolvePaths(entryPath, this.config.accessLog), 'a');
+    this.errorLogHandle = fs.openSync(resolvePaths(this.config.entryPath, this.config.errorLog), 'a');
+    this.accessLogHandle = fs.openSync(resolvePaths(this.config.entryPath, this.config.accessLog), 'a');
   }
 
   /**
@@ -40,7 +40,7 @@ export default class Logger {
    */
   logError(level: string, err: Error) {
     const now = new Date();
-    fs.writeSync(this.errorLogHandle, `[${now.toUTCString()}] [${level}] ${err.toString()}${EOL}`);
+    fs.writeSync(this.errorLogHandle, `[${now.toUTCString()}] [${level}] ${err.stack}${EOL}`);
     return this;
   }
 
@@ -77,21 +77,21 @@ export default class Logger {
   /**
    * logs fatal error to error log file and ends the response
    */
-  fatal(err: Error, response: Response) {
+  fatal(err: Error) {
     this.logError(ERROR_LEVELS.FATAL, err);
 
-    const statusCode = this.config.env === 'prod' ? 500 : 200;
-    const data = this.config.env === 'prod' ? undefined : err.toString();
+    // const statusCode = this.config.env === 'prod' ? 500 : 200;
+    // const data = this.config.env === 'prod' ? undefined : err.toString();
 
-    /* istanbul ignore else */
-    if (!response.finished) {
-      return response
-        .status(statusCode)
-        .removeHeaders('Content-Length')
-        .end(data);
-    } else {
-      return Promise.resolve(false);
-    }
+    // /* istanbul ignore else */
+    // if (!response.finished) {
+    //   return response
+    //     .status(statusCode)
+    //     .removeHeaders('Content-Length')
+    //     .end(data);
+    // } else {
+    //   return Promise.resolve(false);
+    // }
   }
 
   /**

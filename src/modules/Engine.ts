@@ -9,6 +9,7 @@ import {
   Middleware,
   Next,
   Parameter,
+  ErrorCallback,
 } from '../@types';
 import Response from './Response';
 import Request from './Request';
@@ -16,6 +17,7 @@ import Logger from './Logger';
 import { isObject, stripSlashes } from '@forensic-js/utils';
 import { replace } from '@forensic-js/regex';
 import { DOUBLE_TOKEN_REGEX, SINGLE_TOKEN_REGEX } from './Constants';
+import { handleError } from './Utils';
 
 export default class Engine {
   private resolved: boolean = false;
@@ -32,12 +34,22 @@ export default class Engine {
 
   private logger: Logger;
 
-  constructor(url: Url, method: string, request: Request, response: Response, logger: Logger) {
+  private errorCallback: ErrorCallback | null = null;
+
+  constructor(
+    url: Url,
+    method: string,
+    request: Request,
+    response: Response,
+    logger: Logger,
+    errorCallback: ErrorCallback | null
+  ) {
     this.resolved = false;
     this.request = request;
     this.response = response;
     this.middlewares = [];
     this.logger = logger;
+    this.errorCallback = errorCallback;
 
     this.url = stripSlashes(url.replace(/[#?].*$/, ''));
     this.method = method.toLowerCase();
@@ -252,7 +264,7 @@ export default class Engine {
       try {
         await this.runRoute(route, parameters);
       } catch (ex) {
-        this.logger.fatal(ex, this.response);
+        handleError(ex, this.errorCallback, this.logger, this.request, this.response);
       }
       return true;
     } else {

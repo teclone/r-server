@@ -1,4 +1,4 @@
-import { entryPath, dummyCallback, dummyMiddleware } from '../helpers';
+import { dummyCallback, dummyMiddleware } from '../helpers';
 import rServerConfig from '../../src/.server';
 import Engine from '../../src/modules/Engine';
 import { Method, MiddlewareInstance } from '../../src/@types';
@@ -13,8 +13,8 @@ describe('Engine', function() {
   const createEngine = (url: string, method: Method) => {
     const request = new Request(new Socket());
     const response = new Response(request);
-    const logger = new Logger(entryPath, rServerConfig);
-    return new Engine(url, method, request, response, logger);
+    const logger = new Logger(rServerConfig);
+    return new Engine(url, method, request, response, logger, null);
   };
 
   beforeEach(function() {

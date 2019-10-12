@@ -3,6 +3,8 @@ import { Files, Data, Method } from '../@types';
 import { Socket } from 'net';
 
 export default class Request extends IncomingMessage {
+  error: boolean = false;
+
   startedAt: Date | null = null;
 
   endedAt: Date | null = null;

@@ -2,15 +2,21 @@ import { ServerResponse } from 'http';
 import { isString } from '@forensic-js/utils';
 import FileServer from './FileServer';
 import Request from './Request';
+import { ErrorCallback, RServerConfig } from '../@types';
+import Logger from './Logger';
 
 export default class Response extends ServerResponse {
-  request: Request | null = null;
+  config: RServerConfig = {} as RServerConfig;
 
-  fileServer: FileServer | null = null;
+  request: Request = {} as Request;
 
-  startedAt: Date | null = null;
+  logger: Logger = {} as Logger;
 
-  endedAt: Date | null = null;
+  errorCallback: ErrorCallback | null = null;
+
+  startedAt: Date = {} as Date;
+
+  endedAt: Date = {} as Date;
 
   constructor(req: Request) {
     super(req);
@@ -116,7 +122,8 @@ export default class Response extends ServerResponse {
    * @param filename - suggested file download name
    */
   download(filePath: string, filename?: string): Promise<boolean> {
-    return (this.fileServer as FileServer).serveDownload(this.request as Request, this, filePath, filename);
+    const fileServer = new FileServer(this.config, this.logger, this.request, this, this.errorCallback);
+    return fileServer.serveDownload(filePath, filename);
   }
 
   /**

@@ -1,6 +1,6 @@
 import App from '../../src/modules/App';
 import request from 'request';
-import { httpHost, closeServer } from '../helpers';
+import { httpHost, closeApp } from '../helpers';
 
 describe('Response', function() {
   let app: App = null;
@@ -19,7 +19,7 @@ describe('Response', function() {
       });
       app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(app, done);
+          closeApp(app, done);
           expect(body).toEqual('');
         });
       });
@@ -31,7 +31,7 @@ describe('Response', function() {
       });
       app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(app, done);
+          closeApp(app, done);
           expect(body).toEqual('got it');
         });
       });
@@ -43,7 +43,7 @@ describe('Response', function() {
       });
       app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(app, done);
+          closeApp(app, done);
           expect(body).toEqual('got it');
         });
       });
@@ -52,7 +52,7 @@ describe('Response', function() {
 
   describe(`#json(data: object | string): Promise<boolean>`, function() {
     const jsonObject = {
-      name: 'Harrison'
+      name: 'Harrison',
     };
     const jsonString = JSON.stringify(jsonObject);
 
@@ -62,7 +62,7 @@ describe('Response', function() {
       });
       app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(app, done);
+          closeApp(app, done);
           expect(body).toEqual(jsonString);
         });
       });
@@ -74,7 +74,7 @@ describe('Response', function() {
       });
       app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(app, done);
+          closeApp(app, done);
           expect(body).toEqual(jsonString);
         });
       });
@@ -85,12 +85,12 @@ describe('Response', function() {
     const users = [
       {
         id: 1,
-        name: 'Harrison Ifeanyichukwu'
+        name: 'Harrison Ifeanyichukwu',
       },
       {
         id: 2,
-        name: 'Kalle'
-      }
+        name: 'Kalle',
+      },
     ];
     const stringifiedUsers = JSON.stringify(users);
 
@@ -103,7 +103,7 @@ describe('Response', function() {
       });
       app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(app, done);
+          closeApp(app, done);
           expect(body).toEqual(stringifiedUsers);
         });
       });
@@ -117,7 +117,7 @@ describe('Response', function() {
       });
       app.listen(null, () => {
         request(httpHost, (err, res, body) => {
-          closeServer(app, done);
+          closeApp(app, done);
           expect(res.headers).toHaveProperty('content-disposition');
         });
       });
@@ -125,14 +125,13 @@ describe('Response', function() {
   });
 
   describe(`#jsonSuccess(statusCode: number = 200, message: string = 'success', data: object = {}): Promise<boolean>`, function() {
-
     it(`should send success json data back to the client`, function(done) {
       app.get('/', (req, res) => {
-        return res.jsonSuccess(200, 'user created successfully', {user: {id: 1}});
+        return res.jsonSuccess(200, 'user created successfully', { user: { id: 1 } });
       });
       app.listen(null, () => {
-        request(httpHost, {json: true}, (err, res, body) => {
-          closeServer(app, done);
+        request(httpHost, { json: true }, (err, res, body) => {
+          closeApp(app, done);
           expect(body.status).toEqual('success');
           expect(body.message).toEqual('user created successfully');
         });
@@ -144,8 +143,8 @@ describe('Response', function() {
         return res.jsonSuccess();
       });
       app.listen(null, () => {
-        request(httpHost, {json: true}, (err, res, body) => {
-          closeServer(app, done);
+        request(httpHost, { json: true }, (err, res, body) => {
+          closeApp(app, done);
           expect(res.statusCode).toEqual(200);
           expect(body.status).toEqual('success');
           expect(body.message).toEqual('request successful');
@@ -155,14 +154,13 @@ describe('Response', function() {
   });
 
   describe(`#jsonError(statusCode: number = 400, message: string = 'request failed', errors: object = {}): Promise<boolean>`, function() {
-
     it(`should send error json data back to the client`, function(done) {
       app.get('/', (req, res) => {
         return res.jsonError(403, 'permission denied', {});
       });
       app.listen(null, () => {
-        request(httpHost, {json: true}, (err, res, body) => {
-          closeServer(app, done);
+        request(httpHost, { json: true }, (err, res, body) => {
+          closeApp(app, done);
           expect(body.status).toEqual('error');
           expect(body.message).toEqual('permission denied');
         });
@@ -174,11 +172,46 @@ describe('Response', function() {
         return res.jsonError();
       });
       app.listen(null, () => {
-        request(httpHost, {json: true}, (err, res, body) => {
-          closeServer(app, done);
+        request(httpHost, { json: true }, (err, res, body) => {
+          closeApp(app, done);
           expect(res.statusCode).toEqual(400);
           expect(body.status).toEqual('error');
           expect(body.message).toEqual('request failed');
+        });
+      });
+    });
+  });
+
+  describe(`#removeHeader(name): this`, function() {
+    it(`should remove the given header if it is set`, function(done) {
+      app.get('/', (req, res) => {
+        res.setHeader('Content-Language', 'en');
+        res.removeHeader('Content-Language');
+        return res.jsonError(403, 'permission denied', {});
+      });
+      app.listen(null, () => {
+        request(httpHost, { json: true }, (err, res, body) => {
+          closeApp(app, done);
+          expect(res.headers).not.toHaveProperty('content-language');
+        });
+      });
+    });
+  });
+
+  describe(`#removeHeaders(...names): this`, function() {
+    it(`should remove the given headers if set`, function(done) {
+      const headers = {
+        'Content-Language': 'en',
+      };
+      app.get('/', (req, res) => {
+        res.setHeaders(headers);
+        res.removeHeaders(...Object.keys(headers));
+        return res.jsonError(403, 'permission denied', {});
+      });
+      app.listen(null, () => {
+        request(httpHost, { json: true }, (err, res, body) => {
+          closeApp(app, done);
+          expect(res.headers).not.toHaveProperty('content-language');
         });
       });
     });

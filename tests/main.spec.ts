@@ -3,6 +3,14 @@ import Router from '../src/modules/Router';
 import App from '../src/modules/App';
 
 describe(`Main`, function() {
+  describe('.setGlobalErrorCallback(errorCallback: ErrorCallback)', function() {
+    it(`should set the default global Error Callback handler`, function() {
+      main.setGlobalErrorCallback((err, req, res) => {
+        return res.end();
+      });
+    });
+  });
+
   describe('.create(config: string | Config = ".server.js")', function() {
     it(`should create and return an R App instance`, function() {
       expect(main.create()).toBeInstanceOf(App);

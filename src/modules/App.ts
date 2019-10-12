@@ -24,11 +24,14 @@ import {
   MiddlewareOptions,
   RouteId,
   MiddlewareId,
+  ErrorCallback,
 } from '../@types';
 import { isString, copy, isNumber, scopeCallback, expandToNumeric } from '@forensic-js/utils';
 import { joinPaths, getEntryPath } from '@forensic-js/node-utils';
 import { AddressInfo } from 'net';
 import Wrapper from './Wrapper';
+import EntityTooLargeException from '../Exceptions/EntityTooLargeException';
+import { handleError } from './Utils';
 
 export default class App {
   private httpServer: HttpServer = createHttpServer({
@@ -48,22 +51,21 @@ export default class App {
 
   private logger: Logger;
 
-  private fileServer: FileServer;
-
   private bodyParser: BodyParser;
 
   private activeServers: number = 0;
 
   private closeCallback: ListenerCallback | null = null;
 
+  private errorCallback: ErrorCallback | null = null;
+
   constructor(config: string | Config) {
     /* istanbul ignore else */
     this.entryPath = getEntryPath();
 
     this.config = this.resolveConfig(this.entryPath, config);
-    this.logger = new Logger(this.entryPath, this.config);
-    this.fileServer = new FileServer(this.entryPath, this.config, this.logger);
-    this.bodyParser = new BodyParser(this.entryPath, this.config);
+    this.logger = new Logger(this.config);
+    this.bodyParser = new BodyParser(this.config);
 
     //setup https server if it is enabled
     const httpsConfig = this.config.https;
@@ -133,6 +135,7 @@ export default class App {
     if (isNumber(HTTPS_PORT) || (isString(HTTPS_PORT) && /^\d{3}/.test(HTTPS_PORT))) {
       resolvedConfig.https.port = Number.parseInt(HTTPS_PORT);
     }
+    resolvedConfig.entryPath = entryPath;
     return resolvedConfig;
   }
 
@@ -155,7 +158,7 @@ export default class App {
     method = method.toLowerCase();
 
     //create the engine, with zero middlewares yet
-    const engine = new Engine(url, method, request, response, this.logger);
+    const engine = new Engine(url, method, request, response, this.logger, this.errorCallback);
     const routes = this.router.getRoutes();
 
     //run on the main router thread
@@ -201,8 +204,8 @@ export default class App {
   /**
    * handle on response error event
    */
-  private onResponseError(err, response) {
-    this.logger.fatal(err, response);
+  private onResponseError(err: Error, request: Request, response: Response) {
+    handleError(err, this.errorCallback, this.logger, request, response);
   }
 
   /**
@@ -230,25 +233,22 @@ export default class App {
    * handle onrequest end event
    */
   private onRequestEnd(request: Request, response: Response) {
-    //if the response is already sent, such as fatal errors, just return.
-    request.endedAt = response.startedAt = new Date();
+    if (!request.error) {
+      request.endedAt = response.startedAt = new Date();
 
-    response.fileServer = this.fileServer;
-    response.request = request;
-
-    if (!response.finished) {
-      if (request.entityTooLarge) {
-        return response.status(413).end();
-      }
+      response.config = this.config;
+      response.request = request;
+      response.errorCallback = this.errorCallback;
 
       let { url, method } = request;
 
       this.parseRequestData(request, url as string);
       return this.cordinateRoutes(url as string, method as string, request, response).then(status => {
         if (!status) {
-          return this.fileServer.serve(url as string, request, response).then(status => {
+          const fileServer = new FileServer(this.config, this.logger, request, response, this.errorCallback);
+          return fileServer.serve(url as string).then(status => {
             if (!status) {
-              return this.fileServer.serveHttpErrorFile(response, 404);
+              return fileServer.serveHttpErrorFile(404);
             }
             return true;
           });
@@ -261,18 +261,23 @@ export default class App {
   /**
    * handle on request error event
    */
-  private onRequestError(err, response) {
-    this.logger.fatal(err, response);
+  private onRequestError(err: Error, request: Request, response: Response) {
+    request.error = true;
+    handleError(err, this.errorCallback, this.logger, request, response, 400);
   }
 
   /**
    * handle request data event
    */
   private onRequestData(chunk: Buffer, request: Request) {
-    if (request.buffer.length + chunk.length <= this.config.maxMemory) {
-      request.buffer = Buffer.concat([request.buffer, chunk]);
-    } else {
-      request.entityTooLarge = true;
+    if (!request.entityTooLarge) {
+      const newEntityLength = request.buffer.length + chunk.length;
+      if (newEntityLength <= this.config.maxMemory) {
+        request.buffer = Buffer.concat([request.buffer, chunk]);
+      } else {
+        request.entityTooLarge = true;
+        request.emit('error', new EntityTooLargeException());
+      }
     }
   }
 
@@ -282,28 +287,29 @@ export default class App {
   private onRequest(request: Request, response: Response, server: HttpServer | HttpsServer) {
     request.method = request.method.toLowerCase() as Method;
     request.startedAt = new Date();
+
     request.hostname = (request.headers['host'] as string).replace(/:\d+$/, '');
     request.encrypted = server instanceof HttpsServer;
-
-    //handle on request error
-    request.on('error', scopeCallback(this.onRequestError, this, response));
-
-    //handle on data event
-    request.on('data', scopeCallback(this.onRequestData, this, request));
-
-    //handle on data event
-    request.on('end', scopeCallback(this.onRequestEnd, this, [request, response]));
-
-    //handle on response error
-    response.on('error', scopeCallback(this.onResponseError, this, response));
-
-    //clean up resources once the response has been sent out
-    response.on('finish', scopeCallback(this.onResponseFinish, this, [request, response]));
 
     //enforce https if set
     const httpsConfig = this.config.https;
     if (httpsConfig.enabled && !request.encrypted && httpsConfig.enforce) {
       response.redirect(`https://${path.join(request.hostname + ':' + httpsConfig.port, request.url as string)}`);
+    } else {
+      //handle on request error
+      request.on('error', scopeCallback(this.onRequestError, this, [request, response]));
+
+      //handle on data event
+      request.on('data', scopeCallback(this.onRequestData, this, request));
+
+      //handle on end event
+      request.on('end', scopeCallback(this.onRequestEnd, this, [request, response]));
+
+      //handle on response error
+      response.on('error', scopeCallback(this.onResponseError, this, response));
+
+      //clean up resources once the response has been sent out
+      response.on('finish', scopeCallback(this.onResponseFinish, this, [request, response]));
     }
   }
 
@@ -348,7 +354,7 @@ export default class App {
   // }
 
   /**
-   * handle server error events
+   * handle server error events. server errors are majorly startup errors, log error and shut server down
    */
   private onServerError(err, server: HttpServer | HttpsServer) {
     const intro = this.getServerIntro(server);
@@ -410,6 +416,14 @@ export default class App {
    */
   setBasePath(basePath: string) {
     this.router.setBasePath(basePath);
+  }
+
+  /**
+   * sets the app intance callback error handler
+   * @param errorCallback app instance error callback
+   */
+  setErrorCallback(errorCallback: ErrorCallback) {
+    this.errorCallback = errorCallback;
   }
 
   /**

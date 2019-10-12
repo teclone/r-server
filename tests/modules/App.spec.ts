@@ -1,4 +1,4 @@
-import { httpHost, dummyCallback, dummyMiddleware, closeServer, httpsEnabledConfig } from '../helpers';
+import { httpHost, dummyCallback, dummyMiddleware, closeApp, httpsEnabledConfig } from '../helpers';
 import request from 'request';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -86,6 +86,14 @@ describe(`App`, function() {
   describe('#getConfig()', function() {
     it(`should return the resolved app config object`, function() {
       expect(app.getConfig()).toHaveProperty('env');
+    });
+  });
+
+  describe('.setErrorCallback(errorCallback: ErrorCallback)', function() {
+    it(`should set the app instance Error Callback handler`, function() {
+      app.setErrorCallback((err, req, res) => {
+        return res.end();
+      });
     });
   });
 
@@ -241,7 +249,7 @@ describe(`App`, function() {
             app gets started`, function(done) {
       app.listen(3000, () => {
         expect(app.address().http.port).toEqual(3000);
-        closeServer(app, done);
+        closeApp(app, done);
       });
     });
 
@@ -250,7 +258,7 @@ describe(`App`, function() {
       app.listen(3000, () => {
         expect(app.address().http.port).toEqual(5000);
         process.env.PORT = '';
-        closeServer(app, done);
+        closeApp(app, done);
       });
     });
 
@@ -259,7 +267,7 @@ describe(`App`, function() {
       app.listen(3000, () => {
         expect(app.address().http.port).toEqual(3000);
         expect(app.address().https.port).toEqual(9000);
-        closeServer(app, done);
+        closeApp(app, done);
       });
     });
 
@@ -267,14 +275,14 @@ describe(`App`, function() {
         set`, function(done) {
       app.listen(null, () => {
         expect(app.address().http.port).toEqual(8000);
-        closeServer(app, done);
+        closeApp(app, done);
       });
     });
 
     it(`should default callback argument to a dummy callback if not provided`, function(done) {
       const close = () => {
         if (app.listening) {
-          closeServer(app, done);
+          closeApp(app, done);
         } else {
           schedule();
         }
@@ -292,7 +300,7 @@ describe(`App`, function() {
         expect(function() {
           app.listen();
         }).not.toThrow();
-        closeServer(app, done);
+        closeApp(app, done);
       });
     });
   });
@@ -365,7 +373,7 @@ describe(`App`, function() {
         expect(app.address().http).not.toBeNull();
         expect(app.address().https).not.toBeNull();
 
-        closeServer(app, done);
+        closeApp(app, done);
       });
     });
   });
@@ -378,61 +386,57 @@ describe(`App`, function() {
         expect(function() {
           app2.listen(null);
         }).not.toThrow();
-        closeServer(app, done);
+        closeApp(app, done);
       });
     });
   });
 
   // describe('Client Error', function() {
-  //     it (`should handle every client error on the app by simply ending the socket`, function(done) {
-  //         app.listen(null, function() {
-  //             expect(function() {
-  //                 app.httpApp.emit('clientError');
-  //                 closeServer(app, done);
-  //             }).not.toThrow();
-  //         });
+  //   it(`should handle every client error on the app by simply ending the socket`, function(done) {
+  //     app.listen(null, function() {
+  //       expect(function() {
+  //         app.httpApp.emit('clientError');
+  //         closeApp(app, done);
+  //       }).not.toThrow();
   //     });
+  //   });
   // });
 
   describe('Request Error', function() {
-    it(`should handle every request error on the app by simply ending the response`, function(done) {
+    it(`should handle every request error on the app, ending the request`, function(done) {
       const app = new App({
         env: 'prod',
       });
 
       app.get('say-hi', (req, res) => {
-        expect(function() {
-          req.emit('error', 'something went bad');
-        }).not.toThrow();
+        req.emit('error', new Error('request error'));
         return res.end();
       });
 
       app.listen(null, function() {
         request.get(`${httpHost}say-hi`, (err, res) => {
-          expect(res.statusCode).toEqual(500);
-          closeServer(app, done);
+          expect(res.statusCode).toEqual(400);
+          closeApp(app, done);
         });
       });
     });
   });
 
   describe('Response Error', function() {
-    it(`should handle every response error on the app by simply ending the response`, function(done) {
+    it(`should capture response errors, logging message to the console`, function(done) {
       const app = new App({
         env: 'prod',
       });
 
       app.get('say-hi', (req, res) => {
-        expect(function() {
-          res.emit('error', 'something went bad');
-        }).not.toThrow();
+        res.emit('error', new Error('response error'));
         return res.end();
       });
 
       app.listen(null, function() {
         request.get(`${httpHost}say-hi`, (err, res) => {
-          expect(res.statusCode).toEqual(500);
-          closeServer(app, done);
+          expect(res.statusCode).toEqual(200);
+          closeApp(app, done);
         });
       });
     });
@@ -451,10 +455,39 @@ describe(`App`, function() {
         return res.json(req.body);
       });
       app.listen(null, function() {
-        request.post(`${httpHost}process-data`, { form }, (err, res) => {
-          expect(res.statusCode).toEqual(413);
-          closeServer(app, done);
-        });
+        request.post(
+          `${httpHost}process-data`,
+          {
+            form,
+          },
+          (err, res) => {
+            expect(res.statusCode).toEqual(413);
+            closeApp(app, done);
+          }
+        );
+      });
+    });
+
+    it(`should send 413 error code if request data exceeds app maxMemory value`, function(done) {
+      const app = new App({
+        maxMemory: 10,
+      });
+      app.post('/process-data', (req, res) => {
+        return res.json(req.body);
+      });
+      app.listen(null, function() {
+        request.post(
+          `${httpHost}process-data`,
+          {
+            formData: {
+              cv: fs.createReadStream(path.resolve(__dirname, '../helpers/multipart.log')),
+            },
+          },
+          (err, res) => {
+            expect(res.statusCode).toEqual(413);
+            closeApp(app, done);
+          }
+        );
       });
     });
   });
@@ -475,7 +508,7 @@ describe(`App`, function() {
       app.listen(null, function() {
         request(`${httpHost}say-protocol`, { rejectUnauthorized: false }, (err, res, body) => {
           expect(body).toEqual('https');
-          closeServer(app, done);
+          closeApp(app, done);
         });
       });
     });
@@ -487,7 +520,7 @@ describe(`App`, function() {
       app.listen(null, function() {
         request.get(`${httpHost}index.html`, null, (err, res, body) => {
           expect(body).toEqual(fs.readFileSync(filePath, 'utf8'));
-          closeServer(app, done);
+          closeApp(app, done);
         });
       });
     });
@@ -499,7 +532,7 @@ describe(`App`, function() {
       app.listen(null, function() {
         request.get(`${httpHost}index1.html`, null, (err, res, body) => {
           expect(body).toEqual(fs.readFileSync(filePath, 'utf8'));
-          closeServer(app, done);
+          closeApp(app, done);
         });
       });
     });
@@ -518,7 +551,7 @@ describe(`App`, function() {
       app.listen(null, function() {
         request.post(`${httpHost}check-data`, { form }, (err, res, body) => {
           expect(JSON.parse(body)).toEqual(form);
-          closeServer(app, done);
+          closeApp(app, done);
         });
       });
     });
@@ -542,7 +575,7 @@ describe(`App`, function() {
                 expect(res.statusCode).toEqual(200);
                 request.head(`${host}`, function(err, res, body) {
                   expect(res.statusCode).toEqual(200);
-                  closeServer(app, done);
+                  closeApp(app, done);
                 });
               });
             });
@@ -577,7 +610,7 @@ describe(`App`, function() {
                   expect(res.statusCode).toEqual(200);
                   request.options(`${httpHost}options`, function(err, res, body) {
                     expect(res.statusCode).toEqual(200);
-                    closeServer(app, done);
+                    closeApp(app, done);
                   });
                 });
               });
@@ -611,7 +644,7 @@ describe(`App`, function() {
                 expect(res.statusCode).toEqual(200);
                 request.head(`${host}`, function(err, res, body) {
                   expect(res.statusCode).toEqual(200);
-                  closeServer(app, done);
+                  closeApp(app, done);
                 });
               });
             });
@@ -650,7 +683,7 @@ describe(`App`, function() {
                   expect(res.statusCode).toEqual(200);
                   request.options(`${httpHost}users/options`, function(err, res, body) {
                     expect(res.statusCode).toEqual(200);
-                    closeServer(app, done);
+                    closeApp(app, done);
                   });
                 });
               });

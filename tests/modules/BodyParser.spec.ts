@@ -1,10 +1,5 @@
 import BodyParser from '../../src/modules/BodyParser';
-import {
-  entryPath,
-  multipartLogFile,
-  multipartBoundary,
-  multipartLogFileNoBoundary
-} from '../helpers';
+import { multipartLogFile, multipartBoundary, multipartLogFileNoBoundary } from '../helpers';
 import rServerConfig from '../../src/.server';
 import { encodeQueries } from '@forensic-js/utils';
 import * as fs from 'fs';
@@ -15,13 +10,13 @@ describe('BodyParser', function() {
     username: 'harrison',
     password1: 'random_243',
     password2: 'random_243',
-    languages: ['Java', 'PHP', 'JavaScript', 'Ruby', 'Python']
+    languages: ['Java', 'PHP', 'JavaScript', 'Ruby', 'Python'],
   };
 
   const buffer = Buffer.from(encodeQueries(data));
 
   beforeEach(function() {
-    bodyParser = new BodyParser(entryPath, rServerConfig);
+    bodyParser = new BodyParser(rServerConfig);
   });
 
   describe(`#constructor(entryPath: string, config: RServerConfig)`, function() {
@@ -50,9 +45,7 @@ describe('BodyParser', function() {
     it(`should inspect the given contentType, and parse the buffer data accordingly, passing
             data as urlencoded into body if contentType is text/plain or application/x-www-form-urlencoded`, function() {
       expect(bodyParser.parse(buffer, 'text/plain').body).toEqual(data);
-      expect(
-        bodyParser.parse(buffer, 'application/x-www-form-urlencoded').body
-      ).toEqual(data);
+      expect(bodyParser.parse(buffer, 'application/x-www-form-urlencoded').body).toEqual(data);
     });
 
     it(`should inspect the given contentType, and parse the buffer data accordingly, passing
