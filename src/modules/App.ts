@@ -6,7 +6,10 @@ import Logger from './Logger';
 import Router from './Router';
 import * as fs from 'fs';
 import { Server as HttpServer, createServer as createHttpServer } from 'http';
-import { Server as HttpsServer, createServer as createHttpsServer } from 'https';
+import {
+  Server as HttpsServer,
+  createServer as createHttpsServer,
+} from 'https';
 import * as path from 'path';
 import Response from './Response';
 import Request from './Request';
@@ -26,7 +29,13 @@ import {
   MiddlewareId,
   ErrorCallback,
 } from '../@types';
-import { isString, copy, isNumber, scopeCallback, expandToNumeric } from '@forensic-js/utils';
+import {
+  isString,
+  copy,
+  isNumber,
+  scopeCallback,
+  expandToNumeric,
+} from '@forensic-js/utils';
 import { joinPaths, getEntryPath } from '@forensic-js/node-utils';
 import { AddressInfo } from 'net';
 import Wrapper from './Wrapper';
@@ -55,7 +64,7 @@ export default class App {
 
   private activeServers: number = 0;
 
-  private closeCallback: ListenerCallback | null = null;
+  private closeCallback: ListenerCallback = () => {};
 
   private errorCallback: ErrorCallback | null = null;
 
@@ -75,7 +84,10 @@ export default class App {
         IncomingMessage: Request,
       };
       Object.entries(httpsConfig.credentials).reduce((result, [key, value]) => {
-        result[key] = key === 'passphrase' ? key : fs.readFileSync(path.resolve(this.entryPath, value));
+        result[key] =
+          key === 'passphrase'
+            ? key
+            : fs.readFileSync(path.resolve(this.entryPath, value));
         return result;
       }, options);
 
@@ -106,7 +118,10 @@ export default class App {
   /**
    * resolves and merges the configuration objects
    */
-  private resolveConfig(entryPath: string, config: string | Config): RServerConfig {
+  private resolveConfig(
+    entryPath: string,
+    config: string | Config,
+  ): RServerConfig {
     if (isString(config)) {
       const absPath = path.resolve(entryPath, config);
       if (fs.existsSync(absPath)) {
@@ -116,7 +131,11 @@ export default class App {
       }
     }
 
-    const resolvedConfig: RServerConfig = copy({}, defaultConfig, config as RServerConfig);
+    const resolvedConfig: RServerConfig = copy(
+      {},
+      defaultConfig,
+      config as RServerConfig,
+    );
 
     // resolve to numeric value
     resolvedConfig.maxMemory = expandToNumeric(resolvedConfig.maxMemory);
@@ -132,7 +151,10 @@ export default class App {
     }
 
     const HTTPS_PORT = process.env.HTTPS_PORT;
-    if (isNumber(HTTPS_PORT) || (isString(HTTPS_PORT) && /^\d{3}/.test(HTTPS_PORT))) {
+    if (
+      isNumber(HTTPS_PORT) ||
+      (isString(HTTPS_PORT) && /^\d{3}/.test(HTTPS_PORT))
+    ) {
       resolvedConfig.https.port = Number.parseInt(HTTPS_PORT);
     }
     resolvedConfig.entryPath = entryPath;
@@ -142,7 +164,11 @@ export default class App {
   /**
    * runs the array of route instances until a matched route is found
    */
-  private async runRoutes(engine: Engine, api: Method, routes: RouteInstance[]) {
+  private async runRoutes(
+    engine: Engine,
+    api: Method,
+    routes: RouteInstance[],
+  ) {
     for (const route of routes) {
       if (await engine[api](route)) {
         return true;
@@ -154,11 +180,23 @@ export default class App {
   /**
    * cordinates how routes are executed, including mounted routes
    */
-  private async cordinateRoutes(url: Url, method: string, request: Request, response: Response) {
+  private async cordinateRoutes(
+    url: Url,
+    method: string,
+    request: Request,
+    response: Response,
+  ) {
     method = method.toLowerCase();
 
     //create the engine, with zero middlewares yet
-    const engine = new Engine(url, method, request, response, this.logger, this.errorCallback);
+    const engine = new Engine(
+      url,
+      method,
+      request,
+      response,
+      this.logger,
+      this.errorCallback,
+    );
     const routes = this.router.getRoutes();
 
     //run on the main router thread
@@ -184,7 +222,9 @@ export default class App {
         return true;
       }
       /* istanbul ignore else */
-      if (await this.runRoutes(engine, method as Method, mountedRoutes[method])) {
+      if (
+        await this.runRoutes(engine, method as Method, mountedRoutes[method])
+      ) {
         return true;
       }
     }
@@ -243,9 +283,20 @@ export default class App {
       let { url, method } = request;
 
       this.parseRequestData(request, url as string);
-      return this.cordinateRoutes(url as string, method as string, request, response).then(status => {
+      return this.cordinateRoutes(
+        url as string,
+        method as string,
+        request,
+        response,
+      ).then(status => {
         if (!status) {
-          const fileServer = new FileServer(this.config, this.logger, request, response, this.errorCallback);
+          const fileServer = new FileServer(
+            this.config,
+            this.logger,
+            request,
+            response,
+            this.errorCallback,
+          );
           return fileServer.serve(url as string).then(status => {
             if (!status) {
               return fileServer.serveHttpErrorFile(404);
@@ -284,7 +335,11 @@ export default class App {
   /**
    * handles onrequest events
    */
-  private onRequest(request: Request, response: Response, server: HttpServer | HttpsServer) {
+  private onRequest(
+    request: Request,
+    response: Response,
+    server: HttpServer | HttpsServer,
+  ) {
     request.method = request.method.toLowerCase() as Method;
     request.startedAt = new Date();
 
@@ -294,22 +349,36 @@ export default class App {
     //enforce https if set
     const httpsConfig = this.config.https;
     if (httpsConfig.enabled && !request.encrypted && httpsConfig.enforce) {
-      response.redirect(`https://${path.join(request.hostname + ':' + httpsConfig.port, request.url as string)}`);
+      response.redirect(
+        `https://${path.join(
+          request.hostname + ':' + httpsConfig.port,
+          request.url as string,
+        )}`,
+      );
     } else {
       //handle on request error
-      request.on('error', scopeCallback(this.onRequestError, this, [request, response]));
+      request.on(
+        'error',
+        scopeCallback(this.onRequestError, this, [request, response]),
+      );
 
       //handle on data event
       request.on('data', scopeCallback(this.onRequestData, this, request));
 
       //handle on end event
-      request.on('end', scopeCallback(this.onRequestEnd, this, [request, response]));
+      request.on(
+        'end',
+        scopeCallback(this.onRequestEnd, this, [request, response]),
+      );
 
       //handle on response error
       response.on('error', scopeCallback(this.onResponseError, this, response));
 
       //clean up resources once the response has been sent out
-      response.on('finish', scopeCallback(this.onResponseFinish, this, [request, response]));
+      response.on(
+        'finish',
+        scopeCallback(this.onResponseFinish, this, [request, response]),
+      );
     }
   }
 
@@ -325,7 +394,6 @@ export default class App {
     if (this.activeServers === 0 || this.httpsServer === null) {
       const callback = this.closeCallback as ListenerCallback;
 
-      this.closeCallback = null;
       this.logger.close();
 
       callback();
@@ -335,7 +403,10 @@ export default class App {
   /**
    * handles server listening event
    */
-  private onListening(server: HttpServer | HttpsServer, callback: ListenerCallback) {
+  private onListening(
+    server: HttpServer | HttpsServer,
+    callback: ListenerCallback,
+  ) {
     this.activeServers += 1;
     const intro = this.getServerIntro(server);
 
@@ -365,7 +436,10 @@ export default class App {
   /**
    * binds all event handlers on the server
    */
-  private initServer(server: HttpServer | HttpsServer, callback: ListenerCallback) {
+  private initServer(
+    server: HttpServer | HttpsServer,
+    callback: ListenerCallback,
+  ) {
     //handle on error event
     server
       .on('error', scopeCallback(this.onServerError, this, server))
@@ -374,7 +448,10 @@ export default class App {
       //.on('clientError', scopeCallback(this.onClientError, this))
 
       //handle server listening event
-      .on('listening', scopeCallback(this.onListening, this, [server, callback]))
+      .on(
+        'listening',
+        scopeCallback(this.onListening, this, [server, callback]),
+      )
 
       //handle server close event
       .on('close', scopeCallback(this.onClose, this, server))
@@ -387,7 +464,10 @@ export default class App {
    * returns boolean indicating if the server is listening
    */
   get listening() {
-    return (this.httpsServer && this.httpsServer.listening) || this.httpServer.listening;
+    return (
+      (this.httpsServer && this.httpsServer.listening) ||
+      this.httpServer.listening
+    );
   }
 
   /**
@@ -433,7 +513,11 @@ export default class App {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  options(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions) {
+  options(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ) {
     return this.router.options(url, callback, options);
   }
 
@@ -444,7 +528,11 @@ export default class App {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  head(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions) {
+  head(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ) {
     return this.router.head(url, callback, options);
   }
 
@@ -455,7 +543,11 @@ export default class App {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  get(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions) {
+  get(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ) {
     return this.router.get(url, callback, options);
   }
 
@@ -466,7 +558,11 @@ export default class App {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  post(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions) {
+  post(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ) {
     return this.router.post(url, callback, options);
   }
 
@@ -476,7 +572,11 @@ export default class App {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  put(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions) {
+  put(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ) {
     return this.router.put(url, callback, options);
   }
 
@@ -487,7 +587,11 @@ export default class App {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  delete(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions) {
+  delete(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ) {
     return this.router.delete(url, callback, options);
   }
 
@@ -498,7 +602,11 @@ export default class App {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  all(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions) {
+  all(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ) {
     this.router.all(url, callback, options);
   }
 
@@ -551,7 +659,11 @@ export default class App {
    * @param options - middleware configuration option. here, you can specify the http method
    * that the middleware will run against
    */
-  use(url: Url, middleware: Middleware | Middleware[], options?: Method | Method[] | MiddlewareOptions) {
+  use(
+    url: Url,
+    middleware: Middleware | Middleware[],
+    options?: Method | Method[] | MiddlewareOptions,
+  ) {
     return this.router.use(url, middleware, options);
   }
 
@@ -581,11 +693,18 @@ export default class App {
   /**
    * starts the server at a given port
    */
-  listen(port?: number | null, callback: ListenerCallback = () => {}) {
+  listen(
+    port?: number | null,
+    callback: ListenerCallback = () => {},
+    closeCallback: ListenerCallback = () => {},
+  ) {
     const envPort = Number.parseInt(process.env.PORT || '0');
     if (this.listening) {
-      this.logger.warn('Server already started. You must close the server first');
+      this.logger.warn(
+        'Server already started. You must close the server first',
+      );
     } else {
+      this.closeCallback = closeCallback;
       this.initServer(this.httpServer, callback);
       this.httpServer.listen(envPort || port || 8000);
 
@@ -600,9 +719,9 @@ export default class App {
    * closes server
    * @param callback callback function to execute when connection closes
    */
-  close(callback: ListenerCallback = () => {}) {
+  close(callback?: ListenerCallback) {
     if (this.listening) {
-      this.closeCallback = callback;
+      this.closeCallback = callback || this.closeCallback;
       this.httpServer.close();
       if (this.httpsServer && this.httpsServer.listening) {
         this.httpsServer.close();
