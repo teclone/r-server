@@ -110,7 +110,7 @@ export type MiddlewareId = number;
 export type Parameter = string | number | boolean;
 
 export interface Next {
-  (): void;
+  (): true;
   reset: () => boolean;
   status: () => boolean;
 }

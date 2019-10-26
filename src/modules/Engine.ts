@@ -23,7 +23,7 @@ const generateNext = () => {
   let status = false;
 
   const next: Next = () => {
-    status = true;
+    return (status = true);
   };
   next.status = () => {
     return status;
