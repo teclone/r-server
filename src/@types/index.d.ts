@@ -128,7 +128,12 @@ export type ErrorCallback<
 export type Middleware<
   Rq extends Request = Request,
   Rs extends Response = Response
-> = (request: Rq, response: Rs, next: Next, ...parameters: Parameter[]) => void;
+> = (
+  request: Rq,
+  response: Rs,
+  next: Next,
+  ...parameters: Parameter[]
+) => Promise<boolean> | boolean;
 
 export type ListenerCallback = () => void;
 
