@@ -19,6 +19,22 @@ import { replace } from '@forensic-js/regex';
 import { DOUBLE_TOKEN_REGEX, SINGLE_TOKEN_REGEX } from './Constants';
 import { handleError } from './Utils';
 
+const generateNext = () => {
+  let status = false;
+
+  const next: Next = () => {
+    status = true;
+  };
+  next.status = () => {
+    return status;
+  };
+  next.reset = () => {
+    return !(status = false);
+  };
+
+  return next;
+};
+
 export default class Engine {
   private resolved: boolean = false;
 
@@ -42,7 +58,7 @@ export default class Engine {
     request: Request,
     response: Response,
     logger: Logger,
-    errorCallback: ErrorCallback | null
+    errorCallback: ErrorCallback | null,
   ) {
     this.resolved = false;
     this.request = request;
@@ -65,9 +81,14 @@ export default class Engine {
   /**
    * capture route parameters
    */
-  private captureParameter(routeToken: string, urlToken: string, parameters: RouteParameter[]): RouteParameter[] {
+  private captureParameter(
+    routeToken: string,
+    urlToken: string,
+    parameters: RouteParameter[],
+  ): RouteParameter[] {
     const processToken = (token: string, value: string) => {
-      const [dataType, name] = token.indexOf(':') > -1 ? token.split(':') : ['string', token];
+      const [dataType, name] =
+        token.indexOf(':') > -1 ? token.split(':') : ['string', token];
       let result: string | number | boolean = value;
 
       switch (dataType.toLowerCase()) {
@@ -84,7 +105,16 @@ export default class Engine {
         case 'bool':
         case 'boolean':
           result = result.toLowerCase();
-          result = !['0', 'false', '', 'null', 'nil', 'undefined', 'no', 'none'].includes(value);
+          result = ![
+            '0',
+            'false',
+            '',
+            'null',
+            'nil',
+            'undefined',
+            'no',
+            'none',
+          ].includes(value);
           break;
       }
       if (Number.isNaN(result as number)) {
@@ -184,7 +214,9 @@ export default class Engine {
   /**
    * validate that the middleware method matches request method
    */
-  private validateMiddleware(options: ResolvedMiddlewareOptions | null): boolean {
+  private validateMiddleware(
+    options: ResolvedMiddlewareOptions | null,
+  ): boolean {
     if (isObject<ResolvedMiddlewareOptions>(options)) {
       return options.method.includes(this.method as Method);
     } else {
@@ -206,24 +238,23 @@ export default class Engine {
   /**
    * asynchronously runs the middleware
    */
-  private async runMiddlewares(middlewares: Middleware[], parameters: Parameter[]) {
-    let proceed: boolean = true;
-
-    const next: Next = () => {
-      proceed = true;
-    };
+  private async runMiddlewares(
+    middlewares: Middleware[],
+    parameters: Parameter[],
+  ) {
+    const next = generateNext();
 
     for (const middleware of middlewares) {
-      proceed = false;
+      next.reset();
       await middleware(this.request, this.response, next, ...parameters);
-      if (!proceed) {
+      if (next.status() === false) {
         if (!this.response.finished) {
           this.response.end();
         }
         break;
       }
     }
-    return proceed;
+    return next.status();
   }
 
   /**
@@ -234,7 +265,12 @@ export default class Engine {
       const middlewareUrl = stripSlashes(url);
       if (this.validateMiddleware(options) && this.matchUrl(middlewareUrl)) {
         const middlewareParameters = this.captureParameters(middlewareUrl);
-        if (!(await this.runMiddlewares(middlewares, middlewareParameters.map(this.getParameterValue)))) {
+        if (
+          !(await this.runMiddlewares(
+            middlewares,
+            middlewareParameters.map(this.getParameterValue),
+          ))
+        ) {
           return;
         }
       }
@@ -245,7 +281,9 @@ export default class Engine {
 
     //run localised middlewares if any
     if (isObject<ResolvedCallbackOptions>(routeOptions)) {
-      if (!(await this.runMiddlewares(routeOptions.middleware, parameterValues))) {
+      if (
+        !(await this.runMiddlewares(routeOptions.middleware, parameterValues))
+      ) {
         return;
       }
     }
@@ -258,13 +296,23 @@ export default class Engine {
    */
   private async process(route: RouteInstance, overrideMethod?: Method) {
     const routeUrl = stripSlashes(route[1]);
-    if (!this.resolved && this.validateRoute(overrideMethod) && this.matchUrl(routeUrl)) {
+    if (
+      !this.resolved &&
+      this.validateRoute(overrideMethod) &&
+      this.matchUrl(routeUrl)
+    ) {
       this.resolved = true;
       const parameters = this.captureParameters(routeUrl);
       try {
         await this.runRoute(route, parameters);
       } catch (ex) {
-        handleError(ex, this.errorCallback, this.logger, this.request, this.response);
+        handleError(
+          ex,
+          this.errorCallback,
+          this.logger,
+          this.request,
+          this.response,
+        );
       }
       return true;
     } else {
