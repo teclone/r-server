@@ -1,5 +1,3 @@
-import { Callback } from '../@types';
-
 const singleToken = '\\{((?:[a-z]+:)?[a-z]+)\\}';
 
 export const SINGLE_TOKEN_REGEX = new RegExp(singleToken, 'i');

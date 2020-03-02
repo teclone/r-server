@@ -6,10 +6,7 @@ import Logger from './Logger';
 import Router from './Router';
 import * as fs from 'fs';
 import { Server as HttpServer, createServer as createHttpServer } from 'http';
-import {
-  Server as HttpsServer,
-  createServer as createHttpsServer,
-} from 'https';
+import { Server as HttpsServer, createServer as createHttpsServer } from 'https';
 import * as path from 'path';
 import Response from './Response';
 import Request from './Request';
@@ -29,14 +26,8 @@ import {
   MiddlewareId,
   ErrorCallback,
 } from '../@types';
-import {
-  isString,
-  copy,
-  isNumber,
-  scopeCallback,
-  expandToNumeric,
-} from '@forensic-js/utils';
-import { joinPaths, getEntryPath } from '@forensic-js/node-utils';
+import { isString, copy, isNumber, scopeCallback, expandToNumeric } from '@teclone/utils';
+import { joinPaths, getEntryPath } from '@teclone/node-utils';
 import { AddressInfo } from 'net';
 import Wrapper from './Wrapper';
 import EntityTooLargeException from '../Exceptions/EntityTooLargeException';
@@ -118,10 +109,7 @@ export default class App {
   /**
    * resolves and merges the configuration objects
    */
-  private resolveConfig(
-    entryPath: string,
-    config: string | Config,
-  ): RServerConfig {
+  private resolveConfig(entryPath: string, config: string | Config): RServerConfig {
     if (isString(config)) {
       const absPath = path.resolve(entryPath, config);
       if (fs.existsSync(absPath)) {
@@ -151,10 +139,7 @@ export default class App {
     }
 
     const HTTPS_PORT = process.env.HTTPS_PORT;
-    if (
-      isNumber(HTTPS_PORT) ||
-      (isString(HTTPS_PORT) && /^\d{3}/.test(HTTPS_PORT))
-    ) {
+    if (isNumber(HTTPS_PORT) || (isString(HTTPS_PORT) && /^\d{3}/.test(HTTPS_PORT))) {
       resolvedConfig.https.port = Number.parseInt(HTTPS_PORT);
     }
     resolvedConfig.entryPath = entryPath;
@@ -164,11 +149,7 @@ export default class App {
   /**
    * runs the array of route instances until a matched route is found
    */
-  private async runRoutes(
-    engine: Engine,
-    api: Method,
-    routes: RouteInstance[],
-  ) {
+  private async runRoutes(engine: Engine, api: Method, routes: RouteInstance[]) {
     for (const route of routes) {
       if (await engine[api](route)) {
         return true;
@@ -222,9 +203,7 @@ export default class App {
         return true;
       }
       /* istanbul ignore else */
-      if (
-        await this.runRoutes(engine, method as Method, mountedRoutes[method])
-      ) {
+      if (await this.runRoutes(engine, method as Method, mountedRoutes[method])) {
         return true;
       }
     }
@@ -357,19 +336,13 @@ export default class App {
       );
     } else {
       //handle on request error
-      request.on(
-        'error',
-        scopeCallback(this.onRequestError, this, [request, response]),
-      );
+      request.on('error', scopeCallback(this.onRequestError, this, [request, response]));
 
       //handle on data event
       request.on('data', scopeCallback(this.onRequestData, this, request));
 
       //handle on end event
-      request.on(
-        'end',
-        scopeCallback(this.onRequestEnd, this, [request, response]),
-      );
+      request.on('end', scopeCallback(this.onRequestEnd, this, [request, response]));
 
       //handle on response error
       response.on('error', scopeCallback(this.onResponseError, this, response));
@@ -403,10 +376,7 @@ export default class App {
   /**
    * handles server listening event
    */
-  private onListening(
-    server: HttpServer | HttpsServer,
-    callback: ListenerCallback,
-  ) {
+  private onListening(server: HttpServer | HttpsServer, callback: ListenerCallback) {
     this.activeServers += 1;
     const intro = this.getServerIntro(server);
 
@@ -436,10 +406,7 @@ export default class App {
   /**
    * binds all event handlers on the server
    */
-  private initServer(
-    server: HttpServer | HttpsServer,
-    callback: ListenerCallback,
-  ) {
+  private initServer(server: HttpServer | HttpsServer, callback: ListenerCallback) {
     //handle on error event
     server
       .on('error', scopeCallback(this.onServerError, this, server))
@@ -448,10 +415,7 @@ export default class App {
       //.on('clientError', scopeCallback(this.onClientError, this))
 
       //handle server listening event
-      .on(
-        'listening',
-        scopeCallback(this.onListening, this, [server, callback]),
-      )
+      .on('listening', scopeCallback(this.onListening, this, [server, callback]))
 
       //handle server close event
       .on('close', scopeCallback(this.onClose, this, server))
@@ -464,10 +428,7 @@ export default class App {
    * returns boolean indicating if the server is listening
    */
   get listening() {
-    return (
-      (this.httpsServer && this.httpsServer.listening) ||
-      this.httpServer.listening
-    );
+    return (this.httpsServer && this.httpsServer.listening) || this.httpServer.listening;
   }
 
   /**
@@ -700,9 +661,7 @@ export default class App {
   ) {
     const envPort = Number.parseInt(process.env.PORT || '0');
     if (this.listening) {
-      this.logger.warn(
-        'Server already started. You must close the server first',
-      );
+      this.logger.warn('Server already started. You must close the server first');
     } else {
       this.closeCallback = closeCallback;
       this.initServer(this.httpServer, callback);

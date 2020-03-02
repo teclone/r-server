@@ -1,4 +1,10 @@
-import { makeArray, isObject, isNull, isBoolean, stripSlashes, isUndefined } from '@forensic-js/utils';
+import {
+  makeArray,
+  isObject,
+  isBoolean,
+  stripSlashes,
+  isUndefined,
+} from '@teclone/utils';
 import Wrapper from './Wrapper';
 import {
   Callback,
@@ -13,7 +19,7 @@ import {
   MiddlewareId,
   RouteInstance,
 } from '../@types';
-import { joinPaths } from '@forensic-js/node-utils';
+import { joinPaths } from '@teclone/node-utils';
 import { assignMiddlewareId, assignRouteId } from './Constants';
 
 export default class Router {
@@ -61,12 +67,14 @@ export default class Router {
     method: Method,
     url: Url,
     callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
+    options?: Middleware | Middleware[] | CallbackOptions,
   ): RouteId {
     const resolvedOptions = isUndefined(options)
       ? null
       : {
-          middleware: isObject<CallbackOptions>(options) ? makeArray(options.middleware) : makeArray(options),
+          middleware: isObject<CallbackOptions>(options)
+            ? makeArray(options.middleware)
+            : makeArray(options),
         };
 
     const routeId = assignRouteId();
@@ -110,7 +118,11 @@ export default class Router {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  options(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): RouteId {
+  options(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ): RouteId {
     return this.set('options', url, callback, options);
   }
 
@@ -121,7 +133,11 @@ export default class Router {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  head(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): RouteId {
+  head(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ): RouteId {
     return this.set('head', url, callback, options);
   }
 
@@ -132,7 +148,11 @@ export default class Router {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  get(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): RouteId {
+  get(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ): RouteId {
     return this.set('get', url, callback, options);
   }
 
@@ -143,7 +163,11 @@ export default class Router {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  post(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): RouteId {
+  post(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ): RouteId {
     return this.set('post', url, callback, options);
   }
 
@@ -154,7 +178,11 @@ export default class Router {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  put(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): RouteId {
+  put(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ): RouteId {
     return this.set('put', url, callback, options);
   }
 
@@ -165,7 +193,11 @@ export default class Router {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  delete(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): RouteId {
+  delete(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ): RouteId {
     return this.set('delete', url, callback, options);
   }
 
@@ -176,7 +208,11 @@ export default class Router {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  all(url: Url, callback: Callback, options?: Middleware | Middleware[] | CallbackOptions): RouteId {
+  all(
+    url: Url,
+    callback: Callback,
+    options?: Middleware | Middleware[] | CallbackOptions,
+  ): RouteId {
     return this.set('all', url, callback, options);
   }
 
@@ -196,15 +232,26 @@ export default class Router {
    * that the middleware will run against
    *@returns {MiddlewareId} returns the middleware id, can be used to delete the middleware.
    */
-  use(url: Url, middleware: Middleware | Middleware[], options?: Method | Method[] | MiddlewareOptions): MiddlewareId {
+  use(
+    url: Url,
+    middleware: Middleware | Middleware[],
+    options?: Method | Method[] | MiddlewareOptions,
+  ): MiddlewareId {
     middleware = makeArray(middleware);
     const resolvedOptions = isUndefined(options)
       ? null
       : {
-          method: isObject<MiddlewareOptions>(options) ? makeArray(options.method) : makeArray(options),
+          method: isObject<MiddlewareOptions>(options)
+            ? makeArray(options.method)
+            : makeArray(options),
         };
     const middlewareId = assignMiddlewareId();
-    this.middlewares.push([middlewareId, this.resolveUrl(url), middleware, resolvedOptions]);
+    this.middlewares.push([
+      middlewareId,
+      this.resolveUrl(url),
+      middleware,
+      resolvedOptions,
+    ]);
 
     return middlewareId;
   }
@@ -245,7 +292,8 @@ export default class Router {
    * @param id middleware id
    */
   removeMiddleware(id: RouteId): boolean {
-    const findIndex = (middlewareInstance: MiddlewareInstance) => middlewareInstance[0] === id;
+    const findIndex = (middlewareInstance: MiddlewareInstance) =>
+      middlewareInstance[0] === id;
     const middlewares = this.middlewares;
 
     const index = middlewares.findIndex(findIndex);

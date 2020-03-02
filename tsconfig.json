@@ -1,14 +1,19 @@
 {
   "compilerOptions": {
+    "outDir": "./",
     "moduleResolution": "node",
     "target": "esnext",
     "declaration": true,
-    "emitDeclarationOnly": true,
-    "declarationDir": "./lib/typings",
     "noImplicitAny": false,
     "downlevelIteration": true,
-    "strictNullChecks": true,
+    "sourceMap": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "skipLibCheck": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": false,
     "lib": ["dom", "es5", "es2015.collection", "es2015.iterable"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": []
 }

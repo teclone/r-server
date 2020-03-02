@@ -1,5 +1,5 @@
 import { ServerResponse } from 'http';
-import { isString } from '@forensic-js/utils';
+import { isString } from '@teclone/utils';
 import FileServer from './FileServer';
 import Request from './Request';
 import { ErrorCallback, RServerConfig } from '../@types';
@@ -122,7 +122,13 @@ export default class Response extends ServerResponse {
    * @param filename - suggested file download name
    */
   download(filePath: string, filename?: string): Promise<boolean> {
-    const fileServer = new FileServer(this.config, this.logger, this.request, this, this.errorCallback);
+    const fileServer = new FileServer(
+      this.config,
+      this.logger,
+      this.request,
+      this,
+      this.errorCallback,
+    );
     return fileServer.serveDownload(filePath, filename);
   }
 
@@ -132,7 +138,11 @@ export default class Response extends ServerResponse {
    * @param message short message to return to client
    * @param errorData error data object, defaults to empty object
    */
-  jsonError(statusCode: number = 400, message: string = 'request failed', errors: object = {}): Promise<boolean> {
+  jsonError(
+    statusCode: number = 400,
+    message: string = 'request failed',
+    errors: object = {},
+  ): Promise<boolean> {
     return this.status(statusCode).json({
       status: 'error',
       code: statusCode,
@@ -147,12 +157,27 @@ export default class Response extends ServerResponse {
    * @param message short message to return to client
    * @param successData success data object, default to empty object
    */
-  jsonSuccess(statusCode: number = 200, message: string = 'request successful', data: object = {}): Promise<boolean> {
+  jsonSuccess(
+    statusCode: number = 200,
+    message: string = 'request successful',
+    data: object = {},
+  ): Promise<boolean> {
     return this.status(statusCode).json({
       status: 'success',
       code: statusCode,
       message,
       data,
+    });
+  }
+
+  /**
+   * waits for the given time
+   */
+  wait(time: number) {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve(this);
+      }, time);
     });
   }
 }

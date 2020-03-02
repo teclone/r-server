@@ -3,7 +3,7 @@ import Request from './Request';
 import Logger from './Logger';
 import Response from './Response';
 import EntityTooLargeException from '../Exceptions/EntityTooLargeException';
-import { isString } from '@forensic-js/utils';
+import { isString } from '@teclone/utils';
 
 /**
  * global callback error handler
@@ -27,7 +27,7 @@ export const handleError = (
   logger: Logger,
   request: Request,
   response: Response,
-  code?: number
+  code?: number,
 ): Promise<boolean> => {
   err = isString(err) ? new Error(err) : err;
   logger.fatal(err);

@@ -1,7 +1,14 @@
-import { resolvePaths, mkDirSync } from '@forensic-js/node-utils';
+import { resolvePaths, mkDirSync } from '@teclone/node-utils';
 import * as fs from 'fs';
-import { RServerConfig, Data, Files, MultipartHeaders, FileEntry, FileEntryCollection } from '../@types/index';
-import { isArray, isNull, generateRandomText, isObject, makeArray } from '@forensic-js/utils';
+import {
+  RServerConfig,
+  Data,
+  Files,
+  MultipartHeaders,
+  FileEntry,
+  FileEntryCollection,
+} from '../@types/index';
+import { isArray, isNull, generateRandomText, isObject, makeArray } from '@teclone/utils';
 import { CRLF, BLANK_LINE } from './Constants';
 import uuidv1 from 'uuid/v1';
 
@@ -164,7 +171,11 @@ export default class {
 
         /* istanbul ignore else */
         if (headers.isFile && headers.fileName) {
-          this.assignFileValue(files, headers.fieldName, this.processFile(headers, content));
+          this.assignFileValue(
+            files,
+            headers.fieldName,
+            this.processFile(headers, content),
+          );
         } else if (!headers.isFile) {
           this.assignBodyValue(body, headers.fieldName, content);
         }
@@ -194,7 +205,11 @@ export default class {
       const pairs = string.split('&');
       for (const pair of pairs) {
         const [name, value] = pair.split('=');
-        this.assignBodyValue(body, decodeURIComponent(name), decodeURIComponent(value || ''));
+        this.assignBodyValue(
+          body,
+          decodeURIComponent(name),
+          decodeURIComponent(value || ''),
+        );
       }
     }
     return body;

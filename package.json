@@ -1,14 +1,18 @@
 {
-  "name": "r-server",
+  "name": "@teclone/r-server",
   "version": "0.0.0-development",
   "description": "A lightweight, extensible web-server with inbuilt routing-engine, static file server, file upload handler, request body parser, middleware support and lots more",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "lib/main",
-  "typings": "lib/typings/main",
+  "typings": "lib/main",
   "scripts": {
     "commit": "git-cz",
     "test": "BABEL_ENV=test jest --runInBand",
     "watch-test": "BABEL_ENV=test jest --runInBand --watch",
-    "build": "rimraf lib && tsc && BABEL_ENV=build rollup --config",
+    "typings": "tsc --p ./tsconfig.build.json",
+    "build": "rimraf lib && yarn typings --declarationDir ./lib && rollup-all",
     "lint": "eslint src/**/*.ts --fix",
     "start": "npm run build && node app.js",
     "postinstall": "bash ./scripts/gen-ssl-cert.sh && node ./scripts/create-unreadable.js",
@@ -17,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/harrison-ifeanyichukwu/r-server.git"
+    "url": "https://github.com/teclone/r-server.git"
   },
   "keywords": [
     "web-server",
@@ -33,15 +37,16 @@
   "author": "Harrison Ifeanyichukwu <Harrisonifeanyichukwu@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/harrison-ifeanyichukwu/r-server/issues"
+    "url": "https://github.com/teclone/r-server/issues"
   },
-  "homepage": "https://github.com/harrison-ifeanyichukwu/r-server#readme",
+  "homepage": "https://github.com/teclone/r-server#readme",
   "devDependencies": {
     "@babel/core": "7.4.0",
     "@babel/plugin-proposal-class-properties": "^7.4.0",
     "@babel/plugin-proposal-object-rest-spread": "^7.4.0",
     "@babel/preset-env": "7.4.0",
     "@babel/preset-typescript": "7.3.3",
+    "@teclone/rollup-all": "1.10.8",
     "@types/jest": "24.0.11",
     "@typescript-eslint/eslint-plugin": "2.0.0",
     "@typescript-eslint/parser": "1.6.0",
@@ -53,13 +58,7 @@
     "js-beautify": "1.7.5",
     "request": "2.88.0",
     "rimraf": "2.6.3",
-    "rollup": "0.66.6",
-    "rollup-all": "1.6.16",
-    "rollup-plugin-babel": "4.3.2",
-    "rollup-plugin-commonjs": "9.3.4",
-    "rollup-plugin-node-resolve": "3.4.0",
-    "rollup-plugin-uglify": "6.0.2",
-    "semantic-release": "^15.13.24",
+    "semantic-release": "^17.0.4",
     "semantic-release-cli": "5.2.0",
     "source-map-support": "0.5.12",
     "typescript": "3.3.3333"
@@ -72,9 +71,9 @@
   "dependencies": {
     "@babel/plugin-transform-runtime": "7.4.3",
     "@babel/runtime": "7.4.3",
-    "@forensic-js/node-utils": "1.0.0",
-    "@forensic-js/regex": "1.0.1",
-    "@forensic-js/utils": "2.0.0",
+    "@teclone/node-utils": "1.0.4",
+    "@teclone/regex": "1.0.3",
+    "@teclone/utils": "2.14.4",
     "mime-types": "2.1.24",
     "uuid": "3.3.3"
   }
