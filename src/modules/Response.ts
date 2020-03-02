@@ -173,7 +173,7 @@ export default class Response extends ServerResponse {
   /**
    * waits for the given time
    */
-  wait(time: number) {
+  wait(time: number): Promise<Response> {
     return new Promise(resolve => {
       setTimeout(() => {
         resolve(this);
