@@ -1,5 +1,5 @@
 import { ServerResponse } from 'http';
-import { isString } from '@teclone/utils';
+import { isString, isObject } from '@teclone/utils';
 import FileServer from './FileServer';
 import Request from './Request';
 import { ErrorCallback, RServerConfig } from '../@types';
@@ -32,14 +32,23 @@ export default class Response extends ServerResponse {
    * @param data optional data to send. either string or buffer
    * @param encoding data encoding if not buffer
    */
-  end(data?, encoding?: string): Promise<boolean> {
+  end(data, encoding?: string): Promise<boolean> {
+    let resolvedData: string | Buffer = data;
+
+    if (!Buffer.isBuffer(data) && !isString(data)) {
+      if (isObject(data)) {
+        resolvedData = JSON.stringify(data);
+      } else {
+        resolvedData = '';
+      }
+    }
     return new Promise(resolve => {
       if (encoding) {
-        super.end(data, encoding, () => {
+        super.end(resolvedData, encoding, () => {
           resolve(true);
         });
       } else {
-        super.end(data, () => {
+        super.end(resolvedData, () => {
           resolve(true);
         });
       }
