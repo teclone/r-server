@@ -3,7 +3,7 @@ cache: npm
 notifications:
   email: false
 node_js:
-  - '10'
+  - '10.23.0'
   - '12'
 script:
   - npm run test
