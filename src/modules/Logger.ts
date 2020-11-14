@@ -16,19 +16,25 @@ export default class Logger {
   constructor(config: RServerConfig) {
     this.config = config;
 
-    const errorLogPath = resolvePaths(this.config.entryPath, this.config.errorLog);
-    const accessLogPath = resolvePaths(this.config.entryPath, this.config.accessLog);
+    const errorLogPath = resolvePaths(
+      this.config.entryPath,
+      this.config.errorLog
+    );
+    const accessLogPath = resolvePaths(
+      this.config.entryPath,
+      this.config.accessLog
+    );
 
     mkDirSync(errorLogPath);
     mkDirSync(accessLogPath);
 
     this.errorLogHandle = fs.openSync(
       resolvePaths(this.config.entryPath, this.config.errorLog),
-      'a',
+      'a'
     );
     this.accessLogHandle = fs.openSync(
       resolvePaths(this.config.entryPath, this.config.accessLog),
-      'a',
+      'a'
     );
   }
 
@@ -48,7 +54,7 @@ export default class Logger {
     const now = new Date();
     fs.writeSync(
       this.errorLogHandle,
-      `[${now.toUTCString()}] [${level}] ${err.stack}${EOL}`,
+      `[${now.toUTCString()}] [${level}] ${err.stack}${EOL}`
     );
     return this;
   }
@@ -69,7 +75,7 @@ export default class Logger {
    */
   profile(req: Request, res: Response) {
     this.logAccess(req, res);
-    if (this.config.env === 'dev' && this.config.profileRequest) {
+    if (this.config.env === 'development' && this.config.profileRequest) {
       const requestTime =
         (req.endedAt as Date).getTime() - (req.startedAt as Date).getTime();
       const responseTime =
@@ -86,7 +92,7 @@ export default class Logger {
         req.url,
         res.statusCode,
         requestTime,
-        responseTime,
+        responseTime
       );
     }
     return this;

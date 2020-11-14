@@ -2,10 +2,12 @@ import { AddressInfo } from 'net';
 import Request from '../modules/Request';
 import Response from '../modules/Response';
 
+export type Env = 'development' | 'production';
+
 export interface RServerConfig {
   entryPath: string;
 
-  env: 'dev' | 'prod';
+  env: Env;
 
   errorLog: string;
 
@@ -49,7 +51,7 @@ export interface RServerConfig {
 }
 
 export interface Config {
-  env?: 'dev' | 'prod';
+  env?: Env;
 
   errorLog?: string;
 
@@ -157,14 +159,14 @@ export type RouteInstance = [
   RouteId,
   Url,
   Callback,
-  null | ResolvedCallbackOptions,
+  null | ResolvedCallbackOptions
 ];
 
 export type MiddlewareInstance = [
   MiddlewareId,
   Url,
   Middleware[],
-  null | ResolvedMiddlewareOptions,
+  null | ResolvedMiddlewareOptions
 ];
 
 export interface FileEntry {

@@ -1322,6 +1322,11 @@
   resolved "https://registry.yarnpkg.com/@teclone/global/-/global-1.0.1.tgz#87e4d406b9d9b3e3f2321693fab6cbc549970b60"
   integrity sha512-K+d1N8ms6yzKrz6aZIzfzyropdxsJ7gNtQmZZOLHAS2mKrl6biQpryzEgzDg1FcYfPdAPgtl/ve+8FLzwfrGZg==
 
+"@teclone/global@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@teclone/global/-/global-1.1.0.tgz#a7792fcf57dee54bbd59e8251c01f03697e74b34"
+  integrity sha512-r7qqDd1hBp4hE6mO9hWSHn+3JyUOOQiUO12GhKBowYq2w8fGWY90d/N62FpFXtBDMh/kLGwqho3Qn4bR1gJl/w==
+
 "@teclone/node-utils@1.0.4":
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/@teclone/node-utils/-/node-utils-1.0.4.tgz#e049cec18e382043d6ca0854fb3ff14fa82a954e"
@@ -1375,6 +1380,13 @@
   integrity sha512-ePmjJI5M4ZeBPlfZhUC2bxp492EH50gwm3ICXzIvJcjLOVWM2RSlgiweNV+z+U9QwngVE64tPfVrWb9J6gKRWw==
   dependencies:
     "@teclone/global" "1.0.1"
+
+"@teclone/utils@^2.22.0":
+  version "2.22.0"
+  resolved "https://registry.yarnpkg.com/@teclone/utils/-/utils-2.22.0.tgz#83d27ee8be81beeb8d9e2ca7d4e9bc77859d0430"
+  integrity sha512-1ct0XqAo+AoL8uEBYAyhbCgBd3nlthKb43XtY0jM4eywqEB9zdFZth7oQEpnGSOtKpXd9G2qPZEre5/vUJ5f3Q==
+  dependencies:
+    "@teclone/global" "1.1.0"
 
 "@tootallnate/once@1":
   version "1.0.0"
@@ -3581,6 +3593,11 @@ dotenv@^5.0.1:
   version "5.0.1"
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-5.0.1.tgz#a5317459bd3d79ab88cff6e44057a6a3fbb1fcef"
   integrity sha512-4As8uPrjfwb7VXC+WnLCbXK7y+Ueb2B3zgNCePYfhxS1PYeaO1YTeplffTEcbfLhvFNGLAz90VvJs9yomG7bow==
+
+dotenv@^8.2.0:
+  version "8.2.0"
+  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-8.2.0.tgz#97e619259ada750eea3e4ea3e26bceea5424b16a"
+  integrity sha512-8sJ78ElpbDJBHNeBzUbUVLsqKdccaa/BXF1uPTw3GrvQTBgrQrtObr2mUrE38vzYd8cEv+m/JBfDLioYcfXoaw==
 
 duplexer2@~0.1.0:
   version "0.1.4"

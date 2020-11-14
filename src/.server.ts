@@ -4,7 +4,7 @@ import * as path from 'path';
 const rServerConfig: RServerConfig = {
   entryPath: path.resolve(__dirname, '../'),
 
-  env: 'dev',
+  env: 'development',
 
   errorLog: '.log/error.log',
 
@@ -34,6 +34,7 @@ const rServerConfig: RServerConfig = {
 
   https: {
     enabled: false,
+
     /* can be overriden by setting process.env.HTTPS_PORT */
     port: 9000,
 
