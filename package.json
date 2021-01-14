@@ -45,9 +45,14 @@
     "@babel/core": "7.4.0",
     "@babel/plugin-proposal-class-properties": "^7.4.0",
     "@babel/plugin-proposal-object-rest-spread": "^7.4.0",
+    "@babel/plugin-transform-runtime": "^7.12.10",
     "@babel/preset-env": "7.4.0",
     "@babel/preset-typescript": "7.3.3",
+    "@babel/runtime": "^7.12.5",
+    "@teclone/node-utils": "^1.1.1",
+    "@teclone/regex": "^1.0.3",
     "@teclone/rollup-all": "1.10.8",
+    "@teclone/utils": "^2.22.2",
     "@types/jest": "24.0.11",
     "@typescript-eslint/eslint-plugin": "2.0.0",
     "@typescript-eslint/parser": "1.6.0",
@@ -55,26 +60,29 @@
     "commitizen": "4.0.3",
     "coveralls": "3.0.3",
     "cz-conventional-changelog": "2.1.0",
+    "dotenv": "^8.2.0",
     "jest": "24.3.1",
     "js-beautify": "1.7.5",
+    "mime-types": "^2.1.28",
     "request": "2.88.0",
     "rimraf": "2.6.3",
     "semantic-release": "^17.0.4",
     "semantic-release-cli": "5.2.0",
     "source-map-support": "0.5.12",
-    "typescript": "3.3.3333"
+    "typescript": "3.3.3333",
+    "uuid": "^8.3.2"
   },
   "config": {
     "commitizen": {
       "path": "cz-conventional-changelog"
     }
   },
-  "dependencies": {
+  "peerDependencies": {
     "@babel/plugin-transform-runtime": "7.4.3",
     "@babel/runtime": "7.4.3",
-    "@teclone/node-utils": "1.0.4",
+    "@teclone/node-utils": "^1.1.1",
     "@teclone/regex": "1.0.3",
-    "@teclone/utils": "^2.22.0",
+    "@teclone/utils": "^2.22.2",
     "dotenv": "^8.2.0",
     "mime-types": "2.1.24",
     "uuid": "3.3.3"

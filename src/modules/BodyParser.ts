@@ -8,9 +8,15 @@ import {
   FileEntry,
   FileEntryCollection,
 } from '../@types/index';
-import { isArray, isNull, generateRandomText, isObject, makeArray } from '@teclone/utils';
+import {
+  isArray,
+  isNull,
+  generateRandomText,
+  isObject,
+  makeArray,
+} from '@teclone/utils';
 import { CRLF, BLANK_LINE } from './Constants';
-import uuidv1 from 'uuid/v1';
+import { v1 as uuidv1 } from 'uuid';
 
 export default class {
   private config: RServerConfig;
@@ -79,7 +85,11 @@ export default class {
    */
   private processFile(headers: MultipartHeaders, content: string): FileEntry {
     const key = uuidv1() + '.tmp';
-    const filePath = resolvePaths(this.config.entryPath, this.config.tempDir, key);
+    const filePath = resolvePaths(
+      this.config.entryPath,
+      this.config.tempDir,
+      key
+    );
 
     fs.writeFileSync(filePath, content, headers.encoding);
     return {
@@ -163,7 +173,7 @@ export default class {
     string
       .split(boundaryLinePattern)
       .slice(1, -1)
-      .forEach(bodyPart => {
+      .forEach((bodyPart) => {
         const [header, ...others] = bodyPart.split(blankLinePattern);
 
         const content = others.join(BLANK_LINE);
@@ -174,7 +184,7 @@ export default class {
           this.assignFileValue(
             files,
             headers.fieldName,
-            this.processFile(headers, content),
+            this.processFile(headers, content)
           );
         } else if (!headers.isFile) {
           this.assignBodyValue(body, headers.fieldName, content);
@@ -208,7 +218,7 @@ export default class {
         this.assignBodyValue(
           body,
           decodeURIComponent(name),
-          decodeURIComponent(value || ''),
+          decodeURIComponent(value || '')
         );
       }
     }
@@ -260,7 +270,7 @@ export default class {
    * clean up temp files
    */
   cleanUpTempFiles(files: Files) {
-    const unlink = path => {
+    const unlink = (path) => {
       if (fs.existsSync(path)) {
         fs.unlinkSync(path);
       }
