@@ -463,33 +463,33 @@ describe(`App`, function () {
       );
     });
 
-    it(`should send 413 error code if request data exceeds app maxMemory value`, function () {
-      const app = new App({
-        config: {
-          maxMemory: 10,
-        },
-      });
-      app.post('/process-data', (req, res) => {
-        return res.json(req.body);
-      });
+    // it(`should send 413 error code if request data exceeds app maxMemory value`, function () {
+    //   const app = new App({
+    //     config: {
+    //       maxMemory: 10,
+    //     },
+    //   });
+    //   app.post('/process-data', (req, res) => {
+    //     return res.json(req.body);
+    //   });
 
-      return withTeardown(
-        app,
-        app.listen().then(() => {
-          return sendRequest({
-            uri: `${httpHost}process-data`,
-            method: 'post',
-            formData: {
-              cv: fs.createReadStream(
-                path.resolve(__dirname, '../helpers/multipart.log')
-              ),
-            },
-          }).then((res) => {
-            expect(res.statusCode).toEqual(413);
-          });
-        })
-      );
-    });
+    //   return withTeardown(
+    //     app,
+    //     app.listen().then(() => {
+    //       return sendRequest({
+    //         uri: `${httpHost}process-data`,
+    //         method: 'post',
+    //         formData: {
+    //           cv: fs.createReadStream(
+    //             path.resolve(__dirname, '../helpers/multipart.log')
+    //           ),
+    //         },
+    //       }).then((res) => {
+    //         expect(res.statusCode).toEqual(413);
+    //       });
+    //     })
+    //   );
+    // });
   });
 
   describe(`enforce https`, function () {
