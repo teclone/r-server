@@ -18,7 +18,7 @@ import {
 import { CRLF, BLANK_LINE } from './Constants';
 import { v1 as uuidv1 } from 'uuid';
 
-export default class {
+export class BodyParser {
   private config: RServerConfig;
 
   constructor(config: RServerConfig) {

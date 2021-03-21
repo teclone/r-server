@@ -6,9 +6,7 @@
 [![npm version](https://badge.fury.io/js/r-server.svg)](https://badge.fury.io/js/%40teclone%2Fr-server)
 ![npm](https://img.shields.io/npm/dt/%40teclone%2Fr-server.svg)
 
-RServer is a fully integrated, Promise-based [Node.JS](https://nodejs.org/en/docs/guides/anatomy-of-an-http-transaction/) web server, optimized for development and production needs, with inbuilt **routing engine**, **static file server**, **range request support**, **body parser** (has support for multipart and file uploads), **middleware support**, **request-response** profiler, **excellent exception handling**, **error logging**, **Https easy setup** and lots more.
-
-It is fully compatible with [express.js](https://expressjs.com/), and takes minimal migration effort. It provides even more functionalities out of the box.
+RServer is a fully integrated, Promise-based [NodeJS](https://nodejs.org/en/docs/guides/anatomy-of-an-http-transaction/) web server, optimized for development and production needs, with inbuilt **routing engine**, **static file server**, **range request support**, **body parser** (has support for multipart and file uploads), **middleware support**, **request-response** profiler, **excellent exception handling**, **error logging**, **Https easy setup** and lots more.
 
 Note: **RServer is supported starting from Node v8.12 upward**
 
@@ -27,13 +25,11 @@ npm install @teclone/r-server
 Create your server entry **app.js or server.js** file with some sample codes like below.
 
 ```typescript
-const Server = require('@teclone/r-server'); // import rserver
-const app = Server.create(); // create server instance
+const { App } = require('@teclone/r-server'); // import rserver
+const app = new App(); // create server instance
 
-//start the instance. if port is null, it defaults to process.env.PORT || 8000
-app.listen(null, () => {
-  console.log('listening');
-});
+//start the instance. if port is null, it defaults to process.env.PORT || 8080
+app.listen().then(() => console.log('listening'));
 
 // add some route
 app.get('/', (req, res) => {
@@ -41,7 +37,7 @@ app.get('/', (req, res) => {
 });
 ```
 
-Start the server by running `npm start` on the project root directory and navigate your browser to `http://localhost:8000/`. **It is that simple**.
+Start the server by running `npm start` on the project root directory and navigate your browser to `http://localhost:8080/`. **It is that simple**.
 
 ## Why R-Server
 
@@ -71,20 +67,15 @@ R-Server gives you many excellent features out of the box, saving you the stress
 
 It comes with an inbuilt **request body parser**, that supports all forms of http request data such as **urlencoded query strings**, **application/json data**, **application/x-www-form-urlencoded data** and **multipart/form-data**.
 
-Parsed fields and files are made available on the request object through the `query`, `body`, `data` and `files` properties. Uploaded files are stored in a tmp folder, **storage/tmp** folder by default unless otherwise stated in a config file.
+Parsed fields and files are made available on the request object via the `query`, `body`, `data` and `files` properties. Uploaded files are stored in a tmp folder, **tmp/uploads**.
 
 The `data` property is a combination of all fields in the `query` and `body` properties, with values in the `body` property winning the battle in case of conflicting field keys.
 
 Multi-value fields are supported as well. They are recognised if the field name ends with the bracket notation `[]`. Note that the brackets are stripped out during the parsing. It uses the same principle like in [PHP](http://php.net/manual/en/tutorial.forms.php).
 
 ```typescript
-const Server = require('@teclone/r-server'); // import rserver
-const app = Server.create(); // create server instance
-
-//start the instance. if port is null, it defaults to process.env.PORT || 8000
-app.listen(null, () => {
-  console.log('listening');
-});
+const { App } = require('@teclone/r-server'); // import rserver
+const app = new App(); // create server instance
 
 app.put('users/{userId}/profile-picture', (req, res) => {
   const picture = req.files.picture;
@@ -93,13 +84,15 @@ app.put('users/{userId}/profile-picture', (req, res) => {
     message: 'got your file',
   });
 });
+
+app.listen().then(() => console.log('listening'));
 ```
 
 ### Routing Engine
 
-It provides an excellent routing engine, with parameter capturing and can incorporate data type enforcement on captured parameters. All http method verbs are made available in the router including `get`, `post`, `put`, `delete`, `options`, `head` and the universal `all` method.
+It provides an excellent routing engine, with parameter capturing and can incorporate data type enforcement on captured parameters. All http method verbs are made available in the router including `get`, `post`, `put`, `delete`, `options`, `head` and the universal `any` method.
 
-Unlike in [express.js](https://expressjs.com/), parameter capturing sections are enclosed in curly braces `{}`;
+Parameter capturing sections are enclosed in curly braces `{}`;
 
 It also supports chained routes through the `Router#route(url)` method. Route callbacks and Middlewares can be asynchronous in nature.
 
@@ -110,8 +103,8 @@ It also allows you to set route base path that gets prepended to all route urls 
 **Usage Example**:
 
 ```typescript
-const Server = require('@teclone/r-server'); // import rserver
-const app = Server.create(); // create server instance
+const { App, Router } = require('@teclone/r-server'); // import rserver
+const app = new App(); // create server instance
 
 /** get route */
 app.get(url, callback, options);
@@ -139,7 +132,7 @@ app.all(url, callback, options);
 
 ```typescript
 //no data type enforcement
-app.get('users/{userId}', (req, res, userId) => {
+app.get('users/{userId}', (req, res, { userId }) => {
   userId = /^\d+$/.test(userId) ? Number.parseInt(userId) : 0;
   if (userId !== 0) {
     return res.status(200).json({
@@ -158,7 +151,7 @@ app.get('users/{userId}', (req, res, userId) => {
 });
 
 //enforce data type
-app.get('users/{int:userId}', (req, res, userId) => {
+app.get('users/{int:userId}', (req, res, { userId }) => {
   if (userId !== 0) {
     return res.status(200).json({
       data: {
@@ -179,20 +172,20 @@ app.get('users/{int:userId}', (req, res, userId) => {
 **Chained Routes**:
 
 ```typescript
-const Server = require('@teclone/r-server'); // import rserver
-const app = Server.create(); // create server instance
+const { App } = require('@teclone/r-server'); // import rserver
+const app = new App(); // create server instance
 
 app.route('users/{int:userId}')
 
-    .put((req, res, userId) => {
+    .put((req, res, params) => {
         //update user profile
     });
 
-    .delete((req, res, userId) => {
+    .delete((req, res, {userId}) => {
         //delete user
     });
 
-    .get((req, res, userId) => {
+    .get((req, res, {userId}) => {
         //retrieve user
     });
 ```
@@ -204,92 +197,101 @@ It provides api for setting routing base path that gets prepended to all route u
 **NB: Route base path must be set before registering routes.**
 
 ```typescript
-const Server = require('@teclone/r-server'); // import rserver
-const app = Server.create(); // create server instance
 
-const request = require('request');
+const { App } = require('@teclone/r-server'); // import rserver
+const app = new App(); // create server instance
+
 //examples
 app.setBasePath('api/v2.0');
 
-//this route will be called when request is made on the endpoint /api/v2.0/auth
+//this route will be called when post request is made on the endpoint /api/v2.0/auth
 app.post('auth', (req, res)=> {
     return res.end('received');
 }));
-
-describe(`setBasePath(basePath: string)`, function() {
-    it(`should append the basePath to all route urls`, function(done) {
-        app.listen(null, () => {
-            request.post(`http://localhost:8000/auth`, {}, (err, res, body) => {
-                expect(body).toEqual('received');
-                app.close(() => {
-                    done();
-                });
-            });
-        });
-    });
-});
 ```
 
 ### Static File Server
 
-It provides public static file services out of the box, responding to **GET**, **HEAD**, & **OPTIONS** requests made on such static files. By default, it serves files from the `./public` folder. **It does not serve files that starts with dot `.` character or files within a folder that starts with the dot `.` character** unless the `serveHiddenFiles` configuration option is set to true. It also supports byte range requests that is crucial when serving large files.
+It provides public static file server out of the box, responding to **GET**, **HEAD**, & **OPTIONS** requests made on such static files. By default, it serves files from the `./public` folder. **It does not serve files that starts with the dot `.` character or files within a folder that starts with the dot `.` character** if the `serveHiddenFiles` configuration option is set to false even when they are placed in the public directory. It also supports byte range requests that is crucial when serving large files.
 
 The list of Default documents includes `index.html`, `index.css`, `index.js`. See [configuring-rserver](#configuring-rserver) on how to configure the list of default documents and so many other options.
 
-It uses node.js inbuilt [writable & readable stream API](https://nodejs.org/api/stream.html#stream_class_stream_writable) while serving files for performance gain, user experience and minimal usage of system resources.
+It uses NodeJS inbuilt [writable & readable stream API](https://nodejs.org/api/stream.html#stream_class_stream_writable) while serving files for performance gain, user experience and minimal usage of system resources.
 
 It provides excellent content negotiation [headers](https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html) (`Cache-Control`, `ETag` & `Last-Modified`) and would negotiate contents by checking for the presence of the `if-none-match`, `if-modified-since`, & the `if-range` http request headers.
 
 ### Middleware Support
 
-It supports the use of middlewares making it easy to run security or pluggable modules/methods and this makes it extensible. One can register global/standalone middlewares or localized route based middlewares. Middlewares can be a single or an array of javascript functions. Middlewares can be asynchronous functions too, that return promises.
+It supports the use of middlewares making it easy to run security or pluggable modules per request. One can register global/standalone middlewares or localized route based middlewares. Middlewares can be a single or an array of javascript functions. Middlewares can be asynchronous functions too, that return promises.
 
 ```typescript
-const Server = require('@teclone/r-server'); // import rserver
-const app = Server.create(); // create server instance
+const { App } = require('@teclone/r-server'); // import rserver
+const app = new App(); // create server instance
 
-//standalone middleware, runs on all request methods
+//runs on all request paths, and methods
 app.use('*', (req, res, next) => {
     //check if auth token is present in the header and set the req.user property
 
-    next(); //execute next to pass control or next middleware
+    return next(); //execute next to pass control or next middleware
 });
 
-//standalone middleware, runs on root domain and only on post request
+//runs on root domain and only on post requests
 app.use('/', (req, res, next) => next(), {method: 'post'};
 
-//standalone middleware that runs on all paths starting with /users/{userId}
+// runs on all request paths starting with users/{userId}, inclusive, and all methods
 app.use('users/{userId}/*', (req, res, next, userId) => next());
 
 //route localized middleware
-app.get('auth/login', (req, res) => {res.end()}, (req, res, next) => {
-    //redirect user to homepage if user is logged in
-    if (req.user) {
-        res.redirect('/');
-    }
-    else {
-        next();
-    }
+app.get('auth/login', (req, res) => {
+  return res.end('login form will be served :)');
+}, (req, res, next) => {
+  //redirect user to homepage if user is logged in
+  if (req.user) {
+      return res.redirect('/');
+  }
+  else {
+      return next();
+  }
+});
+
+// or
+app.get('auth/login', (req, res) => {
+  return res.end('login form will be served :)');
+}, {
+    use: [
+      (req, res, next) => {
+        //redirect user to homepage if user is logged in
+        if (req.user) {
+            return res.redirect('/');
+        }
+        else {
+            return next();
+        }
+      },
+
+      // ...more middlewares if you like
+    ]
+  }
 });
 ```
 
 ### Mountable Router
 
-It gives you the same feature that `express.Router()` offers, with additional ability to specify if the mini app router should inherit the main app's middlewares when it gets mounted.
+Mountable router are standalone router instances that can be mounted on the main app. Mountable routers can inherit the main app's standalone middlewares.
 
-**File routes/AuthRoutes.js**:
+**File routes/AuthRoutes.ts**:
 
-```javascript
-const Server = require('@teclone/r-server'); // import rserver
-const authRoutes = Server.Router(true); // create a mountable router
+```typescript
+const { Router } = require('@teclone/r-server'); // import rserver
+const authRoutes = new Router(true); // create a mountable router, inherit middleware options is set as true.
 
 //define specific middlewares for auth
 authRoutes.use('*', (req, res, next) => {
   // if user is logged in, redirect to homepage
   if (req.user) {
-    res.redirect('/');
+    return res.redirect('/');
   } else {
-    next();
+    return next();
   }
 });
 
@@ -308,36 +310,33 @@ authRoutes.post('reset-password', (req, res) => {
 export default Authroutes;
 ```
 
-**File app.js**:
+**File app.ts**:
 
-```javascript
-const Server = require('@teclone/r-server');
+```typescript
+const { App } = require('@teclone/r-server');
 const authRoutes = require('./routes/authRoutes');
 
 const app = RServer.create();
-
-app.mount('/auth', authRoutes);
 
 app.get('/', (req, res) => {
   return res.end('Welcome');
 });
 
-//http server will listen on port process.env.PORT if set, else it listens on port 4000
-app.listen(null, () => {
-  console.log('listening');
-});
+app.mount('/auth', authRoutes);
+
+app.listen().then(() => console.log('listening'));
 ```
 
 ### Error Handling & Reporting
 
-It logs errors to a user defined error log file which defaults to **.log/error.log** if not overriden.
+It logs errors to a user defined error log file which defaults to **logs/error.log**.
 When running in development mode, it sends error message and traces back to the client (browsers, etc). In production mode, it hides the error message from the client, but still logs the error to the error log file.
 
 By design, route callbacks are made to return promises, this helps bubble up any error up to our internal error handler for the event loop.
 
 ### Response Utility Methods
 
-Just like in **express.js**, there are some extended methods made available on the Response object, that includes the following:
+There are some extended methods made available on the Response object, that includes the following:
 
 ```typescript
 
@@ -389,29 +388,27 @@ download(filePath: string, filename?: string): Promise<boolean>;
 
 ### Custom HTTP Error Documents
 
-RServer is configurable, and allows the ability to define custom http error files that are mapped to http error codes such as [404](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404), etc. This is achieved by defining a `httpErrors` entry in your config file. See [Configuring RServer](#configuring-rserver) for details.
+RServer allows the ability to define custom http error files that are mapped to http error codes such as [404](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404), etc. This is achieved by defining a `httpErrors` entry in your config file. See [Configuring RServer](#configuring-rserver) for details.
 
 ## Configuring RServer
 
 RServer uses an internal `.server.ts` file that defines default server configurations for your project. the full config options is as shown below:
 
 ```typescript
-import { RServerConfig } from './@types';
+export const rServerConfig: RServerConfig = {
+  env: 'development',
 
-const rServerConfig: RServerConfig = {
-  env: 'dev',
+  errorLog: 'logs/error.log',
 
-  errorLog: '.log/error.log',
-
-  accessLog: '.log/access.log',
+  accessLog: 'logs/access.log',
 
   profileRequest: true,
 
-  tempDir: 'storage/temp',
+  tempDir: 'tmp/uploads',
 
   publicPaths: ['public'],
 
-  serveHiddenFiles: false,
+  serveHiddenFiles: true,
 
   cacheControl: 'no-cache, max-age=86400',
 
@@ -429,6 +426,7 @@ const rServerConfig: RServerConfig = {
 
   https: {
     enabled: false,
+
     /* can be overriden by setting process.env.HTTPS_PORT */
     port: 9000,
 
@@ -444,19 +442,22 @@ const rServerConfig: RServerConfig = {
     },
   },
 };
-
-export default rServerConfig;
 ```
 
 You can override these options by creating your own custom config file in your project's root directory. You can even name it differently or place it anywhere provided you supply the file's relative path when creating an instance.
 
 ```typescript
-const Server = require('@teclone/r-server');
-const app1 = RServer.create(configPath1);
-const app2 = RServer.create(configPath2);
+const { App } = require('@teclone/r-server');
 
-app1.listen(4000);
-app2.listen(5000);
+const app1 = new App({
+  configFile: './server1-config.js',
+});
+
+const app2 = new App({
+  config: {
+    profileRequests: false,
+  },
+});
 
 app1.get('/', (req, res) => {
   return res.end('This is app on port 4000');
@@ -465,87 +466,50 @@ app1.get('/', (req, res) => {
 app2.get('/', (req, res) => {
   return res.end('This is app2 on port 5000');
 });
+
+app1.listen(4000);
+app2.listen(5000);
 ```
 
-The two instances above are separate, knows nothing about each other and each uses its own config file, they can even share the same config file. **Note that the config parameter can be the config object rather than a path string**.
+The two instances above are separate, with different config settings. As shown in the example above, the config option can be an object.
 
 ### HTTPS Support
 
-It is easy to setup a **https server** along with your default http server. Use the `https` config option to declare your https server configuration settings. You can use [letsencrypt](https://letsencrypt.org/) easily to obtain ssl certificates for your application. You can even enforce https for all requests.
+It is easy to setup a **https server** along with your default http server. Use the `https` config option to declare your https server configuration settings. You can use [letsencrypt](https://letsencrypt.org/) easily to obtain ssl certificates for your application. Point the credentials to the obtained certificates.
 
 **https configuartion**:
 
 ```typescript
-import { RServerConfig } from './@types';
-
-const rServerConfig: RServerConfig = {
-  env: 'dev',
-
-  errorLog: '.log/error.log',
-
-  accessLog: '.log/access.log',
-
-  profileRequest: true,
-
-  tempDir: 'storage/temp',
-
-  publicPaths: ['public'],
-
-  serveHiddenFiles: false,
-
-  cacheControl: 'no-cache, max-age=86400',
-
-  encoding: 'latin1',
-
-  maxMemory: '50mb',
-
-  defaultDocuments: ['index.html', 'index.js', 'index.css'],
-
-  httpErrors: {
-    baseDir: '',
-    404: '',
-    500: '',
-  },
-
+export const rServerConfig: RServerConfig = {
   https: {
-    enabled: false,
+    enabled: true,
+
     /* can be overriden by setting process.env.HTTPS_PORT */
-    port: 9000,
+    port: 442,
 
     /* enforce https by redirecting all http request to https */
     enforce: true,
 
-    /* https credentials */
+    /* https credentials*/
     credentials: {
       key: '.cert/server.key',
       cert: '.cert/server.crt',
+
+      // if using pfx file,
+
       //'pfx': 'relativePath',
-      //passphrase: 'pfx passphrase'
+      // passphrase: 'pfx passphrase',
     },
   },
 };
-
-export default rServerConfig;
 ```
+
+The server listens for both http and https requests. It will redirect all http requests to their equivalent https path, if `enforce` option is set to `true`
 
 ### Range Request Support
 
-RServer will automatically detect and handle any [byte-range](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests) requests that hits the server. This is very important as it eases the server load when serving large files as browsers tend to throttle requests using range request mechanism. Visit this [link to read more](https://tools.ietf.org/html/rfc7233) on range requests.
+RServer will automatically detect and handle any [byte-range](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests) requests that hits the server. This is very important when serving large files such as video and audio files. Range requests is used for data buffering. Visit this [link to read more](https://tools.ietf.org/html/rfc7233) on range requests.
 
 ## Contributing
 
-We welcome your own contributions, ranging from code refactoring, documentation improvements, new feature implementations, bugs/issues reporting, etc. we recommend you follow the steps below to actively contribute to this project:
-
-1. Having decided on what to help us with, fork this repository
-
-   npm install packages:
-
-   ```bash
-   npm install
-   ```
-
-2. Implement your ideas
-
-   Implement your code reviews, changes, features, following the [laid out convention](CONTRIBUTING.md),
-
-3. Create a pull request, explaining your improvements/features
+We welcome your own contributions, ranging from code refactoring, documentation improvements, new feature implementations, bugs/issues reporting, etc. we recommend you follow the steps below to actively contribute to this project.

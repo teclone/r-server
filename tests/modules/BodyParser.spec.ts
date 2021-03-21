@@ -1,14 +1,14 @@
-import BodyParser from '../../src/modules/BodyParser';
+import { BodyParser } from '../../src/modules/BodyParser';
 import {
   multipartLogFile,
   multipartBoundary,
   multipartLogFileNoBoundary,
 } from '../helpers';
-import rServerConfig from '../../src/.server';
+import { rServerConfig } from '../../src/.server';
 import { encodeData } from '@teclone/utils';
 import * as fs from 'fs';
 
-describe('BodyParser', function() {
+describe('BodyParser', function () {
   let bodyParser: BodyParser = null;
   const data = {
     username: 'harrison',
@@ -19,49 +19,49 @@ describe('BodyParser', function() {
 
   const buffer = Buffer.from(encodeData(data));
 
-  beforeEach(function() {
+  beforeEach(function () {
     bodyParser = new BodyParser(rServerConfig);
   });
 
-  describe(`#constructor(entryPath: string, config: RServerConfig)`, function() {
-    it(`should create a body parser instance`, function() {
+  describe(`#constructor(entryPath: string, config: RServerConfig)`, function () {
+    it(`should create a body parser instance`, function () {
       expect(bodyParser).toBeInstanceOf(BodyParser);
     });
   });
 
-  describe(`#parseQueryString(url: string)`, function() {
-    it(`should extract and parse the query portion of the given url`, function() {
+  describe(`#parseQueryString(url: string)`, function () {
+    it(`should extract and parse the query portion of the given url`, function () {
       const url = '/index?' + encodeData(data);
       expect(bodyParser.parseQueryString(url)).toEqual(data);
     });
 
-    it(`should default query parameters with no value to empty string`, function() {
+    it(`should default query parameters with no value to empty string`, function () {
       expect(bodyParser.parseQueryString('/index?name')).toEqual({ name: '' });
     });
 
-    it(`should return empty object if url has no query portion`, function() {
+    it(`should return empty object if url has no query portion`, function () {
       expect(bodyParser.parseQueryString('/index')).toEqual({});
       expect(bodyParser.parseQueryString('/index?')).toEqual({});
     });
   });
 
-  describe(`#parse(buffer: Buffer, contentType: string): {files: Files, body: Data}`, function() {
+  describe(`#parse(buffer: Buffer, contentType: string): {files: Files, body: Data}`, function () {
     it(`should inspect the given contentType, and parse the buffer data accordingly, passing
-            data as urlencoded into body if contentType is text/plain or application/x-www-form-urlencoded`, function() {
+            data as urlencoded into body if contentType is text/plain or application/x-www-form-urlencoded`, function () {
       expect(bodyParser.parse(buffer, 'text/plain').body).toEqual(data);
-      expect(bodyParser.parse(buffer, 'application/x-www-form-urlencoded').body).toEqual(
-        data,
-      );
+      expect(
+        bodyParser.parse(buffer, 'application/x-www-form-urlencoded').body
+      ).toEqual(data);
     });
 
     it(`should inspect the given contentType, and parse the buffer data accordingly, passing
-            data as json encode into body if contentType is text/json or application/json`, function() {
+            data as json encoded into body if contentType is text/json or application/json`, function () {
       const buffer = Buffer.from(JSON.stringify(data));
       expect(bodyParser.parse(buffer, 'text/json').body).toEqual(data);
       expect(bodyParser.parse(buffer, 'application/json').body).toEqual(data);
     });
 
-    it(`should catch json decode error for erronous json strings and return empty object`, function() {
+    it(`should catch json decode error for erronous json strings and return empty object`, function () {
       const erronousJson = "{'age': 20}";
       const buffer = Buffer.from(erronousJson);
       expect(bodyParser.parse(buffer, 'text/json').body).toEqual({});
@@ -69,7 +69,7 @@ describe('BodyParser', function() {
 
     it(`should inspect the given contentType, and parse the buffer data accordingly, passing
             data as multipart form data into body and files object if contentType is
-            multipart/form-data`, function() {
+            multipart/form-data`, function () {
       const buffer = fs.readFileSync(multipartLogFile);
       const contentType = `multipart/form-data; boundary=${multipartBoundary}`;
 
@@ -78,7 +78,7 @@ describe('BodyParser', function() {
       bodyParser.cleanUpTempFiles(result.files);
     });
 
-    it(`should detect the multipart boundary if not given`, function() {
+    it(`should detect the multipart boundary if not given`, function () {
       const buffer = fs.readFileSync(multipartLogFile);
       const contentType = `multipart/form-data`;
 
@@ -88,7 +88,7 @@ describe('BodyParser', function() {
     });
 
     it(`should return empty body and files object if multipart boundary is not given and it
-        could not be detected`, function() {
+        could not be detected`, function () {
       const buffer = fs.readFileSync(multipartLogFileNoBoundary);
       const contentType = `multipart/form-data`;
 
@@ -98,15 +98,15 @@ describe('BodyParser', function() {
     });
 
     it(`should do nothing if contentType is not recognised and return empty body and files
-        object`, function() {
+        object`, function () {
       const buffer = Buffer.from(JSON.stringify(data));
       expect(bodyParser.parse(buffer, '').body).toEqual({});
       expect(bodyParser.parse(buffer, '').files).toEqual({});
     });
   });
 
-  describe(`#cleanUpTempFiles(files: Files)`, function() {
-    it(`should delete the given temporary files when request-response lifecycle completes`, function() {
+  describe(`#cleanUpTempFiles(files: Files)`, function () {
+    it(`should delete the given temporary files when request-response lifecycle completes`, function () {
       const buffer = fs.readFileSync(multipartLogFile);
       const contentType = `multipart/form-data; boundary=${multipartBoundary}`;
 
@@ -118,7 +118,7 @@ describe('BodyParser', function() {
       expect(fs.existsSync(files['file-cv'].path as string)).toBeFalsy();
     });
 
-    it(`should skip unexisting files at the time of call and do nothing`, function() {
+    it(`should skip unexisting files at the time of call and do nothing`, function () {
       const buffer = fs.readFileSync(multipartLogFile);
       const contentType = `multipart/form-data; boundary=${multipartBoundary}`;
 
@@ -127,7 +127,7 @@ describe('BodyParser', function() {
       fs.unlinkSync(files['file-cv'].path as string);
 
       expect(fs.existsSync(files['file-cv'].path as string)).toBeFalsy();
-      expect(function() {
+      expect(function () {
         bodyParser.cleanUpTempFiles(result.files);
       }).not.toThrow();
     });

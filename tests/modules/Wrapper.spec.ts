@@ -1,26 +1,26 @@
-import Wrapper from '../../src/modules/Wrapper';
-import Router from '../../src/modules/Router';
+import { Wrapper } from '../../src/modules/Wrapper';
+import { Router } from '../../src/modules/Router';
 import { dummyCallback } from '../helpers';
 import { Method } from '../../src/@types';
 
-describe('Wrapper', function() {
+describe('Wrapper', function () {
   const url = '/user';
   let wrapper: Wrapper = null,
     router: Router = null;
 
-  beforeEach(function() {
+  beforeEach(function () {
     router = new Router(false);
     wrapper = new Wrapper(router, url);
   });
 
-  const getTemplate = (method: Method) => {
-    return function() {
+  const getTemplate = (method: Exclude<Method, '*'>) => {
+    return function () {
       const banner =
         'should call router to store the given route rule for http ' +
         method.toUpperCase() +
         ' method for the given wrapped url';
 
-      it(banner, function() {
+      it(banner, function () {
         const spy = jest.spyOn(router, method);
         wrapper[method](dummyCallback);
 
@@ -32,8 +32,8 @@ describe('Wrapper', function() {
     };
   };
 
-  describe('#constructor(router: Router, url: Url)', function() {
-    it(`should create a route Wrapper instance when called`, function() {
+  describe('#constructor(router: Router, url: Url)', function () {
+    it(`should create a route Wrapper instance when called`, function () {
       expect(wrapper).toBeInstanceOf(Wrapper);
     });
   });

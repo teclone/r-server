@@ -3,18 +3,15 @@ import {
   MiddlewareInstance,
   RouteInstance,
   ResolvedCallbackOptions,
-  Method,
   RouteParameter,
-  ResolvedMiddlewareOptions,
   Middleware,
   Next,
-  Parameter,
   ErrorCallback,
 } from '../@types';
-import Response from './Response';
-import Request from './Request';
-import Logger from './Logger';
-import { isObject, stripSlashes } from '@teclone/utils';
+import type { Response } from './Response';
+import type { Request } from './Request';
+import type { Logger } from './Logger';
+import { fillArray, isObject, stripSlashes } from '@teclone/utils';
 import { replace } from '@teclone/regex';
 import { DOUBLE_TOKEN_REGEX, SINGLE_TOKEN_REGEX } from './Constants';
 import { handleError } from './Utils';
@@ -25,9 +22,11 @@ const generateNext = () => {
   const next: Next = () => {
     return (status = true);
   };
+
   next.status = () => {
     return status;
   };
+
   next.reset = () => {
     return !(status = false);
   };
@@ -35,7 +34,7 @@ const generateNext = () => {
   return next;
 };
 
-export default class Engine {
+export class Engine {
   private resolved: boolean = false;
 
   private request: Request;
@@ -58,7 +57,7 @@ export default class Engine {
     request: Request,
     response: Response,
     logger: Logger,
-    errorCallback: ErrorCallback | null,
+    errorCallback: ErrorCallback | null
   ) {
     this.resolved = false;
     this.request = request;
@@ -72,19 +71,12 @@ export default class Engine {
   }
 
   /**
-   * returns the parameter value
-   */
-  private getParameterValue(parameter: RouteParameter) {
-    return parameter.value;
-  }
-
-  /**
    * capture route parameters
    */
   private captureParameter(
     routeToken: string,
     urlToken: string,
-    parameters: RouteParameter[],
+    parameters: RouteParameter[]
   ): RouteParameter[] {
     const processToken = (token: string, value: string) => {
       const [dataType, name] =
@@ -105,14 +97,23 @@ export default class Engine {
         case 'bool':
         case 'boolean':
           result = result.toLowerCase();
-          result = !['0', 'false', '', 'null', 'nil', 'undefined', 'no', 'none'].includes(
-            value,
-          );
+          result = ![
+            '0',
+            'false',
+            '',
+            'null',
+            'nil',
+            'undefined',
+            'no',
+            'none',
+          ].includes(value);
           break;
       }
+
       if (Number.isNaN(result as number)) {
         result = 0;
       }
+
       return {
         name,
         dataType,
@@ -136,26 +137,31 @@ export default class Engine {
   }
 
   /**
+   * reduce parameters to object value
+   * @param parameters
+   */
+  private reduceParams(parameters: RouteParameter[]) {
+    return parameters.reduce((acc, current) => {
+      acc[current.name] = current.value;
+      return acc;
+    }, {});
+  }
+
+  /**
    * runs through the route, and captures parameters
    */
-  private captureParameters(routeUrl): RouteParameter[] {
+  private captureParameters(routeUrl: string): RouteParameter[] {
     const parameters: RouteParameter[] = [];
 
+    const removeEmpty = (arg: string) => arg !== '';
+
     //split the tokens.
-    const routeTokens = routeUrl !== '' ? routeUrl.split('/') : [];
-    const urlTokens = this.url !== '' ? this.url.split('/') : [];
+    const routeTokens = routeUrl.split('/').filter(removeEmpty);
+    const urlTokens = this.url.split('/').filter(removeEmpty);
 
     // if the route tokens is greater than the url tokens, fill with empty string
     const len = routeTokens.length;
-    const difference = len - urlTokens.length;
-
-    if (difference > 0) {
-      Array(difference)
-        .fill('')
-        .forEach(item => {
-          urlTokens.push(item);
-        });
-    }
+    fillArray(urlTokens, len, '');
 
     let i = -1;
     while (++i < len) {
@@ -165,7 +171,7 @@ export default class Engine {
       // if it is final route token, store remaining url
       if (routeToken === '*' && i + 1 === len) {
         parameters.push({
-          name: '*',
+          name: 'rest',
           dataType: 'string',
           value: urlTokens.slice(i).join('/'),
         });
@@ -205,43 +211,32 @@ export default class Engine {
   }
 
   /**
-   * validate that the middleware method matches request method
-   */
-  private validateMiddleware(options: ResolvedMiddlewareOptions | null): boolean {
-    if (isObject<ResolvedMiddlewareOptions>(options)) {
-      return options.method.includes(this.method as Method);
-    } else {
-      return true;
-    }
-  }
-
-  /**
-   * validate that the route method matches the request method
-   */
-  private validateRoute(overrideMethod?: Method): boolean {
-    if (overrideMethod && this.method !== overrideMethod) {
-      return false;
-    } else {
-      return true;
-    }
-  }
-
-  /**
    * asynchronously runs the middleware
    */
-  private async runMiddlewares(middlewares: Middleware[], parameters: Parameter[]) {
+  private async runMiddlewares(
+    middlewares: Middleware[],
+    parameters: RouteParameter[]
+  ) {
     const next = generateNext();
 
     for (const middleware of middlewares) {
       next.reset();
-      await middleware(this.request, this.response, next, ...parameters);
+      await middleware(this.request, this.response, next, {
+        params: this.reduceParams(parameters),
+      });
+
       if (next.status() === false) {
-        if (!this.response.finished) {
-          this.response.end();
-        }
         break;
       }
     }
+
+    if (
+      next.status() === false &&
+      (!this.response.writableFinished || !this.response.finished)
+    ) {
+      this.response.end();
+    }
+
     return next.status();
   }
 
@@ -249,51 +244,74 @@ export default class Engine {
    * asynchronously runs the matching route
    */
   private async runRoute(route: RouteInstance, parameters: RouteParameter[]) {
-    for (const [, url, middlewares, options] of this.middlewares) {
+    for (const middlewareInstance of this.middlewares) {
+      const [, url, middlewares, options] = middlewareInstance;
       const middlewareUrl = stripSlashes(url);
-      if (this.validateMiddleware(options) && this.matchUrl(middlewareUrl)) {
-        const middlewareParameters = this.captureParameters(middlewareUrl);
-        if (
-          !(await this.runMiddlewares(
-            middlewares,
-            middlewareParameters.map(this.getParameterValue),
-          ))
-        ) {
-          return;
-        }
+
+      const methods = options.method;
+
+      if (
+        methods.length === 0 ||
+        !methods.includes(this.method as any) ||
+        !this.matchUrl(middlewareUrl)
+      ) {
+        continue;
       }
-    }
 
-    const [, , callback, routeOptions] = route;
-    const parameterValues = parameters.map(this.getParameterValue);
+      const middlewareParameters = this.captureParameters(middlewareUrl);
 
-    //run localised middlewares if any
-    if (isObject<ResolvedCallbackOptions>(routeOptions)) {
-      if (!(await this.runMiddlewares(routeOptions.middleware, parameterValues))) {
+      const shouldContinue = await this.runMiddlewares(
+        middlewares,
+        middlewareParameters
+      );
+
+      if (!shouldContinue) {
         return;
       }
     }
 
-    await callback(this.request, this.response, ...parameterValues);
+    const [, , callback, routeOptions] = route;
+
+    //run localised middlewares if any
+    if (isObject<ResolvedCallbackOptions>(routeOptions)) {
+      if (!(await this.runMiddlewares(routeOptions.use, parameters))) {
+        return;
+      }
+    }
+
+    return await callback(this.request, this.response, {
+      params: this.reduceParams(parameters),
+    });
   }
 
   /**
    * processes the route
    */
-  private async process(route: RouteInstance, overrideMethod?: Method) {
+  async process(route: RouteInstance) {
     const routeUrl = stripSlashes(route[1]);
-    if (!this.resolved && this.validateRoute(overrideMethod) && this.matchUrl(routeUrl)) {
-      this.resolved = true;
-      const parameters = this.captureParameters(routeUrl);
-      try {
-        await this.runRoute(route, parameters);
-      } catch (ex) {
-        handleError(ex, this.errorCallback, this.logger, this.request, this.response);
-      }
+    if (this.resolved) {
       return true;
-    } else {
+    }
+
+    if (!this.matchUrl(routeUrl)) {
       return false;
     }
+
+    this.resolved = true;
+    const parameters = this.captureParameters(routeUrl);
+
+    try {
+      await this.runRoute(route, parameters);
+    } catch (ex) {
+      handleError(
+        ex,
+        this.errorCallback,
+        this.logger,
+        this.request,
+        this.response
+      );
+    }
+    return true;
   }
 
   /**
@@ -302,54 +320,5 @@ export default class Engine {
   use(middlewares: MiddlewareInstance[]): this {
     this.middlewares = middlewares;
     return this;
-  }
-
-  /**
-   * stores route rules for http OPTIONS method
-   */
-  options(route: RouteInstance) {
-    return this.process(route, 'options');
-  }
-
-  /**
-   * stores route rules for http HEAD method
-   */
-  head(route: RouteInstance) {
-    return this.process(route, 'head');
-  }
-
-  /**
-   * stores route rules for http GET method
-   */
-  get(route: RouteInstance) {
-    return this.process(route, 'get');
-  }
-
-  /**
-   * stores route rules for http POST method
-   */
-  post(route: RouteInstance) {
-    return this.process(route, 'post');
-  }
-
-  /**
-   * stores route rules for http PUT method
-   */
-  put(route: RouteInstance) {
-    return this.process(route, 'put');
-  }
-
-  /**
-   * stores route rules for http DELETE method
-   */
-  delete(route: RouteInstance) {
-    return this.process(route, 'delete');
-  }
-
-  /**
-   * stores route rules for all http methods
-   */
-  all(route: RouteInstance) {
-    return this.process(route);
   }
 }

@@ -4,8 +4,12 @@ import Response from '../modules/Response';
 
 export type Env = 'development' | 'production';
 
+export interface ObjectOfAny {
+  [p: string]: any;
+}
+
 export interface RServerConfig {
-  entryPath: string;
+  entryPath?: string;
 
   env: Env;
 
@@ -23,7 +27,7 @@ export interface RServerConfig {
 
   cacheControl: string;
 
-  encoding: string;
+  encoding: BufferEncoding;
 
   maxMemory: string | number;
 
@@ -101,7 +105,7 @@ export type Method =
   | 'head'
   | 'options'
   | 'delete'
-  | 'all';
+  | '*';
 
 export type Url = string;
 
@@ -120,7 +124,12 @@ export interface Next {
 export type Callback<
   Rq extends Request = Request,
   Rs extends Response = Response
-> = (request: Rq, response: Rs, ...parameters: Parameter[]) => Promise<boolean>;
+> = (
+  request: Rq,
+  response: Rs,
+  params: ObjectOfAny,
+  options?: ObjectOfAny
+) => Promise<boolean>;
 
 export type ErrorCallback<
   Rq extends Request = Request,
@@ -134,25 +143,30 @@ export type Middleware<
   request: Rq,
   response: Rs,
   next: Next,
-  ...parameters: Parameter[]
+  params: ObjectOfAny,
+  options?: ObjectOfAny
 ) => Promise<boolean> | boolean;
 
 export type ListenerCallback = () => void;
 
 export interface CallbackOptions {
-  middleware: Middleware | Middleware[];
+  use: Middleware | Middleware[];
+  options?: ObjectOfAny;
 }
 
 export interface MiddlewareOptions {
   method: Method | Method[];
+  options?: ObjectOfAny;
 }
 
 export interface ResolvedCallbackOptions {
-  middleware: Middleware[];
+  use: Middleware[];
+  options?: ObjectOfAny;
 }
 
 export interface ResolvedMiddlewareOptions {
   method: Method[];
+  options?: ObjectOfAny;
 }
 
 export type RouteInstance = [
@@ -262,5 +276,4 @@ export interface Routes {
   post: RouteInstance[];
   put: RouteInstance[];
   delete: RouteInstance[];
-  all: RouteInstance[];
 }

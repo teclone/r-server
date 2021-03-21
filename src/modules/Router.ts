@@ -3,9 +3,10 @@ import {
   isObject,
   isBoolean,
   stripSlashes,
-  isUndefined,
+  isCallable,
+  isString,
 } from '@teclone/utils';
-import Wrapper from './Wrapper';
+import { Wrapper } from './Wrapper';
 import {
   Callback,
   CallbackOptions,
@@ -18,11 +19,14 @@ import {
   RouteId,
   MiddlewareId,
   RouteInstance,
+  ResolvedCallbackOptions,
+  ResolvedMiddlewareOptions,
 } from '../@types';
 import { joinPaths } from '@teclone/node-utils';
-import { assignMiddlewareId, assignRouteId } from './Constants';
+import { assignMiddlewareId, assignRouteId, ROUTE_KEYS } from './Constants';
+import { getRouteKeys } from './Utils';
 
-export default class Router {
+export class Router {
   private basePath: string = '';
 
   private routes: Routes = {
@@ -32,7 +36,6 @@ export default class Router {
     post: [],
     put: [],
     delete: [],
-    all: [],
   };
 
   private middlewares: MiddlewareInstance[] = [];
@@ -56,6 +59,46 @@ export default class Router {
   }
 
   /**
+   * resolves a route callback options
+   */
+  private resolveCallbackOptions(
+    options?: Middleware | Middleware[] | CallbackOptions
+  ) {
+    let resolvedOptions: ResolvedCallbackOptions = null;
+
+    if (isCallable(options) || Array.isArray(options)) {
+      resolvedOptions = { use: makeArray(options) };
+    } else if (isObject(options)) {
+      resolvedOptions = {
+        use: makeArray(options.use),
+        options: options.options,
+      };
+    }
+
+    return resolvedOptions;
+  }
+
+  /**
+   * resolves a use middleware options
+   */
+  private resolveMiddlewareOptions(
+    options: Method | Method[] | MiddlewareOptions = '*'
+  ) {
+    let resolvedOptions: ResolvedMiddlewareOptions = null;
+
+    if (isString(options) || Array.isArray(options)) {
+      resolvedOptions = { method: getRouteKeys(options) };
+    } else if (isObject(options)) {
+      resolvedOptions = {
+        method: getRouteKeys(options.method || '*'),
+        options: options.options,
+      };
+    }
+
+    return resolvedOptions;
+  }
+
+  /**
    * sets the route rule for a given http method
    *
    * @param method - the http method
@@ -67,18 +110,22 @@ export default class Router {
     method: Method,
     url: Url,
     callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions,
+    options?: Middleware | Middleware[] | CallbackOptions
   ): RouteId {
-    const resolvedOptions = isUndefined(options)
-      ? null
-      : {
-          middleware: isObject<CallbackOptions>(options)
-            ? makeArray(options.middleware)
-            : makeArray(options),
-        };
-
     const routeId = assignRouteId();
-    this.routes[method].push([routeId, this.resolveUrl(url), callback, resolvedOptions]);
+
+    const resolvedOptions = this.resolveCallbackOptions(options);
+    const resolvedUrl = this.resolveUrl(url);
+
+    for (const routeKey of getRouteKeys(method)) {
+      this.routes[routeKey].push([
+        routeId,
+        resolvedUrl,
+        callback,
+        resolvedOptions,
+      ]);
+    }
+
     return routeId;
   }
 
@@ -121,7 +168,7 @@ export default class Router {
   options(
     url: Url,
     callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions,
+    options?: Middleware | Middleware[] | CallbackOptions
   ): RouteId {
     return this.set('options', url, callback, options);
   }
@@ -136,7 +183,7 @@ export default class Router {
   head(
     url: Url,
     callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions,
+    options?: Middleware | Middleware[] | CallbackOptions
   ): RouteId {
     return this.set('head', url, callback, options);
   }
@@ -151,7 +198,7 @@ export default class Router {
   get(
     url: Url,
     callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions,
+    options?: Middleware | Middleware[] | CallbackOptions
   ): RouteId {
     return this.set('get', url, callback, options);
   }
@@ -166,7 +213,7 @@ export default class Router {
   post(
     url: Url,
     callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions,
+    options?: Middleware | Middleware[] | CallbackOptions
   ): RouteId {
     return this.set('post', url, callback, options);
   }
@@ -181,7 +228,7 @@ export default class Router {
   put(
     url: Url,
     callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions,
+    options?: Middleware | Middleware[] | CallbackOptions
   ): RouteId {
     return this.set('put', url, callback, options);
   }
@@ -196,7 +243,7 @@ export default class Router {
   delete(
     url: Url,
     callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions,
+    options?: Middleware | Middleware[] | CallbackOptions
   ): RouteId {
     return this.set('delete', url, callback, options);
   }
@@ -208,12 +255,12 @@ export default class Router {
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  all(
+  any(
     url: Url,
     callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions,
+    options?: Middleware | Middleware[] | CallbackOptions
   ): RouteId {
-    return this.set('all', url, callback, options);
+    return this.set('*', url, callback, options);
   }
 
   /**
@@ -235,17 +282,13 @@ export default class Router {
   use(
     url: Url,
     middleware: Middleware | Middleware[],
-    options?: Method | Method[] | MiddlewareOptions,
+    options?: Method | Method[] | MiddlewareOptions
   ): MiddlewareId {
     middleware = makeArray(middleware);
-    const resolvedOptions = isUndefined(options)
-      ? null
-      : {
-          method: isObject<MiddlewareOptions>(options)
-            ? makeArray(options.method)
-            : makeArray(options),
-        };
+
+    const resolvedOptions = this.resolveMiddlewareOptions(options);
     const middlewareId = assignMiddlewareId();
+
     this.middlewares.push([
       middlewareId,
       this.resolveUrl(url),
@@ -257,7 +300,7 @@ export default class Router {
   }
 
   /**
-   * returns a boolean indicating if router inherits parent's middlewares when mounted
+   * sets or gets the inherit parent's middlewares flag.
    * @param status - if given, it sets this value
    */
   shouldInheritMiddlewares(status?: boolean): boolean {
@@ -273,18 +316,19 @@ export default class Router {
    */
   removeRoute(id: RouteId): boolean {
     const findIndex = (routeInstance: RouteInstance) => routeInstance[0] === id;
+    let found = false;
 
-    const keys = Object.keys(this.routes);
-    for (const key of keys) {
-      const route = this.routes[key] as RouteInstance[];
+    ROUTE_KEYS.forEach((key) => {
+      const route: RouteInstance[] = this.routes[key];
+
       const index = route.findIndex(findIndex);
-
       if (index !== -1) {
         route.splice(index, 1);
-        return true;
+        found = true;
       }
-    }
-    return false;
+    });
+
+    return found;
   }
 
   /**
@@ -292,8 +336,7 @@ export default class Router {
    * @param id middleware id
    */
   removeMiddleware(id: RouteId): boolean {
-    const findIndex = (middlewareInstance: MiddlewareInstance) =>
-      middlewareInstance[0] === id;
+    const findIndex = (instance: MiddlewareInstance) => instance[0] === id;
     const middlewares = this.middlewares;
 
     const index = middlewares.findIndex(findIndex);

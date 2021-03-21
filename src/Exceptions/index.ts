@@ -1,7 +1,7 @@
 /**
  * exception base class
  */
-export default class Exception extends Error {
+export class Exception extends Error {
   constructor(message: string, domain: any = Exception) {
     super(message);
 

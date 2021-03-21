@@ -1,11 +1,11 @@
 import { ServerResponse } from 'http';
 import { isString, isObject } from '@teclone/utils';
-import FileServer from './FileServer';
-import Request from './Request';
+import { FileServer } from './FileServer';
+import type { Request } from './Request';
 import { ErrorCallback, RServerConfig } from '../@types';
-import Logger from './Logger';
+import type { Logger } from './Logger';
 
-export default class Response extends ServerResponse {
+export class Response extends ServerResponse {
   config: RServerConfig = {} as RServerConfig;
 
   request: Request = {} as Request;
@@ -32,7 +32,7 @@ export default class Response extends ServerResponse {
    * @param data optional data to send. either string or buffer
    * @param encoding data encoding if not buffer
    */
-  end(data, encoding?: string): Promise<boolean> {
+  end(data, encoding?: BufferEncoding): Promise<boolean> {
     let resolvedData: string | Buffer = data;
 
     if (!Buffer.isBuffer(data) && !isString(data)) {
@@ -42,7 +42,8 @@ export default class Response extends ServerResponse {
         resolvedData = '';
       }
     }
-    return new Promise(resolve => {
+
+    return new Promise((resolve) => {
       if (encoding) {
         super.end(resolvedData, encoding, () => {
           resolve(true);
@@ -70,7 +71,7 @@ export default class Response extends ServerResponse {
    * @param headers object containing response header name value pairs
    */
   setHeaders(headers: { [p: string]: string | number | string[] }): this {
-    Object.keys(headers).forEach(key => {
+    Object.keys(headers).forEach((key) => {
       this.setHeader(key, headers[key]);
     });
     return this;
@@ -90,7 +91,7 @@ export default class Response extends ServerResponse {
    * @param names - comma separated list of header names to remove
    */
   removeHeaders(...names: string[]): this {
-    names.forEach(name => {
+    names.forEach((name) => {
       this.removeHeader(name);
     });
     return this;
@@ -120,9 +121,7 @@ export default class Response extends ServerResponse {
    * Redirect client to the given url
    */
   redirect(path: string, status: number = 302): Promise<boolean> {
-    return this.status(status)
-      .setHeader('Location', path)
-      .end();
+    return this.status(status).setHeader('Location', path).end();
   }
 
   /**
@@ -136,7 +135,7 @@ export default class Response extends ServerResponse {
       this.logger,
       this.request,
       this,
-      this.errorCallback,
+      this.errorCallback
     );
     return fileServer.serveDownload(filePath, filename);
   }
@@ -150,7 +149,7 @@ export default class Response extends ServerResponse {
   jsonError(
     statusCode: number = 400,
     message: string = 'request failed',
-    errors: object = {},
+    errors: object = {}
   ): Promise<boolean> {
     return this.status(statusCode).json({
       status: 'error',
@@ -169,7 +168,7 @@ export default class Response extends ServerResponse {
   jsonSuccess(
     statusCode: number = 200,
     message: string = 'request successful',
-    data: object = {},
+    data: object = {}
   ): Promise<boolean> {
     return this.status(statusCode).json({
       status: 'success',
@@ -183,7 +182,7 @@ export default class Response extends ServerResponse {
    * waits for the given time
    */
   wait(time: number): Promise<Response> {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       setTimeout(() => {
         resolve(this);
       }, time);

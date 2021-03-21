@@ -1,7 +1,7 @@
 /node_modules
 /.cert
-/.log
+/logs
 /lib
-/storage
+/tmp
 /coverage
 /tests/helpers/unreadable.txt

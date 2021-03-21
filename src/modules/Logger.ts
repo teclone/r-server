@@ -1,12 +1,12 @@
 import { ERROR_LEVELS } from './Constants';
-import Response from './Response';
+import type { Response } from './Response';
 import * as fs from 'fs';
 import { RServerConfig } from '../@types';
 import { resolvePaths, mkDirSync } from '@teclone/node-utils';
-import Request from './Request';
+import type { Request } from './Request';
 import { EOL } from 'os';
 
-export default class Logger {
+export class Logger {
   private config: RServerConfig;
 
   private errorLogHandle: number;
@@ -83,8 +83,8 @@ export default class Logger {
 
       const template =
         res.statusCode >= 400
-          ? '%s: %s \x1b[31m%d\x1b[0m ~%dms ~%dms\x1b[0m'
-          : '%s: %s \x1b[32m%d\x1b[0m ~%dms ~%dms\x1b[0m';
+          ? '%s: %s \x1b[31m%d\x1b[0m ~%dms ~%dms\x1b[0m %s'
+          : '%s: %s \x1b[32m%d\x1b[0m ~%dms ~%dms\x1b[0m %s';
 
       console.log(
         template,
@@ -92,7 +92,8 @@ export default class Logger {
         req.url,
         res.statusCode,
         requestTime,
-        responseTime
+        responseTime,
+        req.headers['user-agent']
       );
     }
     return this;

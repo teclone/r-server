@@ -5,18 +5,23 @@
   "publishConfig": {
     "access": "public"
   },
-  "main": "lib/main",
-  "typings": "lib/main",
+  "main": "lib",
+  "typings": "lib",
+  "bin": {
+    "start": "./bin/start.js",
+    "serve": "./bin/serve.js"
+  },
   "scripts": {
     "commit": "git-cz",
-    "test": "BABEL_ENV=test jest --runInBand",
-    "watch-test": "BABEL_ENV=test jest --runInBand --watch",
+    "test": "cross-env BABEL_ENV=test jest --runInBand",
+    "watch-test": "cross-env BABEL_ENV=test jest --runInBand --watch",
     "typings": "tsc --p ./tsconfig.build.json",
     "build": "rimraf lib && yarn typings --declarationDir ./lib && rollup-all",
     "lint": "eslint src/**/*.ts --fix",
     "compile": "tsc --noEmit",
-    "start": "npm run build && node app.js",
-    "postinstall": "bash ./scripts/gen-ssl-cert.sh && node ./scripts/create-unreadable.js",
+    "start": "npm run build && node ./bin/start",
+    "serve": "npm run build && node ./bin/serve",
+    "postinstall": "bash ./scripts/gen-ssl-cert.sh",
     "report-coverage": "jest --coverage --coverageReporters=text-lcov | coveralls",
     "semantic-release": "semantic-release"
   },
@@ -42,34 +47,37 @@
   },
   "homepage": "https://github.com/teclone/r-server#readme",
   "devDependencies": {
-    "@babel/core": "7.4.0",
-    "@babel/plugin-proposal-class-properties": "^7.4.0",
-    "@babel/plugin-proposal-object-rest-spread": "^7.4.0",
-    "@babel/plugin-transform-runtime": "^7.12.10",
-    "@babel/preset-env": "7.4.0",
-    "@babel/preset-typescript": "7.3.3",
-    "@babel/runtime": "^7.12.5",
+    "@babel/core": "^7.13.10",
+    "@babel/plugin-proposal-class-properties": "^7.13.0",
+    "@babel/plugin-proposal-object-rest-spread": "^7.13.8",
+    "@babel/plugin-transform-runtime": "^7.13.10",
+    "@babel/preset-typescript": "^7.13.0",
+    "@babel/runtime": "^7.13.10",
     "@teclone/node-utils": "^1.1.1",
     "@teclone/regex": "^1.0.3",
-    "@teclone/rollup-all": "1.10.8",
+    "@teclone/rollup-all": "^1.14.3",
     "@teclone/utils": "^2.22.2",
     "@types/jest": "24.0.11",
+    "@types/request-promise": "^4.1.47",
     "@typescript-eslint/eslint-plugin": "2.0.0",
     "@typescript-eslint/parser": "1.6.0",
-    "babel-jest": "24.3.1",
+    "babel-jest": "^26.6.3",
     "commitizen": "4.0.3",
     "coveralls": "3.0.3",
+    "cross-env": "^7.0.3",
     "cz-conventional-changelog": "2.1.0",
     "dotenv": "^8.2.0",
-    "jest": "24.3.1",
+    "jest": "^26.6.3",
     "js-beautify": "1.7.5",
     "mime-types": "^2.1.28",
     "request": "2.88.0",
+    "request-promise": "^4.2.6",
+    "request-promise-native": "^1.0.9",
     "rimraf": "2.6.3",
     "semantic-release": "^17.0.4",
     "semantic-release-cli": "5.2.0",
     "source-map-support": "0.5.12",
-    "typescript": "3.3.3333",
+    "typescript": "^4.2.3",
     "uuid": "^8.3.2"
   },
   "config": {
@@ -86,5 +94,8 @@
     "dotenv": "^8.2.0",
     "mime-types": "2.1.24",
     "uuid": "3.3.3"
+  },
+  "dependencies": {
+    "@types/node": "^14.14.33"
   }
 }

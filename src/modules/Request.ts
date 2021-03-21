@@ -2,7 +2,7 @@ import { IncomingMessage } from 'http';
 import { Files, Data, Method } from '../@types';
 import { Socket } from 'net';
 
-export default class Request extends IncomingMessage {
+export class Request extends IncomingMessage {
   error: boolean = false;
 
   startedAt: Date | null = null;
@@ -25,7 +25,7 @@ export default class Request extends IncomingMessage {
 
   hostname: string = '';
 
-  method: Method = 'all';
+  method: Exclude<Method, '*'>;
 
   constructor(socket: Socket) {
     super(socket);

@@ -1,22 +1,21 @@
 import { RServerConfig } from './@types';
-import * as path from 'path';
 
-const rServerConfig: RServerConfig = {
-  entryPath: path.resolve(__dirname, '../'),
+export const rServerConfig: RServerConfig = {
+  entryPath: './',
 
   env: 'development',
 
-  errorLog: '.log/error.log',
+  errorLog: 'logs/error.log',
 
-  accessLog: '.log/access.log',
+  accessLog: 'logs/access.log',
 
   profileRequest: true,
 
-  tempDir: 'storage/temp',
+  tempDir: 'tmp/uploads',
 
   publicPaths: ['public'],
 
-  serveHiddenFiles: false,
+  serveHiddenFiles: true,
 
   cacheControl: 'no-cache, max-age=86400',
 
@@ -50,5 +49,3 @@ const rServerConfig: RServerConfig = {
     },
   },
 };
-
-export default rServerConfig;

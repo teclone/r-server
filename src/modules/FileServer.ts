@@ -2,17 +2,23 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { RServerConfig, Url, Headers, Range, ErrorCallback } from '../@types';
-import Request from './Request';
-import Response from './Response';
-import { isNull, copy, isUndefined, isString, stripSlashes } from '@teclone/utils';
+import type { Request } from './Request';
+import type { Response } from './Response';
+import {
+  isNull,
+  copy,
+  isUndefined,
+  isString,
+  stripSlashes,
+} from '@teclone/utils';
 import { IncomingHttpHeaders } from 'http';
 import { resolvePaths } from '@teclone/node-utils';
 import mime from 'mime-types';
 import { ALLOWED_METHODS } from './Constants';
-import Logger from './Logger';
+import type { Logger } from './Logger';
 import { handleError } from './Utils';
 
-export default class FileServer {
+export class FileServer {
   private config: RServerConfig;
 
   private logger: Logger;
@@ -28,7 +34,7 @@ export default class FileServer {
     logger: Logger,
     request: Request,
     response: Response,
-    errorCallback: ErrorCallback | null,
+    errorCallback: ErrorCallback | null
   ) {
     this.config = config;
     this.logger = logger;
@@ -41,10 +47,7 @@ export default class FileServer {
    * ends the response.
    */
   private endResponse(status: number, headers: Headers, data?: any) {
-    return this.response
-      .status(status)
-      .setHeaders(headers)
-      .end(data);
+    return this.response.status(status).setHeaders(headers).end(data);
   }
 
   /**
@@ -54,25 +57,25 @@ export default class FileServer {
     filePath: string,
     status: number,
     headers: Headers,
-    options?: object,
+    options?: object
   ) {
     const readStream = fs.createReadStream(filePath, options);
     this.response.status(status).setHeaders(headers);
 
     return new Promise((resolve, reject) => {
-      readStream.on('error', err => reject(err));
-      readStream.on('end', () => resolve());
+      readStream.on('error', (err) => reject(err));
+      readStream.on('end', () => resolve(true));
       readStream.pipe(this.response as any, { end: false });
     })
       .then(() => this.response.end())
-      .catch(err => {
+      .catch((err) => {
         readStream.close();
         return handleError(
           err,
           this.errorCallback,
           this.logger,
           this.request,
-          this.response,
+          this.response
         );
       });
   }
@@ -85,7 +88,7 @@ export default class FileServer {
     headers: IncomingHttpHeaders,
     eTag: string,
     fileMTime: string,
-    fileSize: number,
+    fileSize: number
   ) {
     const result: {
       isMultiRange: boolean;
@@ -152,9 +155,12 @@ export default class FileServer {
   private fileNotModified(
     headers: IncomingHttpHeaders,
     eTag: string,
-    fileMTime: string,
+    fileMTime: string
   ): boolean {
-    if (!isUndefined(headers['if-none-match']) && headers['if-none-match'] === eTag) {
+    if (
+      !isUndefined(headers['if-none-match']) &&
+      headers['if-none-match'] === eTag
+    ) {
       return true;
     } else if (
       !isUndefined(headers['if-modified-since']) &&
@@ -183,7 +189,8 @@ export default class FileServer {
     const stat = fs.statSync(filePath);
     return {
       'Content-Type':
-        mime.lookup(path.parse(filePath).ext.substring(1)) || 'application/octet-stream',
+        mime.lookup(path.parse(filePath).ext.substring(1)) ||
+        'application/octet-stream',
       'Last-Modified': stat.mtime.toString(),
       'Content-Length': stat.size.toString(),
       ETag: this.computeETag(stat.mtime),
@@ -194,7 +201,11 @@ export default class FileServer {
   /**
    * process file
    */
-  private process(filePath: string, status: number = 200, headers: Headers = {}) {
+  private process(
+    filePath: string,
+    status: number = 200,
+    headers: Headers = {}
+  ) {
     const method = this.request.method;
     if (method === 'options') {
       return this.endResponse(200, {
@@ -202,7 +213,11 @@ export default class FileServer {
       });
     }
 
-    const resHeaders = copy({}, this.getDefaultHeaders(filePath) as Headers, headers);
+    const resHeaders = copy(
+      {},
+      this.getDefaultHeaders(filePath) as Headers,
+      headers
+    );
     if (method === 'head') {
       resHeaders['Accept-Ranges'] = 'bytes';
       return this.endResponse(200, resHeaders);
@@ -225,7 +240,7 @@ export default class FileServer {
         this.request.headers,
         eTag,
         lastModified,
-        fileSize,
+        fileSize
       );
 
       //we are sending everything
@@ -279,19 +294,21 @@ export default class FileServer {
     if (!['head', 'get', 'options'].includes(method)) {
       return null;
     }
+
     url = url.replace(/[#?].*/, '').replace(/\.\./g, '');
 
     //bounce back if request url is a hidden resource
-    if (!this.config.serveHiddenFiles && /^(\.|.*\/\.)/.test(url)) {
+    if (/^(\.|.*\/\.)/.test(url) && !this.config.serveHiddenFiles) {
       return null;
     }
 
     for (const publicPath of this.config.publicPaths) {
       const testPath = path.resolve(this.config.entryPath, publicPath, url);
       if (fs.existsSync(testPath)) {
-        if (fs.statSync(testPath).isFile()) {
+        const stat = fs.statSync(testPath);
+        if (stat.isFile()) {
           return testPath;
-        } else {
+        } else if (stat.isDirectory()) {
           //check if there is a default document in the folder
           const defaultDocument = this.getDefaultDocument(testPath);
           if (defaultDocument) {
@@ -307,7 +324,11 @@ export default class FileServer {
    * serves a static file response back to the client
    */
   serve(url: Url): Promise<boolean> {
-    const filePath = this.validateRequest(stripSlashes(url), this.request.method);
+    const filePath = this.validateRequest(
+      stripSlashes(url),
+      this.request.method
+    );
+
     if (isNull(filePath)) {
       return Promise.resolve(false);
     } else {
@@ -326,7 +347,7 @@ export default class FileServer {
       filePath = resolvePaths(
         this.config.entryPath,
         httpErrors.baseDir,
-        httpErrors[status],
+        httpErrors[status]
       );
     } else {
       filePath = resolvePaths(__dirname, `../httpErrors/${status}.html`);
