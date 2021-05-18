@@ -1,6 +1,6 @@
 import { AddressInfo } from 'net';
-import Request from '../modules/Request';
-import Response from '../modules/Response';
+import { Request } from '../modules/Request';
+import { Response } from '../modules/Response';
 
 export type Env = 'development' | 'production' | 'test';
 
