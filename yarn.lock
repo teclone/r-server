@@ -1496,11 +1496,6 @@
   dependencies:
     defer-to-connect "^1.0.1"
 
-"@teclone/global@^1.1.1":
-  version "1.1.1"
-  resolved "https://registry.yarnpkg.com/@teclone/global/-/global-1.1.1.tgz#28616f43441b8bd39913aab9ae697e6ff1e0e0fa"
-  integrity sha512-AwFRMZbqnqQ/OdWel7RpWu525DpywJJwX/U7FVcincqkpUatFttb6qPGX6yhZmFXKrMe7YO2S3vyr7f2ueIn1w==
-
 "@teclone/node-utils@1.0.5":
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/@teclone/node-utils/-/node-utils-1.0.5.tgz#3296e4f917e24631410e59c10d4ac6366d92d229"
@@ -1551,12 +1546,10 @@
     rollup-plugin-preserve-shebang "^1.0.1"
     rollup-plugin-terser "^7.0.2"
 
-"@teclone/utils@^2.22.2":
-  version "2.23.1"
-  resolved "https://registry.yarnpkg.com/@teclone/utils/-/utils-2.23.1.tgz#3cfa13015c46e2698bcbd894d0969d552736e194"
-  integrity sha512-ZnKT6H+kqoHJE5YzhGo1PtoautFq2qhY7yg7AAfTCeaHC2SRM+AtK/xKWMtbJGuyeO/oMONtjEJTmjdGVx8b6g==
-  dependencies:
-    "@teclone/global" "^1.1.1"
+"@teclone/utils@^2.23.6":
+  version "2.23.6"
+  resolved "https://registry.yarnpkg.com/@teclone/utils/-/utils-2.23.6.tgz#a38608c88e1799f0ae315f035452ce308ca0e58b"
+  integrity sha512-ldJbDSiRvXTiyGxlzIMgpdsL5fndzg5jRcTTKXcgNmcAYkDt+qVC/dHj6jfavEk0l1mf9KPrKEymCesT3wF8kQ==
 
 "@tootallnate/once@1":
   version "1.1.2"
@@ -3658,7 +3651,7 @@ debug@^3.1.0:
   dependencies:
     ms "^2.1.1"
 
-debuglog@*, debuglog@^1.0.1:
+debuglog@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/debuglog/-/debuglog-1.0.1.tgz#aa24ffb9ac3df9a2351837cfb2d279360cd78492"
   integrity sha1-qiT/uaw9+aI1GDfPstJ5NgzXhJI=
@@ -5063,7 +5056,7 @@ import-local@^3.0.2:
     pkg-dir "^4.2.0"
     resolve-cwd "^3.0.0"
 
-imurmurhash@*, imurmurhash@^0.1.4:
+imurmurhash@^0.1.4:
   version "0.1.4"
   resolved "https://registry.yarnpkg.com/imurmurhash/-/imurmurhash-0.1.4.tgz#9218b9b2b928a238b13dc4fb6b6d576f231453ea"
   integrity sha1-khi5srkoojixPcT7a21XbyMUU+o=
@@ -6418,11 +6411,6 @@ lockfile@^1.0.4:
   dependencies:
     signal-exit "^3.0.2"
 
-lodash._baseindexof@*:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/lodash._baseindexof/-/lodash._baseindexof-3.1.0.tgz#fe52b53a1c6761e42618d654e4a25789ed61822c"
-  integrity sha1-/lK1OhxnYeQmGNZU5KJXie1hgiw=
-
 lodash._baseuniq@~4.6.0:
   version "4.6.0"
   resolved "https://registry.yarnpkg.com/lodash._baseuniq/-/lodash._baseuniq-4.6.0.tgz#0ebb44e456814af7905c6212fa2c9b2d51b841e8"
@@ -6431,32 +6419,10 @@ lodash._baseuniq@~4.6.0:
     lodash._createset "~4.0.0"
     lodash._root "~3.0.0"
 
-lodash._bindcallback@*:
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/lodash._bindcallback/-/lodash._bindcallback-3.0.1.tgz#e531c27644cf8b57a99e17ed95b35c748789392e"
-  integrity sha1-5THCdkTPi1epnhftlbNcdIeJOS4=
-
-lodash._cacheindexof@*:
-  version "3.0.2"
-  resolved "https://registry.yarnpkg.com/lodash._cacheindexof/-/lodash._cacheindexof-3.0.2.tgz#3dc69ac82498d2ee5e3ce56091bafd2adc7bde92"
-  integrity sha1-PcaayCSY0u5ePOVgkbr9Ktx73pI=
-
-lodash._createcache@*:
-  version "3.1.2"
-  resolved "https://registry.yarnpkg.com/lodash._createcache/-/lodash._createcache-3.1.2.tgz#56d6a064017625e79ebca6b8018e17440bdcf093"
-  integrity sha1-VtagZAF2JeeevKa4AY4XRAvc8JM=
-  dependencies:
-    lodash._getnative "^3.0.0"
-
 lodash._createset@~4.0.0:
   version "4.0.3"
   resolved "https://registry.yarnpkg.com/lodash._createset/-/lodash._createset-4.0.3.tgz#0f4659fbb09d75194fa9e2b88a6644d363c9fe26"
   integrity sha1-D0ZZ+7CddRlPqeK4imZE02PJ/iY=
-
-lodash._getnative@*, lodash._getnative@^3.0.0:
-  version "3.9.1"
-  resolved "https://registry.yarnpkg.com/lodash._getnative/-/lodash._getnative-3.9.1.tgz#570bc7dede46d61cdcde687d65d3eecbaa3aaff5"
-  integrity sha1-VwvH3t5G1hzc3mh9ZdPuy6o6r/U=
 
 lodash._root@~3.0.0:
   version "3.0.1"
@@ -6502,11 +6468,6 @@ lodash.map@^4.5.1:
   version "4.6.0"
   resolved "https://registry.yarnpkg.com/lodash.map/-/lodash.map-4.6.0.tgz#771ec7839e3473d9c4cde28b19394c3562f4f6d3"
   integrity sha1-dx7Hg540c9nEzeKLGTlMNWL09tM=
-
-lodash.restparam@*:
-  version "3.6.1"
-  resolved "https://registry.yarnpkg.com/lodash.restparam/-/lodash.restparam-3.6.1.tgz#936a4e309ef330a7645ed4145986c85ae5b20805"
-  integrity sha1-k2pOMJ7zMKdkXtQUWYbIWuWyCAU=
 
 lodash.sortby@^4.7.0:
   version "4.7.0"

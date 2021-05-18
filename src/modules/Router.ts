@@ -44,9 +44,9 @@ export class Router {
 
   /**
    *
-   * @param inheritMiddlewares - boolean indicating if parent middlewares should be inherited.
+   * @param inheritMiddlewares - boolean indicating if parent middlewares should be inherited, defaults to true.
    */
-  constructor(inheritMiddlewares: boolean) {
+  constructor(inheritMiddlewares: boolean = true) {
     this.inheritMiddlewares = inheritMiddlewares;
   }
 

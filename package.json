@@ -56,7 +56,7 @@
     "@teclone/node-utils": "^1.1.1",
     "@teclone/regex": "^1.0.3",
     "@teclone/rollup-all": "^1.14.3",
-    "@teclone/utils": "^2.22.2",
+    "@teclone/utils": "^2.23.6",
     "@types/jest": "24.0.11",
     "@types/request-promise": "^4.1.47",
     "@typescript-eslint/eslint-plugin": "2.0.0",
@@ -86,11 +86,10 @@
     }
   },
   "peerDependencies": {
-    "@babel/plugin-transform-runtime": "7.4.3",
     "@babel/runtime": "7.4.3",
     "@teclone/node-utils": "^1.1.1",
     "@teclone/regex": "1.0.3",
-    "@teclone/utils": "^2.22.2",
+    "@teclone/utils": "^2.23.6",
     "dotenv": "^8.2.0",
     "mime-types": "2.1.24",
     "uuid": "3.3.3"
