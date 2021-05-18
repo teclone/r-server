@@ -1,6 +1,8 @@
 import { RServerConfig } from './@types';
 
 export const rServerConfig: RServerConfig = {
+  port: 8000,
+
   entryPath: './',
 
   env: 'development',
@@ -14,8 +16,6 @@ export const rServerConfig: RServerConfig = {
   tempDir: 'tmp/uploads',
 
   publicPaths: ['public'],
-
-  serveHiddenFiles: true,
 
   cacheControl: 'no-cache, max-age=86400',
 

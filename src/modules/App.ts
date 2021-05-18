@@ -27,14 +27,9 @@ import {
   RouteId,
   MiddlewareId,
   ErrorCallback,
+  Env,
 } from '../@types';
-import {
-  isString,
-  copy,
-  isNumber,
-  scopeCallback,
-  expandToNumeric,
-} from '@teclone/utils';
+import { copy, scopeCallback, expandToNumeric, isObject } from '@teclone/utils';
 import { joinPaths, getEntryPath } from '@teclone/node-utils';
 import { AddressInfo } from 'net';
 import { Wrapper } from './Wrapper';
@@ -71,6 +66,8 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
 
   private errorCallback: ErrorCallback | null = null;
 
+  private _env: Env;
+
   constructor(options?: AppConstructorOptions<Rq, Rs>) {
     const {
       configFile,
@@ -79,11 +76,14 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
       Response: ResponseToUse = Response,
     } = options || {};
 
+    const env: Env = (this._env =
+      (process.env.NODE_ENV as Env) || 'development');
+
     /* istanbul ignore else */
     this.entryPath = getEntryPath();
-    this.loadEnv(this.entryPath);
+    this.loadEnv(this.entryPath, env);
 
-    this.config = this.resolveConfig(this.entryPath, configFile, config);
+    this.config = this.resolveConfig(this.entryPath, env, configFile, config);
     this.logger = new Logger(this.config);
     this.bodyParser = new BodyParser(this.config);
 
@@ -116,18 +116,65 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
   }
 
   /**
+   * returns the env variable
+   */
+  get env() {
+    return this._env;
+  }
+
+  /**
    * load env settings
    */
-  private loadEnv(entryPath: string) {
+  private loadEnv(entryPath: string, env: Env) {
     try {
       config();
       config({
-        path: path.resolve(
-          entryPath,
-          `.${process.env.NODE_ENV || 'development'}`
-        ),
+        path: path.resolve(entryPath, `.${env}`),
       });
     } catch (ex) {}
+  }
+
+  /**
+   * resolves and merges the configuration objects
+   */
+  private resolveConfig(
+    entryPath: string,
+    env: Env,
+    configFile?: string,
+    config?: Config
+  ): RServerConfig {
+    let configFromFile: RServerConfig;
+
+    if (configFile) {
+      const absPath = path.resolve(entryPath, configFile);
+      if (fs.existsSync(absPath)) {
+        configFromFile = require(absPath);
+      }
+    }
+
+    const resolvedConfig = copy(
+      {},
+      defaultConfig,
+      configFromFile,
+      config
+    ) as RServerConfig;
+
+    resolvedConfig.env = env;
+
+    // resolve to numeric value
+    resolvedConfig.maxMemory = expandToNumeric(resolvedConfig.maxMemory);
+
+    // resolve ports
+    if (process.env.PORT && /^\d{2,}$/.test(process.env.PORT)) {
+      resolvedConfig.port = Number.parseInt(process.env.PORT);
+    }
+
+    if (process.env.HTTPS_PORT && /^\d{2,}$/.test(process.env.HTTPS_PORT)) {
+      resolvedConfig.https.port = Number.parseInt(process.env.HTTPS_PORT);
+    }
+
+    resolvedConfig.entryPath = entryPath;
+    return resolvedConfig;
   }
 
   /**
@@ -150,55 +197,6 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
       }
     }
     return result;
-  }
-
-  /**
-   * resolves and merges the configuration objects
-   */
-  private resolveConfig(
-    entryPath: string,
-    configFile?: string,
-    config?: Config
-  ): RServerConfig {
-    let configFromFile: RServerConfig;
-
-    if (configFile) {
-      const absPath = path.resolve(entryPath, configFile);
-      if (fs.existsSync(absPath)) {
-        configFromFile = require(absPath);
-      }
-    }
-
-    const resolvedConfig = copy(
-      {},
-      defaultConfig,
-      configFromFile,
-      config
-    ) as RServerConfig;
-
-    // resolve to numeric value
-    resolvedConfig.maxMemory = expandToNumeric(resolvedConfig.maxMemory);
-
-    // prioritize node_env setting to config file setting
-    let env: string = process.env.NODE_ENV || resolvedConfig.env || 'dev';
-
-    if (env && env.startsWith('dev')) {
-      resolvedConfig.env = 'development';
-    } else if (env && env.startsWith('production')) {
-      resolvedConfig.env = 'production';
-    }
-
-    const HTTPS_PORT = process.env.HTTPS_PORT;
-
-    if (
-      isNumber(HTTPS_PORT) ||
-      (isString(HTTPS_PORT) && /^\d{3}/.test(HTTPS_PORT))
-    ) {
-      resolvedConfig.https.port = Number.parseInt(HTTPS_PORT.toString());
-    }
-
-    resolvedConfig.entryPath = entryPath;
-    return resolvedConfig;
   }
 
   /**
@@ -686,7 +684,7 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
   /**
    * starts the server at a given port
    */
-  listen(port?: number) {
+  listen(port?: number | { httpPort?: number; httpsPort?: number }) {
     if (this.listening) {
       this.logger.warn(
         'Server already started. You must close the server first'
@@ -694,17 +692,26 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
       return Promise.resolve(true);
     }
 
+    let resolvedPortConfig: { httpPort?: number; httpsPort?: number } = {};
+    if (isObject(port)) {
+      resolvedPortConfig = port;
+    } else if (port) {
+      resolvedPortConfig = { httpPort: port };
+    }
+
+    const { httpPort = this.config.port, httpsPort = this.config.https.port } =
+      resolvedPortConfig;
+
     return new Promise((resolve, reject) => {
-      const envPort = Number.parseInt(process.env.PORT || '0');
       this.initServer(this.httpServer, resolve, reject);
-      this.httpServer.listen(port || envPort || 8080);
+      this.httpServer.listen(httpPort);
     }).then(() => {
       if (this.httpsServer !== null) {
         return new Promise((resolve, reject) => {
           this.initServer(this.httpsServer, resolve, (err) => {
             this.httpServer.close(() => reject(err));
           });
-          this.httpsServer.listen(this.config.https.port);
+          this.httpsServer.listen(httpsPort);
         });
       }
       return true;

@@ -297,11 +297,6 @@ export class FileServer {
 
     url = url.replace(/[#?].*/, '').replace(/\.\./g, '');
 
-    //bounce back if request url is a hidden resource
-    if (/^(\.|.*\/\.)/.test(url) && !this.config.serveHiddenFiles) {
-      return null;
-    }
-
     for (const publicPath of this.config.publicPaths) {
       const testPath = path.resolve(this.config.entryPath, publicPath, url);
       if (fs.existsSync(testPath)) {

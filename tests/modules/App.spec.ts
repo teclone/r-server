@@ -12,6 +12,7 @@ import { App } from '../../src/modules/App';
 import { Router } from '../../src/modules/Router';
 import { Method } from '../../src/@types';
 import { Wrapper } from '../../src/modules/Wrapper';
+import { rServerConfig } from '../../src/.server';
 
 describe(`App`, function () {
   let app: App = null;
@@ -37,7 +38,7 @@ describe(`App`, function () {
   };
 
   beforeEach(function () {
-    app = new App({});
+    app = new App();
   });
 
   describe('#constructor(config: string | Config)', function () {
@@ -67,9 +68,8 @@ describe(`App`, function () {
       let app = new App({
         config: { https: { port: 5000, enabled: true } },
       });
-      expect(app.getConfig().https.port).toEqual(6000);
-
       process.env.HTTPS_PORT = '';
+      expect(app.getConfig().https.port).toEqual(6000);
     });
   });
 
@@ -270,6 +270,7 @@ describe(`App`, function () {
 
     it(`should use the value of process.env.PORT if given and port is not given`, function () {
       process.env.PORT = '5000';
+      app = new App();
       return withTeardown(
         app,
         app.listen().then(() => {
@@ -279,7 +280,7 @@ describe(`App`, function () {
       );
     });
 
-    it(`should start up the https app if enabled at a default of 9000`, function () {
+    it(`should start up the https app if enabled at a default port of 9000`, function () {
       const app = new App({ config: httpsEnabledConfig });
       return withTeardown(
         app,
@@ -292,12 +293,12 @@ describe(`App`, function () {
       );
     });
 
-    it(`should default http port parameter to 8080 if no port is given and process.env.PORT is not
+    it(`should default http port parameter to 8000 if no port is given and process.env.PORT is not
         set`, function () {
       return withTeardown(
         app,
         app.listen().then(() => {
-          expect(app.address().http.port).toEqual(8080);
+          expect(app.address().http.port).toEqual(8000);
         })
       );
     });
@@ -413,11 +414,7 @@ describe(`App`, function () {
 
   describe('Request Error', function () {
     it(`should handle every request error on the app, ending the request`, function () {
-      const app = new App({
-        config: {
-          env: 'production',
-        },
-      });
+      const app = new App({});
       app.get('say-hi', (req, res) => {
         req.emit('error', new Error('request error'));
         return res.end();

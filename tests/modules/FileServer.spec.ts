@@ -155,49 +155,6 @@ describe(`FileServer`, function () {
       );
     });
 
-    it(`should serve dot files if url maps to one and serverHiddenFiles config option is set to true`, function () {
-      app = new App({ config: { serveHiddenFiles: true } });
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/.gitignore');
-      });
-
-      return withTeardown(
-        app,
-        app.listen().then(() => {
-          return sendRequest({ uri: httpHost, method: 'get' }).then((res) => {
-            expect(res.body).toEqual(
-              readFileSync(resolvePath('public/.gitignore'), 'utf8')
-            );
-          });
-        })
-      );
-    });
-
-    it(`should do nothing and resolve to false if specified file maps to a hidden path and
-            serveHiddenFiles config option is set to false`, function () {
-      app = new App({ config: { serveHiddenFiles: false } });
-      app.get('/', (req, res) => {
-        return createFileServer(req, res)
-          .serve('/.gitignore')
-          .then((status) => {
-            if (status === false) {
-              return res.end('correct');
-            } else {
-              return true;
-            }
-          });
-      });
-
-      return withTeardown(
-        app,
-        app.listen().then(() => {
-          return sendRequest({ uri: httpHost, method: 'get' }).then((res) => {
-            expect(res.body).toEqual('correct');
-          });
-        })
-      );
-    });
-
     it(`should respond with 304 response header to get requests made on public static files,
             if file is not modified since it was last served to the client using the sent
             if-none-match header`, function () {

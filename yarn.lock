@@ -1546,10 +1546,10 @@
     rollup-plugin-preserve-shebang "^1.0.1"
     rollup-plugin-terser "^7.0.2"
 
-"@teclone/utils@^2.23.6":
-  version "2.23.6"
-  resolved "https://registry.yarnpkg.com/@teclone/utils/-/utils-2.23.6.tgz#a38608c88e1799f0ae315f035452ce308ca0e58b"
-  integrity sha512-ldJbDSiRvXTiyGxlzIMgpdsL5fndzg5jRcTTKXcgNmcAYkDt+qVC/dHj6jfavEk0l1mf9KPrKEymCesT3wF8kQ==
+"@teclone/utils@^2.24.0":
+  version "2.24.0"
+  resolved "https://registry.yarnpkg.com/@teclone/utils/-/utils-2.24.0.tgz#08e0af05ce945449a645091b83d1dd19c067b088"
+  integrity sha512-INvq7/c1FDjjATjHmaIPinNMbd2zUBEOzFvDyzHsnGbiXnM7lCcAXslTDxNJh12i4MPCahnv8h34XMQbr5LvKA==
 
 "@tootallnate/once@1":
   version "1.1.2"

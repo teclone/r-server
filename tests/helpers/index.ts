@@ -12,7 +12,7 @@ export const dummyMiddleware: Middleware = (req, res, next) => {
   return next();
 };
 
-export const httpHost = 'http://localhost:8080/';
+export const httpHost = 'http://localhost:8000/';
 
 export const httpsHost = 'https://localhost:9000/';
 

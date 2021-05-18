@@ -2,76 +2,46 @@ import { AddressInfo } from 'net';
 import Request from '../modules/Request';
 import Response from '../modules/Response';
 
-export type Env = 'development' | 'production';
+export type Env = 'development' | 'production' | 'test';
 
 export interface ObjectOfAny {
   [p: string]: any;
 }
 
-export interface RServerConfig {
-  entryPath?: string;
-
-  env: Env;
-
-  errorLog: string;
-
-  accessLog: string;
-
-  profileRequest: boolean;
-
-  tempDir: string;
-
-  publicPaths: string[];
-
-  serveHiddenFiles: boolean;
-
-  cacheControl: string;
-
-  encoding: BufferEncoding;
-
-  maxMemory: string | number;
-
-  defaultDocuments: string[];
-
-  httpErrors: {
-    baseDir: string;
-
-    404: string;
-
-    500: string;
-  };
-
-  https: {
-    enabled: boolean;
-
-    port: number;
-
-    enforce: boolean;
-
-    credentials:
-      | { key: string; cert: string }
-      | { pfx: string; passphrase: string };
-  };
-}
-
 export interface Config {
-  env?: Env;
+  /**
+   * http port to start server. can be overriden with process.env.PORT
+   */
+  port?: number;
 
+  /**
+   * path to error log file, defaults to ./logs/error.log
+   */
   errorLog?: string;
 
+  /**
+   * path to access log file, defaults to ./logs/access.log
+   */
   accessLog?: string;
 
+  /**
+   * indicates if requests should be profiled and logged to the console
+   */
   profileRequest?: boolean;
 
+  /**
+   * path to temporary directory where uploaded files are stored. defaults to ./tmp
+   */
   tempDir?: string;
 
+  /**
+   * public paths, where files should be served. defaults to ./public
+   */
   publicPaths?: string[];
-
-  serveHiddenFiles?: boolean;
 
   cacheControl?: string;
 
-  encoding?: string;
+  encoding?: BufferEncoding;
 
   maxMemory?: string | number;
 
@@ -96,6 +66,11 @@ export interface Config {
       | { key: string; cert: string }
       | { pfx: string; passphrase: string };
   };
+}
+
+export interface RServerConfig extends Config {
+  entryPath?: string;
+  env?: Env;
 }
 
 export type Method =
