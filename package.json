@@ -23,7 +23,7 @@
     "serve": "npm run build && node ./bin/serve",
     "postinstall": "bash ./scripts/gen-ssl-cert.sh",
     "report-coverage": "jest --coverage --coverageReporters=text-lcov | coveralls",
-    "semantic-release": "semantic-release"
+    "release": "semantic-release"
   },
   "repository": {
     "type": "git",
@@ -52,6 +52,7 @@
     "@babel/plugin-proposal-object-rest-spread": "^7.13.8",
     "@babel/plugin-transform-runtime": "^7.13.10",
     "@babel/preset-typescript": "^7.13.0",
+    "@semantic-release/github": "^8.0.7",
     "@teclone/rollup-all": "^1.14.3",
     "@types/jest": "24.0.11",
     "@types/request-promise": "^4.1.47",
