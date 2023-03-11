@@ -1,5 +1,4 @@
 module.exports = {
-  branch: 'master',
   repositoryUrl: 'https://github.com/teclone/r-server.git',
   plugins: [
     '@semantic-release/commit-analyzer',
