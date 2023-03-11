@@ -12,6 +12,6 @@ module.exports = {
     ],
     '@semantic-release/npm',
   ],
-  dryRun: false,
+  dryRun: true,
   ci: true,
 };
