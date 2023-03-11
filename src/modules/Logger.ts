@@ -1,10 +1,10 @@
-import { ERROR_LEVELS } from './Constants';
 import type { Response } from './Response';
 import * as fs from 'fs';
 import { RServerConfig } from '../@types';
-import { resolvePaths, mkDirSync } from '@teclone/node-utils';
+import { mkDirSync } from '@teclone/node-utils';
 import type { Request } from './Request';
 import { EOL } from 'os';
+import { resolve } from 'path';
 
 export class Logger {
   private config: RServerConfig;
@@ -16,26 +16,36 @@ export class Logger {
   constructor(config: RServerConfig) {
     this.config = config;
 
-    const errorLogPath = resolvePaths(
-      this.config.entryPath,
-      this.config.errorLog
-    );
-    const accessLogPath = resolvePaths(
-      this.config.entryPath,
-      this.config.accessLog
-    );
+    const errorLogPath = resolve(this.config.entryPath, this.config.errorLog);
+    const accessLogPath = resolve(this.config.entryPath, this.config.accessLog);
 
     mkDirSync(errorLogPath);
     mkDirSync(accessLogPath);
 
     this.errorLogHandle = fs.openSync(
-      resolvePaths(this.config.entryPath, this.config.errorLog),
+      resolve(this.config.entryPath, this.config.errorLog),
       'a'
     );
     this.accessLogHandle = fs.openSync(
-      resolvePaths(this.config.entryPath, this.config.accessLog),
+      resolve(this.config.entryPath, this.config.accessLog),
       'a'
     );
+  }
+
+  /**
+   * log warning message to the console
+   */
+  warn(message: string): this {
+    console.log('\x1b[1m\x1b[31m%s\x1b[0m', message);
+    return this;
+  }
+
+  /**
+   * log info message to the console
+   */
+  info(message: string): this {
+    console.log('\x1b[1m\x1b[32m%s\x1b[0m', message);
+    return this;
   }
 
   /**
@@ -50,12 +60,17 @@ export class Logger {
   /**
    * runs the error logging
    */
-  logError(level: string, err: Error) {
-    const now = new Date();
-    fs.writeSync(
-      this.errorLogHandle,
-      `[${now.toUTCString()}] [${level}] ${err.stack}${EOL}`
-    );
+  logError(err: Error) {
+    if (err instanceof Error) {
+      const now = new Date();
+      fs.writeSync(
+        this.errorLogHandle,
+        `[${now.toUTCString()}] ${err.stack}${EOL}`
+      );
+      if (this.config.env !== 'production') {
+        console.error(err);
+      }
+    }
     return this;
   }
 
@@ -75,7 +90,7 @@ export class Logger {
    */
   profile(req: Request, res: Response) {
     this.logAccess(req, res);
-    if (this.config.env === 'development' && this.config.profileRequest) {
+    if (this.config.env === 'development' && this.config.profileRequests) {
       const requestTime =
         (req.endedAt as Date).getTime() - (req.startedAt as Date).getTime();
       const responseTime =
@@ -96,42 +111,6 @@ export class Logger {
         req.headers['user-agent']
       );
     }
-    return this;
-  }
-
-  /**
-   * logs fatal error to error log file and ends the response
-   */
-  fatal(err: Error) {
-    this.logError(ERROR_LEVELS.FATAL, err);
-
-    // const statusCode = this.config.env === 'prod' ? 500 : 200;
-    // const data = this.config.env === 'prod' ? undefined : err.toString();
-
-    // /* istanbul ignore else */
-    // if (!response.finished) {
-    //   return response
-    //     .status(statusCode)
-    //     .removeHeaders('Content-Length')
-    //     .end(data);
-    // } else {
-    //   return Promise.resolve(false);
-    // }
-  }
-
-  /**
-   * log warning message to the console
-   */
-  warn(message: string): this {
-    console.log('\x1b[1m\x1b[31m%s\x1b[0m', message);
-    return this;
-  }
-
-  /**
-   * log info message to the console
-   */
-  info(message: string): this {
-    console.log('\x1b[1m\x1b[32m%s\x1b[0m', message);
     return this;
   }
 }

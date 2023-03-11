@@ -22,9 +22,9 @@ import {
   ResolvedCallbackOptions,
   ResolvedMiddlewareOptions,
 } from '../@types';
-import { joinPaths } from '@teclone/node-utils';
 import { assignMiddlewareId, assignRouteId, ROUTE_KEYS } from './Constants';
 import { getRouteKeys } from './Utils';
+import { join } from 'path';
 
 export class Router {
   private basePath: string = '';
@@ -54,7 +54,7 @@ export class Router {
    * resolves the url route by joining it to the base path
    */
   private resolveUrl(url: string): string {
-    url = joinPaths(this.basePath, stripSlashes(url));
+    url = join(this.basePath, stripSlashes(url));
     return url !== '.' ? url : '';
   }
 

@@ -1,14 +1,37 @@
+import type { IncomingHttpHeaders } from 'http';
 import { ServerResponse } from 'http';
 import { isString, isObject } from '@teclone/utils';
 import { FileServer } from './FileServer';
 import type { Request } from './Request';
 import { ErrorCallback, RServerConfig } from '../@types';
 import type { Logger } from './Logger';
+import { handleError } from './Utils';
+
+export interface RouteResponse<ResponseData = {}> {
+  status?: 'success' | 'error';
+  statusCode?: number;
+  message?: string;
+  data?: ResponseData;
+  headers?: IncomingHttpHeaders;
+  ttl?: number;
+}
+
+export interface APIExecutor<RequestBody, ResponseData> {
+  (arg: {
+    body: RequestBody;
+    headers: IncomingHttpHeaders;
+  }): Promise<RouteResponse<ResponseData> | null>;
+
+  /**
+   * assigned name of the handler
+   */
+  apiName?: string;
+}
 
 export class Response extends ServerResponse {
   config: RServerConfig = {} as RServerConfig;
 
-  request: Request = {} as Request;
+  req: Request = {} as Request;
 
   logger: Logger = {} as Logger;
 
@@ -20,7 +43,7 @@ export class Response extends ServerResponse {
 
   constructor(req: Request) {
     super(req);
-    this.request = req;
+    this.req = req;
   }
 
   end(cb?: () => void): Promise<boolean>;
@@ -71,7 +94,7 @@ export class Response extends ServerResponse {
    * @param headers object containing response header name value pairs
    */
   setHeaders(headers: { [p: string]: string | number | string[] }): this {
-    Object.keys(headers).forEach((key) => {
+    Object.keys(headers || {}).forEach((key) => {
       this.setHeader(key, headers[key]);
     });
     return this;
@@ -112,7 +135,7 @@ export class Response extends ServerResponse {
    */
   json(data: object | string): Promise<boolean> {
     if (!isString(data)) {
-      data = JSON.stringify(data);
+      data = JSON.stringify(data || '');
     }
     return this.setHeader('Content-Type', 'application/json').end(data);
   }
@@ -130,52 +153,49 @@ export class Response extends ServerResponse {
    * @param filename - suggested file download name
    */
   download(filePath: string, filename?: string): Promise<boolean> {
-    const fileServer = new FileServer(
-      this.config,
-      this.logger,
-      this.request,
-      this,
-      this.errorCallback
-    );
+    const fileServer = new FileServer(this.config, this.req, this);
     return fileServer.serveDownload(filePath, filename);
   }
 
   /**
    * sends json error data back to the client
-   * @param statusCode http error status code, defaults to 400
-   * @param message short message to return to client
-   * @param errorData error data object, defaults to empty object
    */
-  jsonError(
-    statusCode: number = 400,
-    message: string = 'request failed',
-    errors: object = {}
-  ): Promise<boolean> {
-    return this.status(statusCode).json({
-      status: 'error',
-      code: statusCode,
-      message,
-      errors,
-    });
+  jsonError(response?: RouteResponse): Promise<boolean> {
+    const { statusCode = 400, headers, message, data, ttl } = response || {};
+
+    if (statusCode < 300) {
+      return this.jsonSuccess(response);
+    }
+
+    return this.status(statusCode)
+      .setHeaders(headers)
+      .json({
+        status: 'error',
+        statusCode,
+        message: message || 'Request failed',
+        data,
+        ttl,
+      });
   }
 
   /**
    * sends json success data back to the client
-   * @param statusCode http status code, defaults to 200
-   * @param message short message to return to client
-   * @param successData success data object, default to empty object
    */
-  jsonSuccess(
-    statusCode: number = 200,
-    message: string = 'request successful',
-    data: object = {}
-  ): Promise<boolean> {
-    return this.status(statusCode).json({
-      status: 'success',
-      code: statusCode,
-      message,
-      data,
-    });
+  jsonSuccess(response?: RouteResponse): Promise<boolean> {
+    const { statusCode = 200, headers, message, data, ttl } = response || {};
+    if (statusCode >= 300) {
+      return this.jsonError(response);
+    }
+
+    return this.status(statusCode)
+      .setHeaders(headers)
+      .json({
+        status: 'success',
+        statusCode,
+        message: message || 'Request successful',
+        data,
+        ttl,
+      });
   }
 
   /**
@@ -187,5 +207,36 @@ export class Response extends ServerResponse {
         resolve(this);
       }, time);
     });
+  }
+
+  /**
+   * it process a json api response, automatically handling
+   * the then and catch responses,
+   * @param response
+   * @returns
+   */
+  async processRouteResponse<DataType>(
+    responsePromise: Promise<RouteResponse<DataType>>,
+    options?: {
+      onSuccess?: (response: RouteResponse<DataType>) => any;
+      onError?: (response: RouteResponse<DataType>) => any;
+    }
+  ) {
+    return responsePromise
+      .then((response) => {
+        const resolvedResponse = { statusCode: 200, ...response };
+        return this.jsonSuccess(resolvedResponse).then(() =>
+          options?.onSuccess?.(resolvedResponse)
+        );
+      })
+      .catch((err) => {
+        if (err instanceof Error) {
+          return handleError(err, this);
+        }
+        const resolvedResponse = { statusCode: 400, ...err };
+        return this.jsonError(resolvedResponse).then(() =>
+          options?.onError?.(resolvedResponse)
+        );
+      });
   }
 }

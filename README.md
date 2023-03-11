@@ -22,13 +22,13 @@ Note: **RServer is supported starting from Node v8.12 upward**
 npm install @teclone/r-server
 ```
 
-Create your server entry **app.js or server.js** file with some sample codes like below.
+Create a server entry **app.js or server.js** file with some sample codes like below.
 
 ```typescript
 const { App } = require('@teclone/r-server'); // import rserver
 const app = new App(); // create server instance
 
-//start the instance. if port is null, it defaults to process.env.PORT || 8080
+//start the instance. if port is null, it defaults to process.env.PORT || 8000
 app.listen().then(() => console.log('listening'));
 
 // add some route
@@ -37,11 +37,11 @@ app.get('/', (req, res) => {
 });
 ```
 
-Start the server by running `npm start` on the project root directory and navigate your browser to `http://localhost:8080/`. **It is that simple**.
+Start the server by running `npm start` on the project root directory and navigate your browser to `http://localhost:8000/`. **It is that simple**.
 
 ## Why R-Server
 
-R-Server gives you many excellent features out of the box, saving you the stress of looking for external plugins and third party solutions. These include:
+R-Server provides many excellent features out of the box, saving you the stress of looking for external plugins and third party solutions. These include:
 
 1. [Excellent Request Body Parser](#request-body-parser)
 

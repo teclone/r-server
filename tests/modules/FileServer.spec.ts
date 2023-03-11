@@ -11,19 +11,11 @@ import { readFileSync, statSync } from 'fs';
 import { ALLOWED_METHODS } from '../../src/modules/Constants';
 
 describe(`FileServer`, function () {
-  let app: App = null;
-  let logger: Logger = null;
+  let app: App;
+  let logger: Logger;
 
   const createFileServer = (req, res) => {
-    return new FileServer(
-      app.getConfig(),
-      logger,
-      req,
-      res,
-      (err, req, res) => {
-        return res.end();
-      }
-    );
+    return new FileServer(app.getConfig(), req, res);
   };
 
   beforeEach(function () {

@@ -9,6 +9,8 @@ export interface ObjectOfAny {
 }
 
 export interface Config {
+  env?: Env;
+
   /**
    * http port to start server. can be overriden with process.env.PORT
    */
@@ -27,7 +29,7 @@ export interface Config {
   /**
    * indicates if requests should be profiled and logged to the console
    */
-  profileRequest?: boolean;
+  profileRequests?: boolean;
 
   /**
    * path to temporary directory where uploaded files are stored. defaults to ./tmp
@@ -70,7 +72,6 @@ export interface Config {
 
 export interface RServerConfig extends Config {
   entryPath?: string;
-  env?: Env;
 }
 
 export type Method =
@@ -109,7 +110,12 @@ export type Callback<
 export type ErrorCallback<
   Rq extends Request = Request,
   Rs extends Response = Response
-> = (err: Error, request: Rq, response: Rs, code?: number) => Promise<boolean>;
+> = (
+  err: Error,
+  request: Rq,
+  response: Rs,
+  statusCode?: number
+) => Promise<boolean>;
 
 export type Middleware<
   Rq extends Request = Request,

@@ -1,17 +1,13 @@
 import { RServerConfig } from './@types';
 
 export const rServerConfig: RServerConfig = {
-  port: 8000,
-
   entryPath: './',
-
-  env: 'development',
 
   errorLog: 'logs/error.log',
 
   accessLog: 'logs/access.log',
 
-  profileRequest: true,
+  profileRequests: true,
 
   tempDir: 'tmp/uploads',
 
@@ -33,9 +29,6 @@ export const rServerConfig: RServerConfig = {
 
   https: {
     enabled: false,
-
-    /* can be overriden by setting process.env.HTTPS_PORT */
-    port: 9000,
 
     /* enforce https by redirecting all http request to https */
     enforce: true,

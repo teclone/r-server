@@ -6,11 +6,9 @@ import {
   RouteParameter,
   Middleware,
   Next,
-  ErrorCallback,
 } from '../@types';
 import type { Response } from './Response';
 import type { Request } from './Request';
-import type { Logger } from './Logger';
 import { fillArray, isObject, stripSlashes } from '@teclone/utils';
 import { replace } from '@teclone/regex';
 import { DOUBLE_TOKEN_REGEX, SINGLE_TOKEN_REGEX } from './Constants';
@@ -47,24 +45,11 @@ export class Engine {
 
   private url: Url;
 
-  private logger: Logger;
-
-  private errorCallback: ErrorCallback | null = null;
-
-  constructor(
-    url: Url,
-    method: string,
-    request: Request,
-    response: Response,
-    logger: Logger,
-    errorCallback: ErrorCallback | null
-  ) {
+  constructor(url: Url, method: string, request: Request, response: Response) {
     this.resolved = false;
     this.request = request;
     this.response = response;
     this.middlewares = [];
-    this.logger = logger;
-    this.errorCallback = errorCallback;
 
     this.url = stripSlashes(url.replace(/[#?].*$/, ''));
     this.method = method.toLowerCase();
@@ -279,7 +264,7 @@ export class Engine {
       }
     }
 
-    return await callback(this.request, this.response, {
+    return callback(this.request, this.response, {
       params: this.reduceParams(parameters),
     });
   }
@@ -303,13 +288,7 @@ export class Engine {
     try {
       await this.runRoute(route, parameters);
     } catch (ex) {
-      handleError(
-        ex,
-        this.errorCallback,
-        this.logger,
-        this.request,
-        this.response
-      );
+      handleError(ex, this.response);
     }
     return true;
   }

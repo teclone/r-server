@@ -2,7 +2,7 @@ import { App } from '../../src/modules/App';
 import { httpHost, withTeardown, sendRequest } from '../helpers';
 
 describe('Response', function () {
-  let app: App = null;
+  let app: App;
 
   beforeEach(() => {
     app = new App({});
@@ -148,8 +148,11 @@ describe('Response', function () {
   describe(`#jsonSuccess(statusCode: number = 200, message: string = 'success', data: object = {}): Promise<boolean>`, function () {
     it(`should send success json data back to the client`, function () {
       app.get('/', (req, res) => {
-        return res.jsonSuccess(200, 'user created successfully', {
-          user: { id: 1 },
+        return res.jsonSuccess({
+          message: 'user created successfully',
+          data: {
+            user: { id: 1 },
+          },
         });
       });
 
@@ -167,7 +170,7 @@ describe('Response', function () {
       );
     });
 
-    it(`should default the statusCode to 200, message string to 'request successful' and data object to empty object`, function () {
+    it(`should default the statusCode to 200, message string to 'Request successful' and data object to empty object`, function () {
       app.get('/', (req, res) => {
         return res.jsonSuccess();
       });
@@ -177,7 +180,7 @@ describe('Response', function () {
         app.listen().then(() => {
           return sendRequest({ uri: httpHost, json: true }).then((res) => {
             expect(res.body).toHaveProperty('status', 'success');
-            expect(res.body).toHaveProperty('message', 'request successful');
+            expect(res.body).toHaveProperty('message', 'Request successful');
           });
         })
       );
@@ -187,7 +190,10 @@ describe('Response', function () {
   describe(`#jsonError(statusCode: number = 400, message: string = 'request failed', errors: object = {}): Promise<boolean>`, function () {
     it(`should send error json data back to the client`, function () {
       app.get('/', (req, res) => {
-        return res.jsonError(403, 'permission denied', {});
+        return res.jsonError({
+          statusCode: 403,
+          message: 'permission denied',
+        });
       });
 
       return withTeardown(
@@ -195,13 +201,14 @@ describe('Response', function () {
         app.listen().then(() => {
           return sendRequest({ uri: httpHost, json: true }).then((res) => {
             expect(res.body).toHaveProperty('status', 'error');
+            expect(res.body).toHaveProperty('statusCode', 403);
             expect(res.body).toHaveProperty('message', 'permission denied');
           });
         })
       );
     });
 
-    it(`should default the statusCode to 400, message string to 'request failed' and errors object to empty object`, function () {
+    it(`should default the statusCode to 400, message string to 'Request failed' and errors object to empty object`, function () {
       app.get('/', (req, res) => {
         return res.jsonError();
       });
@@ -212,7 +219,7 @@ describe('Response', function () {
           return sendRequest({ uri: httpHost, json: true }).then((res) => {
             expect(res.statusCode).toEqual(400);
             expect(res.body).toHaveProperty('status', 'error');
-            expect(res.body).toHaveProperty('message', 'request failed');
+            expect(res.body).toHaveProperty('message', 'Request failed');
           });
         })
       );
@@ -224,7 +231,10 @@ describe('Response', function () {
       app.get('/', (req, res) => {
         res.setHeader('Content-Language', 'en');
         res.removeHeader('Content-Language');
-        return res.jsonError(403, 'permission denied', {});
+        return res.jsonError({
+          statusCode: 403,
+          message: 'permission denied',
+        });
       });
 
       return withTeardown(
@@ -247,7 +257,10 @@ describe('Response', function () {
       app.get('/', (req, res) => {
         res.setHeaders(headers);
         res.removeHeaders(...Object.keys(headers));
-        return res.jsonError(403, 'permission denied', {});
+        return res.jsonError({
+          statusCode: 403,
+          message: 'permission denied',
+        });
       });
 
       return withTeardown(

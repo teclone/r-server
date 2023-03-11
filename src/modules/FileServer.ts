@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { RServerConfig, Url, Headers, Range, ErrorCallback } from '../@types';
+import { RServerConfig, Url, Headers, Range } from '../@types';
 import type { Request } from './Request';
 import type { Response } from './Response';
 import {
@@ -12,35 +12,22 @@ import {
   stripSlashes,
 } from '@teclone/utils';
 import { IncomingHttpHeaders } from 'http';
-import { resolvePaths } from '@teclone/node-utils';
 import mime from 'mime-types';
 import { ALLOWED_METHODS } from './Constants';
-import type { Logger } from './Logger';
 import { handleError } from './Utils';
+import { resolve } from 'path';
 
 export class FileServer {
   private config: RServerConfig;
-
-  private logger: Logger;
 
   private request: Request;
 
   private response: Response;
 
-  private errorCallback: ErrorCallback | null;
-
-  constructor(
-    config: RServerConfig,
-    logger: Logger,
-    request: Request,
-    response: Response,
-    errorCallback: ErrorCallback | null
-  ) {
+  constructor(config: RServerConfig, request: Request, response: Response) {
     this.config = config;
-    this.logger = logger;
     this.request = request;
     this.response = response;
-    this.errorCallback = errorCallback;
   }
 
   /**
@@ -70,13 +57,7 @@ export class FileServer {
       .then(() => this.response.end())
       .catch((err) => {
         readStream.close();
-        return handleError(
-          err,
-          this.errorCallback,
-          this.logger,
-          this.request,
-          this.response
-        );
+        return handleError(err, this.response);
       });
   }
 
@@ -339,13 +320,13 @@ export class FileServer {
     let filePath = '';
 
     if (httpErrors[status]) {
-      filePath = resolvePaths(
+      filePath = resolve(
         this.config.entryPath,
         httpErrors.baseDir,
         httpErrors[status]
       );
     } else {
-      filePath = resolvePaths(__dirname, `../httpErrors/${status}.html`);
+      filePath = resolve(__dirname, `../httpErrors/${status}.html`);
     }
 
     if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
@@ -360,12 +341,12 @@ export class FileServer {
    */
   serveDownload(filePath: string, filename?: string): Promise<boolean> {
     let found = true;
-    let absPath = resolvePaths(this.config.entryPath, filePath);
+    let absPath = resolve(this.config.entryPath, filePath);
 
     if (!fs.existsSync(absPath) || fs.statSync(absPath).isDirectory()) {
       found = false;
       for (const current of this.config.publicPaths) {
-        absPath = resolvePaths(this.config.entryPath, current, filePath);
+        absPath = resolve(this.config.entryPath, current, filePath);
         if (fs.existsSync(absPath) && fs.statSync(absPath).isFile()) {
           found = true;
           break;

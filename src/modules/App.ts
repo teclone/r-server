@@ -30,12 +30,12 @@ import {
   Env,
 } from '../@types';
 import { copy, scopeCallback, expandToNumeric, isObject } from '@teclone/utils';
-import { joinPaths, getEntryPath } from '@teclone/node-utils';
 import { AddressInfo } from 'net';
 import { Wrapper } from './Wrapper';
 import { EntityTooLargeException } from '../Exceptions/EntityTooLargeException';
-import { handleError } from './Utils';
 import { config } from 'dotenv';
+import { join } from 'path';
+import { handleError } from './Utils';
 
 export interface AppConstructorOptions<
   Rq extends Request = Request,
@@ -48,13 +48,15 @@ export interface AppConstructorOptions<
 }
 
 export class App<Rq extends Request = Request, Rs extends Response = Response> {
-  private httpServer: HttpServer;
+  private constructOptions: AppConstructorOptions<Rq, Rs>;
+
+  private httpServer: HttpServer | null = null;
 
   private httpsServer: HttpsServer | null = null;
 
   private entryPath: string = '';
 
-  private config: RServerConfig;
+  private config: RServerConfig = {};
 
   private router: Router = new Router(false);
 
@@ -66,26 +68,27 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
 
   private errorCallback: ErrorCallback | null = null;
 
-  private _env: Env;
-
   constructor(options?: AppConstructorOptions<Rq, Rs>) {
-    const {
-      configFile,
-      config = {},
-      Request: RequestToUse = Request,
-      Response: ResponseToUse = Response,
-    } = options || {};
+    const { configFile, config = {} } = options || {};
 
-    const env: Env = (this._env =
-      (process.env.NODE_ENV as Env) || 'development');
+    this.constructOptions = options || {};
 
-    /* istanbul ignore else */
-    this.entryPath = getEntryPath();
-    this.loadEnv(this.entryPath, env);
+    this.entryPath = process.cwd();
+    this.config = this.resolveConfig(this.entryPath, configFile, config);
 
-    this.config = this.resolveConfig(this.entryPath, env, configFile, config);
+    this.loadEnv(this.entryPath, this.config.env);
+
     this.logger = new Logger(this.config);
     this.bodyParser = new BodyParser(this.config);
+
+    this.createServers();
+  }
+
+  createServers() {
+    const {
+      Request: RequestToUse = Request,
+      Response: ResponseToUse = Response,
+    } = this.constructOptions;
 
     this.httpServer = createHttpServer(
       {
@@ -119,7 +122,7 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
    * returns the env variable
    */
   get env() {
-    return this._env;
+    return this.config.env;
   }
 
   /**
@@ -139,7 +142,6 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
    */
   private resolveConfig(
     entryPath: string,
-    env: Env,
     configFile?: string,
     config?: Config
   ): RServerConfig {
@@ -159,18 +161,21 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
       config
     ) as RServerConfig;
 
-    resolvedConfig.env = env;
+    resolvedConfig.env =
+      resolvedConfig.env || (process.env.NODE_ENV as Env) || 'development';
 
     // resolve to numeric value
     resolvedConfig.maxMemory = expandToNumeric(resolvedConfig.maxMemory);
 
     // resolve ports
-    if (process.env.PORT && /^\d{2,}$/.test(process.env.PORT)) {
-      resolvedConfig.port = Number.parseInt(process.env.PORT);
+    if (!resolvedConfig.port) {
+      resolvedConfig.port = Number.parseInt(process.env.PORT || '8000');
     }
 
-    if (process.env.HTTPS_PORT && /^\d{2,}$/.test(process.env.HTTPS_PORT)) {
-      resolvedConfig.https.port = Number.parseInt(process.env.HTTPS_PORT);
+    if (!resolvedConfig.https.port) {
+      resolvedConfig.https.port = Number.parseInt(
+        process.env.HTTPS_PORT || '9000'
+      );
     }
 
     resolvedConfig.entryPath = entryPath;
@@ -224,16 +229,9 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
     method = method.toLowerCase();
 
     //create the engine
-    const engine = new Engine(
-      url,
-      method,
-      request,
-      response,
-      this.logger,
-      this.errorCallback
-    );
+    const engine = new Engine(url, method, request, response);
 
-    //run on the main router thread
+    //run main router
     engine.use(this.router.getMiddlewares());
 
     if (await this.runRoutes(method as Method, engine, this.router)) {
@@ -280,6 +278,8 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
       if (request.headers['content-type']) {
         contentType = request.headers['content-type'];
       }
+
+      //TODO: add support for content encoding
       const result = this.bodyParser.parse(request.buffer, contentType);
       request.body = result.body;
       request.files = result.files;
@@ -297,10 +297,6 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
 
     request.endedAt = response.startedAt = new Date();
 
-    response.config = this.config;
-    response.request = request;
-    response.errorCallback = this.errorCallback;
-
     let { url, method } = request;
 
     this.parseRequestData(request, url as string);
@@ -311,13 +307,7 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
       response
     ).then((status) => {
       if (!status) {
-        const fileServer = new FileServer(
-          this.config,
-          this.logger,
-          request,
-          response,
-          this.errorCallback
-        );
+        const fileServer = new FileServer(this.config, request, response);
         return fileServer.serve(url as string).then((status) => {
           if (!status) {
             return fileServer.serveHttpErrorFile(404);
@@ -334,16 +324,16 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
    */
   private onRequestError(err: Error, request: Request, response: Response) {
     request.error = true;
-    handleError(err, this.errorCallback, this.logger, request, response, 400);
+    handleError(err, response);
   }
 
   /**
    * handle request data event
    */
-  private onRequestData(chunk: Buffer, request: Request) {
+  private onRequestData(chunk: Buffer, request: Request, response: Response) {
     if (!request.entityTooLarge) {
       const newEntityLength = request.buffer.length + chunk.length;
-      if (newEntityLength <= this.config.maxMemory) {
+      if (!this.config.maxMemory || newEntityLength <= this.config.maxMemory) {
         request.buffer = Buffer.concat([request.buffer, chunk]);
       } else {
         request.entityTooLarge = true;
@@ -366,6 +356,11 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
     request.hostname = (request.headers['host'] as string).replace(/:\d+$/, '');
     request.encrypted = server instanceof HttpsServer;
 
+    response.config = this.config;
+    response.logger = this.logger;
+    response.req = request;
+    response.errorCallback = this.errorCallback;
+
     //enforce https if set
     const httpsConfig = this.config.https;
     if (httpsConfig.enabled && !request.encrypted && httpsConfig.enforce) {
@@ -383,7 +378,10 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
       );
 
       //handle on data event
-      request.on('data', scopeCallback(this.onRequestData, this, request));
+      request.on(
+        'data',
+        scopeCallback(this.onRequestData, this, [request, response])
+      );
 
       //handle on end event
       request.on(
@@ -664,7 +662,7 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
   mount(baseUrl: Url, router: Router) {
     const mainRouterBasePath = this.router.getBasePath();
     const resolve = (instance: RouteInstance | MiddlewareInstance) => {
-      instance[1] = joinPaths(mainRouterBasePath, baseUrl, instance[1]);
+      instance[1] = join(mainRouterBasePath, baseUrl, instance[1]);
     };
 
     //resolve all routes, each apiRoutes is of the form [url, callback, options]
@@ -692,6 +690,8 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
       return Promise.resolve(true);
     }
 
+    this.createServers();
+
     let resolvedPortConfig: { httpPort?: number; httpsPort?: number } = {};
     if (isObject(port)) {
       resolvedPortConfig = port;
@@ -708,9 +708,7 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
     }).then(() => {
       if (this.httpsServer !== null) {
         return new Promise((resolve, reject) => {
-          this.initServer(this.httpsServer, resolve, (err) => {
-            this.httpServer.close(() => reject(err));
-          });
+          this.initServer(this.httpsServer, resolve, reject);
           this.httpsServer.listen(httpsPort);
         });
       }

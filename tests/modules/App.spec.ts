@@ -12,10 +12,9 @@ import { App } from '../../src/modules/App';
 import { Router } from '../../src/modules/Router';
 import { Method } from '../../src/@types';
 import { Wrapper } from '../../src/modules/Wrapper';
-import { rServerConfig } from '../../src/.server';
 
 describe(`App`, function () {
-  let app: App = null;
+  let app: App;
 
   const getTemplate = (method: Exclude<Method, '*'> | 'any') => {
     return function () {
@@ -51,7 +50,7 @@ describe(`App`, function () {
       expect(app).toBeInstanceOf(App);
     });
 
-    it(`should resolve the env settings and prioritize the value of process.env.NODE_ENV ahead of config's env value`, function () {
+    it(`should resolve env to process.env.NODE_ENV if set`, function () {
       process.env.NODE_ENV = 'production';
       let app = new App({ config: httpsEnabledConfig });
       expect(app.getConfig().env).toEqual('production');
@@ -63,13 +62,13 @@ describe(`App`, function () {
       process.env.NODE_ENV = '';
     });
 
-    it(`should resolve the env settings and prioritize the value of process.env.HTTPS_PORT ahead of config's https.port value`, function () {
+    it(`should resolve https port to process.env.HTTPS_PORT if set`, function () {
       process.env.HTTPS_PORT = '6000';
       let app = new App({
-        config: { https: { port: 5000, enabled: true } },
+        config: { https: { enabled: true } },
       });
       process.env.HTTPS_PORT = '';
-      expect(app.getConfig().https.port).toEqual(6000);
+      expect(app.getConfig().https?.port).toEqual(6000);
     });
   });
 
@@ -263,7 +262,7 @@ describe(`App`, function () {
       return withTeardown(
         app,
         app.listen(3000).then(() => {
-          expect(app.address().http.port).toEqual(3000);
+          expect(app.address().http?.port).toEqual(3000);
         })
       );
     });
@@ -274,7 +273,7 @@ describe(`App`, function () {
       return withTeardown(
         app,
         app.listen().then(() => {
-          expect(app.address().http.port).toEqual(5000);
+          expect(app.address().http?.port).toEqual(5000);
           process.env.PORT = '';
         })
       );
@@ -287,8 +286,8 @@ describe(`App`, function () {
         app.listen(3000).then(() => {
           const address = app.address();
 
-          expect(address.http.port).toEqual(3000);
-          expect(address.https.port).toEqual(9000);
+          expect(address.http?.port).toEqual(3000);
+          expect(address.https?.port).toEqual(9000);
         })
       );
     });
@@ -298,7 +297,7 @@ describe(`App`, function () {
       return withTeardown(
         app,
         app.listen().then(() => {
-          expect(app.address().http.port).toEqual(8000);
+          expect(app.address().http?.port).toEqual(8000);
         })
       );
     });
@@ -424,7 +423,7 @@ describe(`App`, function () {
         app,
         app.listen().then(() => {
           return sendRequest({ uri: `${httpHost}say-hi` }).then((res) => {
-            expect(res.statusCode).toEqual(400);
+            expect(res.statusCode).toEqual(500);
           });
         })
       );

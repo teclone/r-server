@@ -1,4 +1,4 @@
-import { resolvePaths, mkDirSync } from '@teclone/node-utils';
+import { mkDirSync } from '@teclone/node-utils';
 import * as fs from 'fs';
 import {
   RServerConfig,
@@ -17,6 +17,7 @@ import {
 } from '@teclone/utils';
 import { CRLF, BLANK_LINE } from './Constants';
 import { v1 as uuidv1 } from 'uuid';
+import { resolve } from 'path';
 
 export class BodyParser {
   private config: RServerConfig;
@@ -25,7 +26,7 @@ export class BodyParser {
     this.config = config;
 
     //create file storage dir
-    mkDirSync(resolvePaths(this.config.entryPath, this.config.tempDir));
+    mkDirSync(resolve(this.config.entryPath, this.config.tempDir));
   }
 
   /**
@@ -85,11 +86,7 @@ export class BodyParser {
    */
   private processFile(headers: MultipartHeaders, content: string): FileEntry {
     const key = uuidv1() + '.tmp';
-    const filePath = resolvePaths(
-      this.config.entryPath,
-      this.config.tempDir,
-      key
-    );
+    const filePath = resolve(this.config.entryPath, this.config.tempDir, key);
 
     fs.writeFileSync(filePath, content, headers.encoding);
     return {

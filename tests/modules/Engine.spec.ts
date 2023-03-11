@@ -14,7 +14,11 @@ describe('Engine', function () {
     const request = new Request(new Socket());
     const response = new Response(request);
     const logger = new Logger(rServerConfig);
-    return new Engine(url, method, request, response, logger, null);
+
+    response.request = request;
+    response.logger = logger;
+
+    return new Engine(url, method, request, response);
   };
 
   beforeEach(function () {
