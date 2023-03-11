@@ -28,5 +28,5 @@ jobs:
       - name: Run release
         run: yarn release
         env:
-          GH_TOKEN: ${{vars.GH_TOKEN}}
-          NPM_TOKEN: ${{vars.NPM_TOKEN}}
+          GH_TOKEN: ${{secrets.GH_TOKEN}}
+          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
