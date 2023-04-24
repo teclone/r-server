@@ -1,7 +1,6 @@
 import { mkDirSync } from '@teclone/node-utils';
 import * as fs from 'fs';
 import {
-  RServerConfig,
   Data,
   Files,
   MultipartHeaders,
@@ -19,14 +18,21 @@ import { CRLF, BLANK_LINE } from './Constants';
 import { v1 as uuidv1 } from 'uuid';
 import { resolve } from 'path';
 
-export class BodyParser {
-  private config: RServerConfig;
+export interface BodyParserConstructOpts {
+  tempDir: string;
+  encoding: BufferEncoding;
+}
 
-  constructor(config: RServerConfig) {
-    this.config = config;
+export class BodyParser {
+  private tempDir: string;
+  private encoding: BufferEncoding;
+
+  constructor(opts: BodyParserConstructOpts) {
+    this.tempDir = opts.tempDir;
+    this.encoding = opts.encoding;
 
     //create file storage dir
-    mkDirSync(resolve(this.config.entryPath, this.config.tempDir));
+    mkDirSync(opts.tempDir);
   }
 
   /**
@@ -74,9 +80,9 @@ export class BodyParser {
             name: [],
           };
 
-      for (const [key, current] of Object.entries(value)) {
-        target[key].push(current);
-      }
+      Object.keys(value).forEach((key) => {
+        target[key].push(value[key]);
+      });
     }
     files[name] = target;
   }
@@ -86,9 +92,12 @@ export class BodyParser {
    */
   private processFile(headers: MultipartHeaders, content: string): FileEntry {
     const key = uuidv1() + '.tmp';
-    const filePath = resolve(this.config.entryPath, this.config.tempDir, key);
+    const filePath = resolve(this.tempDir, key);
 
-    fs.writeFileSync(filePath, content, headers.encoding);
+    fs.writeFileSync(filePath, content, {
+      encoding: headers.encoding as BufferEncoding,
+    });
+
     return {
       name: headers.fileName.replace(/\.\./g, ''),
       key,
@@ -108,10 +117,11 @@ export class BodyParser {
       type: 'text/plain',
       fileName: '',
       fieldName: generateRandomText(8),
-      encoding: this.config.encoding,
+      encoding: this.encoding,
     };
 
-    for (const header of headers) {
+    for (let i = 0; i < headers.length; i++) {
+      const header = headers[i];
       if (header !== '') {
         let [name, value] = header.split(/\s*:\s*/);
         switch (name.toLowerCase()) {
@@ -210,14 +220,14 @@ export class BodyParser {
     const body: Data = {};
     if (string) {
       const pairs = string.split('&');
-      for (const pair of pairs) {
+      pairs.forEach((pair) => {
         const [name, value] = pair.split('=');
         this.assignBodyValue(
           body,
           decodeURIComponent(name),
           decodeURIComponent(value || '')
         );
-      }
+      });
     }
     return body;
   }
@@ -238,7 +248,7 @@ export class BodyParser {
    *@param {string} contentType - the request content type
    */
   parse(buffer: Buffer, contentType: string): { files: Files; body: Data } {
-    const content = buffer.toString(this.config.encoding);
+    const content = buffer.toString(this.encoding);
     const tokens = contentType.split(/;\s*/);
 
     let boundary: string | null = null;
@@ -273,7 +283,11 @@ export class BodyParser {
       }
     };
 
-    for (const [, file] of Object.entries(files)) {
+    const keys = Object.keys(files);
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      const file = files[key];
+
       makeArray(file.path).forEach(unlink);
     }
   }

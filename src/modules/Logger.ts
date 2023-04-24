@@ -1,35 +1,27 @@
-import type { Response } from './Response';
 import * as fs from 'fs';
-import { RServerConfig } from '../@types';
 import { mkDirSync } from '@teclone/node-utils';
-import type { Request } from './Request';
 import { EOL } from 'os';
-import { resolve } from 'path';
+import { ServerRequest, ServerResponse } from '../@types';
+
+export interface LoggerOpts {
+  errorLogFile: string;
+  accessLogFile: string;
+}
 
 export class Logger {
-  private config: RServerConfig;
-
   private errorLogHandle: number;
-
   private accessLogHandle: number;
 
-  constructor(config: RServerConfig) {
-    this.config = config;
+  constructor(opts: LoggerOpts) {
+    if (opts.accessLogFile) {
+      mkDirSync(opts.accessLogFile);
+      this.accessLogHandle = fs.openSync(opts.accessLogFile, 'a');
+    }
 
-    const errorLogPath = resolve(this.config.entryPath, this.config.errorLog);
-    const accessLogPath = resolve(this.config.entryPath, this.config.accessLog);
-
-    mkDirSync(errorLogPath);
-    mkDirSync(accessLogPath);
-
-    this.errorLogHandle = fs.openSync(
-      resolve(this.config.entryPath, this.config.errorLog),
-      'a'
-    );
-    this.accessLogHandle = fs.openSync(
-      resolve(this.config.entryPath, this.config.accessLog),
-      'a'
-    );
+    if (opts.errorLogFile) {
+      mkDirSync(opts.errorLogFile);
+      this.errorLogHandle = fs.openSync(opts.errorLogFile, 'a');
+    }
   }
 
   /**
@@ -63,11 +55,13 @@ export class Logger {
   logError(err: Error) {
     if (err instanceof Error) {
       const now = new Date();
-      fs.writeSync(
-        this.errorLogHandle,
-        `[${now.toUTCString()}] ${err.stack}${EOL}`
-      );
-      if (this.config.env !== 'production') {
+      if (this.errorLogHandle) {
+        fs.writeSync(
+          this.errorLogHandle,
+          `[${now.toUTCString()}] ${err.stack}${EOL}`
+        );
+      }
+      if (process.env.NODE_ENV !== 'production') {
         console.error(err);
       }
     }
@@ -77,20 +71,22 @@ export class Logger {
   /**
    * logs access information
    */
-  private logAccess(req: Request, res: Response) {
-    const protocol = req.encrypted ? 'Https' : 'Http';
-    const startTime = (req.startedAt as Date).toUTCString();
+  private logAccess(req: ServerRequest, res: ServerResponse) {
+    if (this.accessLogHandle) {
+      const protocol = req.encrypted ? 'Https' : 'Http';
+      const startTime = (req.startedAt as Date).toUTCString();
 
-    const log = `[${startTime}] [${req.method}] '${req.url} ${protocol}/${req.httpVersion}' ${res.statusCode}${EOL}`;
-    fs.writeSync(this.accessLogHandle, log);
+      const log = `[${startTime}] [${req.method}] '${req.url} ${protocol}/${req.httpVersion}' ${res.statusCode}${EOL}`;
+      fs.writeSync(this.accessLogHandle, log);
+    }
   }
 
   /**
    * log request response profile
    */
-  profile(req: Request, res: Response) {
+  profile(req: ServerRequest, res: ServerResponse) {
     this.logAccess(req, res);
-    if (this.config.env === 'development' && this.config.profileRequests) {
+    if (process.env.NODE_ENV !== 'production') {
       const requestTime =
         (req.endedAt as Date).getTime() - (req.startedAt as Date).getTime();
       const responseTime =

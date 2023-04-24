@@ -1,16 +1,24 @@
 import { AddressInfo } from 'net';
-import { Request } from '../modules/Request';
-import { Response } from '../modules/Response';
+import type { Http1Request } from '../modules/Http1Request';
+import type { Http2Request } from '../modules/Http2Request';
+
+import type { Http1Response } from '../modules/Http1Response';
+import type { Http2Response } from '../modules/Http2Response';
 
 export type Env = 'development' | 'production' | 'test';
+
+export type HttpsVersion = '1' | '2';
+
+export type HttpProtocol = 'http' | 'https';
+
+export type ServerRequest = Http1Request | Http2Request;
+export type ServerResponse = Http1Response | Http2Response;
 
 export interface ObjectOfAny {
   [p: string]: any;
 }
 
-export interface Config {
-  env?: Env;
-
+export interface RServerConfig {
   /**
    * http port to start server. can be overriden with process.env.PORT
    */
@@ -25,11 +33,6 @@ export interface Config {
    * path to access log file, defaults to ./logs/access.log
    */
   accessLog?: string;
-
-  /**
-   * indicates if requests should be profiled and logged to the console
-   */
-  profileRequests?: boolean;
 
   /**
    * path to temporary directory where uploaded files are stored. defaults to ./tmp
@@ -57,21 +60,31 @@ export interface Config {
     500?: string;
   };
 
+  /**
+   * secure http settings
+   */
   https?: {
     enabled: boolean;
 
+    /**
+     * the https version to use, by default, it is http2,
+     *
+     * http2 provides https 1.0 fallback, but if you specifically do not
+     * want http2 support, set the version to 1
+     */
+    version?: HttpsVersion;
+
     port?: number;
 
+    /**
+     * if enforce is true, http 1.0 endpoint will redirect to the https endpoint
+     */
     enforce?: boolean;
 
     credentials?:
       | { key: string; cert: string }
       | { pfx: string; passphrase: string };
   };
-}
-
-export interface RServerConfig extends Config {
-  entryPath?: string;
 }
 
 export type Method =
@@ -98,8 +111,8 @@ export interface Next {
 }
 
 export type Callback<
-  Rq extends Request = Request,
-  Rs extends Response = Response
+  Rq extends ServerRequest = ServerRequest,
+  Rs extends ServerResponse = ServerResponse
 > = (
   request: Rq,
   response: Rs,
@@ -108,8 +121,8 @@ export type Callback<
 ) => Promise<boolean>;
 
 export type ErrorCallback<
-  Rq extends Request = Request,
-  Rs extends Response = Response
+  Rq extends ServerRequest = ServerRequest,
+  Rs extends ServerResponse = ServerResponse
 > = (
   err: Error,
   request: Rq,
@@ -118,8 +131,8 @@ export type ErrorCallback<
 ) => Promise<boolean>;
 
 export type Middleware<
-  Rq extends Request = Request,
-  Rs extends Response = Response
+  Rq extends ServerRequest = ServerRequest,
+  Rs extends ServerResponse = ServerResponse
 > = (
   request: Rq,
   response: Rs,

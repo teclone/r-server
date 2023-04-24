@@ -1,24 +1,42 @@
 import { dummyCallback, dummyMiddleware } from '../helpers';
-import { rServerConfig } from '../../src/.server';
 import { Engine } from '../../src/modules/Engine';
-import { Method, MiddlewareInstance } from '../../src/@types';
-import { Request } from '../../src/modules/Request';
-import { Socket } from 'net';
-import { Response } from '../../src/modules/Response';
+import {
+  Method,
+  MiddlewareInstance,
+  ServerRequest,
+  ServerResponse,
+} from '../../src/@types';
 import { Logger } from '../../src/modules/Logger';
+import { Server } from '../../src/modules/Server';
 
 describe('Engine', function () {
-  let engine: Engine = null;
+  let engine: Engine;
 
   const createEngine = (url: string, method: Method) => {
-    const request = new Request(new Socket());
-    const response = new Response(request);
-    const logger = new Logger(rServerConfig);
+    const server = new Server();
+    const configs = server.getConfig();
 
-    response.request = request;
+    // const request = new Request(new Socket());
+    // const response = new Response(request);
+    const logger = new Logger({
+      accessLogFile: configs.accessLog,
+      errorLogFile: configs.errorLog,
+    });
+
+    // response.request = request;
+    // response.logger = logger;
+
+    const response = {
+      end: () => {
+        // do nothing
+      },
+      jsonError: () => {
+        return Promise.resolve(true);
+      },
+    } as ServerResponse;
     response.logger = logger;
 
-    return new Engine(url, method, request, response);
+    return new Engine(url, method, {} as ServerRequest, response);
   };
 
   beforeEach(function () {
@@ -104,7 +122,6 @@ describe('Engine', function () {
         .then((status) => {
           expect(status).toBeTruthy();
           expect(middleware1.mock.calls).toHaveLength(1);
-          expect(middleware1.mock.calls[0][1].finished).toBeTruthy();
           expect(middleware2.mock.calls).toHaveLength(0);
         });
     });

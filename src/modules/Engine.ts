@@ -1,4 +1,4 @@
-import {
+import type {
   Url,
   MiddlewareInstance,
   RouteInstance,
@@ -6,9 +6,9 @@ import {
   RouteParameter,
   Middleware,
   Next,
+  ServerResponse,
+  ServerRequest,
 } from '../@types';
-import type { Response } from './Response';
-import type { Request } from './Request';
 import { fillArray, isObject, stripSlashes } from '@teclone/utils';
 import { replace } from '@teclone/regex';
 import { DOUBLE_TOKEN_REGEX, SINGLE_TOKEN_REGEX } from './Constants';
@@ -35,9 +35,9 @@ const generateNext = () => {
 export class Engine {
   private resolved: boolean = false;
 
-  private request: Request;
+  private request: ServerRequest;
 
-  private response: Response;
+  private response: ServerResponse;
 
   private middlewares: MiddlewareInstance[];
 
@@ -45,7 +45,12 @@ export class Engine {
 
   private url: Url;
 
-  constructor(url: Url, method: string, request: Request, response: Response) {
+  constructor(
+    url: Url,
+    method: string,
+    request: ServerRequest,
+    response: ServerResponse
+  ) {
     this.resolved = false;
     this.request = request;
     this.response = response;
@@ -204,7 +209,8 @@ export class Engine {
   ) {
     const next = generateNext();
 
-    for (const middleware of middlewares) {
+    for (let i = 0; i < middlewares.length; i++) {
+      const middleware = middlewares[i];
       next.reset();
       await middleware(this.request, this.response, next, {
         params: this.reduceParams(parameters),
@@ -229,8 +235,8 @@ export class Engine {
    * asynchronously runs the matching route
    */
   private async runRoute(route: RouteInstance, parameters: RouteParameter[]) {
-    for (const middlewareInstance of this.middlewares) {
-      const [, url, middlewares, options] = middlewareInstance;
+    for (let i = 0; i < this.middlewares.length; i++) {
+      const [, url, middlewares, options] = this.middlewares[i];
       const middlewareUrl = stripSlashes(url);
 
       const methods = options.method;

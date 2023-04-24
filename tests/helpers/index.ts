@@ -1,12 +1,9 @@
-import { Callback, Middleware, Next, Config } from '../../src/@types';
-import { Request } from '../../src/modules/Request';
-import { Response } from '../../src/modules/Response';
+import { Callback, Middleware, RServerConfig } from '../../src/@types';
 import * as path from 'path';
-import { App } from '../../src/modules/App';
+import { Server } from '../../src/modules/Server';
 import request from 'request-promise';
 
-export const dummyCallback: Callback = (req: Request, res: Response) =>
-  Promise.resolve(true);
+export const dummyCallback: Callback = (req, res) => Promise.resolve(true);
 
 export const dummyMiddleware: Middleware = (req, res, next) => {
   return next();
@@ -25,17 +22,17 @@ export const multipartLogFileNoBoundary = path.resolve(
 
 export const multipartBoundary = '----WebKitFormBoundarybEguVvbADThWNOxz';
 
-export const httpsEnabledConfig: Config = {
+export const httpsEnabledConfig: RServerConfig = {
   https: {
     enabled: true,
   },
 };
 
-export const withTeardown = (app: App, test: Promise<void>) => {
+export const withTeardown = (server: Server, test: Promise<void>) => {
   return test
-    .then(() => app.close())
+    .then(() => server.close())
     .catch((ex) => {
-      return app.close().then(() => {
+      return server.close().then(() => {
         throw ex;
       });
     });

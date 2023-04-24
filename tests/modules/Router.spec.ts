@@ -6,7 +6,7 @@ import { getRouteKeys } from '../../src/modules/Utils';
 import { ROUTE_KEYS } from '../../src/modules/Constants';
 
 describe('Router', function () {
-  let router: Router = null;
+  let router: Router;
 
   beforeEach(function () {
     router = new Router(true);
