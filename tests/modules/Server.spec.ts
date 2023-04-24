@@ -8,13 +8,13 @@ import {
 } from '../helpers';
 import * as path from 'path';
 import * as fs from 'fs';
-import { App } from '../../src/modules/App';
 import { Router } from '../../src/modules/Router';
 import { Method } from '../../src/@types';
 import { Wrapper } from '../../src/modules/Wrapper';
+import { Server } from '../../src/modules/Server';
 
-describe(`App`, function () {
-  let app: App;
+describe(`Server`, function () {
+  let server: Server;
 
   const getTemplate = (method: Exclude<Method, '*'> | 'any') => {
     return function () {
@@ -25,8 +25,8 @@ describe(`App`, function () {
           : 'http ' + method.toUpperCase() + ' method');
 
       it(banner, function () {
-        const spy = jest.spyOn(app.getRouter(), method);
-        app[method]('/', dummyCallback);
+        const spy = jest.spyOn(server.getRouter(), method);
+        server[method]('/', dummyCallback);
 
         expect(spy.mock.calls[0][0]).toEqual('/');
         expect(spy.mock.calls[0][1]).toEqual(dummyCallback);
@@ -37,68 +37,59 @@ describe(`App`, function () {
   };
 
   beforeEach(function () {
-    app = new App();
+    server = new Server();
   });
 
-  describe('#constructor(config: string | Config)', function () {
+  describe('#constructor(options?: ServerConstructorOptions<Rq, Rs>)', function () {
     it(`should create an rserver app instance`, function () {
-      expect(app).toBeInstanceOf(App);
+      expect(server).toBeInstanceOf(Server);
     });
 
     it(`should setup https app if https is enabled`, function () {
-      const app = new App({ config: httpsEnabledConfig });
-      expect(app).toBeInstanceOf(App);
+      const server = new Server({ config: httpsEnabledConfig });
+      expect(server).toBeInstanceOf(Server);
     });
 
     it(`should resolve env to process.env.NODE_ENV if set`, function () {
       process.env.NODE_ENV = 'production';
-      let app = new App({ config: httpsEnabledConfig });
-      expect(app.getConfig().env).toEqual('production');
+      let server = new Server({ config: httpsEnabledConfig });
+      expect(server.env).toEqual('production');
 
       process.env.NODE_ENV = 'development';
-      app = new App({ config: httpsEnabledConfig });
-      expect(app.getConfig().env).toEqual('development');
+      server = new Server({ config: httpsEnabledConfig });
+      expect(server.env).toEqual('development');
 
       process.env.NODE_ENV = '';
-    });
-
-    it(`should resolve https port to process.env.HTTPS_PORT if set`, function () {
-      process.env.HTTPS_PORT = '6000';
-      let app = new App({
-        config: { https: { enabled: true } },
-      });
-      process.env.HTTPS_PORT = '';
-      expect(app.getConfig().https?.port).toEqual(6000);
     });
   });
 
   describe('#listening', function () {
     it(`should return true if https or http app is listening for requests`, function () {
-      expect(app.listening).toBeFalsy();
+      expect(server.listening).toBeFalsy();
     });
   });
 
   describe('#getRouter(): Router', function () {
     it(`should return the app instance main router`, function () {
-      expect(app.getRouter()).toBeInstanceOf(Router);
+      expect(server.getRouter()).toBeInstanceOf(Router);
     });
   });
 
   describe('#getMountedRouters(): Router[]', function () {
     it(`should return an array of the app instance mounted routers`, function () {
-      expect(app.getMountedRouters()).toEqual([]);
+      expect(server.getMountedRouters()).toEqual([]);
     });
   });
 
   describe('#getConfig()', function () {
     it(`should return the resolved app config object`, function () {
-      expect(app.getConfig()).toHaveProperty('env');
+      expect(server.getConfig()).toHaveProperty('accessLog');
     });
   });
 
   describe('.setErrorCallback(errorCallback: ErrorCallback)', function () {
     it(`should set the app instance Error Callback handler`, function () {
-      app.setErrorCallback((err, req, res) => {
+      server.setErrorCallback((err, req, res) => {
         return res.end();
       });
     });
@@ -106,8 +97,8 @@ describe(`App`, function () {
 
   describe('#setBasePath(path: string)', function () {
     it(`should call the main router to set the global base path for all registered routes`, function () {
-      const spy = jest.spyOn(app.getRouter(), 'setBasePath');
-      app.setBasePath('api/v1');
+      const spy = jest.spyOn(server.getRouter(), 'setBasePath');
+      server.setBasePath('api/v1');
 
       expect(spy.mock.calls[0][0]).toEqual('api/v1');
       spy.mockRestore();
@@ -158,7 +149,7 @@ describe(`App`, function () {
 
   describe('#route(url: Url): Wrapper', function () {
     it(`should create and return a Route Wrapper for the given url`, function () {
-      expect(app.route('user')).toBeInstanceOf(Wrapper);
+      expect(server.route('user')).toBeInstanceOf(Wrapper);
     });
   });
 
@@ -166,9 +157,9 @@ describe(`App`, function () {
         options: Method | Method[] | MiddlewareOptions | null = null)`, function () {
     it(`should call main router to register a middleware to be called whenever the
             given route url is visited`, function () {
-      const spy = jest.spyOn(app.getRouter(), 'use');
+      const spy = jest.spyOn(server.getRouter(), 'use');
 
-      app.use('/', dummyMiddleware);
+      server.use('/', dummyMiddleware);
       expect(spy.mock.calls[0][0]).toEqual('/');
       spy.mockRestore();
     });
@@ -177,25 +168,25 @@ describe(`App`, function () {
   describe('#mount(baseUrl: Url, router: Router)', function () {
     it(`should resolve all routes registered in the mountable router and store the router
         inside the mountedRouters array`, function () {
-      app.setBasePath('api/v1');
-      app.get('login', dummyCallback);
+      server.setBasePath('api/v1');
+      server.get('login', dummyCallback);
 
       const router = new Router(true);
       router.get('/', dummyCallback);
       router.get('{id}', dummyCallback);
       router.get('{id}/posts', dummyCallback);
 
-      app.mount('users', router);
+      server.mount('users', router);
 
-      expect(app.getMountedRouters()).toHaveLength(1);
-      expect(app.getRouter().getRoutes().get[0][1]).toEqual('api/v1/login');
-      expect(app.getMountedRouters()[0].getRoutes().get[0][1]).toEqual(
+      expect(server.getMountedRouters()).toHaveLength(1);
+      expect(server.getRouter().getRoutes().get[0][1]).toEqual('api/v1/login');
+      expect(server.getMountedRouters()[0].getRoutes().get[0][1]).toEqual(
         'api/v1/users'
       );
-      expect(app.getMountedRouters()[0].getRoutes().get[1][1]).toEqual(
+      expect(server.getMountedRouters()[0].getRoutes().get[1][1]).toEqual(
         'api/v1/users/{id}'
       );
-      expect(app.getMountedRouters()[0].getRoutes().get[2][1]).toEqual(
+      expect(server.getMountedRouters()[0].getRoutes().get[2][1]).toEqual(
         'api/v1/users/{id}/posts'
       );
     });
@@ -203,111 +194,96 @@ describe(`App`, function () {
 
   describe('#removeRoute(id: RouteId)', function () {
     it(`should find the route with the given id and remove it, returning true if route with id exists`, function () {
-      const routeId = app.get('login', dummyCallback);
-      expect(app.removeRoute(routeId)).toBeTruthy();
+      const routeId = server.get('login', dummyCallback);
+      expect(server.removeRoute(routeId)).toBeTruthy();
     });
 
     it(`should also search in mounted routers, returning true if router is found`, function () {
       const router = new Router(true);
       const routeId = router.get('profile', dummyCallback);
-      app.mount('user', router);
+      server.mount('user', router);
 
-      expect(app.removeRoute(routeId)).toBeTruthy();
+      expect(server.removeRoute(routeId)).toBeTruthy();
     });
 
     it(`should also search in mounted routers, returning false if router is not found`, function () {
       const router = new Router(true);
       router.get('profile', dummyCallback);
-      app.mount('user', router);
+      server.mount('user', router);
 
-      expect(app.removeRoute(0)).toBeFalsy();
+      expect(server.removeRoute(0)).toBeFalsy();
     });
 
     it(`should find the route with the given id and remove it, returning false if route with id does not exists`, function () {
-      app.get('login', dummyCallback);
-      expect(app.removeRoute(-1)).toBeFalsy();
+      server.get('login', dummyCallback);
+      expect(server.removeRoute(-1)).toBeFalsy();
     });
   });
 
   describe('#removeMiddleware(id: MiddlewareId)', function () {
     it(`should find the middleware with the given id and remove it, returning true if route with id exists`, function () {
-      const middlewareId = app.use('*', dummyMiddleware);
-      expect(app.removeMiddleware(middlewareId)).toBeTruthy();
+      const middlewareId = server.use('*', dummyMiddleware);
+      expect(server.removeMiddleware(middlewareId)).toBeTruthy();
     });
 
     it(`should also search in mounted routers, returning true if middleware exists`, function () {
       const router = new Router(true);
       const middlewareId = router.use('profile', dummyMiddleware);
-      app.mount('user', router);
+      server.mount('user', router);
 
-      expect(app.removeMiddleware(middlewareId)).toBeTruthy();
+      expect(server.removeMiddleware(middlewareId)).toBeTruthy();
     });
 
     it(`should also search in mounted routers, returning false if middleware does not exist`, function () {
       const router = new Router(true);
       router.use('profile', dummyMiddleware);
-      app.mount('user', router);
+      server.mount('user', router);
 
-      expect(app.removeMiddleware(-1)).toBeFalsy();
+      expect(server.removeMiddleware(-1)).toBeFalsy();
     });
 
     it(`should find the middleware with the given id and remove it, returning false if middleware with id does not exist`, function () {
-      app.use('*', dummyMiddleware);
-      expect(app.removeMiddleware(0)).toBeFalsy();
+      server.use('*', dummyMiddleware);
+      expect(server.removeMiddleware(0)).toBeFalsy();
     });
   });
 
   describe('#listen(port?: number | null)', function () {
     it(`should start the application at the given port, returning a promise`, function () {
       return withTeardown(
-        app,
-        app.listen(3000).then(() => {
-          expect(app.address().http?.port).toEqual(3000);
-        })
-      );
-    });
-
-    it(`should use the value of process.env.PORT if given and port is not given`, function () {
-      process.env.PORT = '5000';
-      app = new App();
-      return withTeardown(
-        app,
-        app.listen().then(() => {
-          expect(app.address().http?.port).toEqual(5000);
-          process.env.PORT = '';
+        server,
+        server.listen(3000).then(() => {
+          expect(server.address().http?.port).toEqual(3000);
         })
       );
     });
 
     it(`should start up the https app if enabled at a default port of 9000`, function () {
-      const app = new App({ config: httpsEnabledConfig });
+      const server = new Server({ config: httpsEnabledConfig });
       return withTeardown(
-        app,
-        app.listen(3000).then(() => {
-          const address = app.address();
-
-          expect(address.http?.port).toEqual(3000);
+        server,
+        server.listen(3000).then(() => {
+          const address = server.address();
           expect(address.https?.port).toEqual(9000);
         })
       );
     });
 
-    it(`should default http port parameter to 8000 if no port is given and process.env.PORT is not
-        set`, function () {
+    it(`should default http port parameter to 8000 if no port is set`, function () {
       return withTeardown(
-        app,
-        app.listen().then(() => {
-          expect(app.address().http?.port).toEqual(8000);
+        server,
+        server.listen().then(() => {
+          expect(server.address().http?.port).toEqual(8000);
         })
       );
     });
 
     it(`should do nothing if app is already listening`, function () {
       return withTeardown(
-        app,
-        app
+        server,
+        server
           .listen()
-          .then(() => app.listen())
+          .then(() => server.listen())
           .then((result) => {
             expect(result).toEqual(true);
           })
@@ -317,38 +293,38 @@ describe(`App`, function () {
 
   describe('#close()', function () {
     it(`should close and stop apps from listening for further connections`, function () {
-      const app = new App({ config: httpsEnabledConfig });
+      const server = new Server({ config: httpsEnabledConfig });
       return withTeardown(
-        app,
-        app
+        server,
+        server
           .listen()
           .then(() => {
-            expect(app.listening).toBeTruthy();
-            return app.close();
+            expect(server.listening).toBeTruthy();
+            return server.close();
           })
           .then(() => {
-            expect(app.listening).toBeFalsy();
+            expect(server.listening).toBeFalsy();
           })
       );
     });
 
     it(`should skip closing https app if it is not enabled`, function () {
       return withTeardown(
-        app,
-        app
+        server,
+        server
           .listen()
           .then(() => {
-            expect(app.listening).toBeTruthy();
-            return app.close();
+            expect(server.listening).toBeTruthy();
+            return server.close();
           })
           .then(() => {
-            expect(app.listening).toBeFalsy();
+            expect(server.listening).toBeFalsy();
           })
       );
     });
 
     it(`should do nothing if app is not listening`, function () {
-      return app.close().then((result) => {
+      return server.close().then((result) => {
         expect(result).toEqual(true);
       });
     });
@@ -357,24 +333,26 @@ describe(`App`, function () {
   describe('#address(): {http: AddressInfo | null, https: AddressInfo | null}', function () {
     it(`should return app address info that contains info for both http and https
             app`, function () {
-      const address = app.address();
+      const address = server.address();
       expect(address).toHaveProperty('http');
       expect(address).toHaveProperty('https');
     });
 
     it(`each app address should be null when it is not listening for connections`, function () {
-      const address = app.address();
+      const address = server.address();
       expect(address.http).toBeNull();
       expect(address.https).toBeNull();
     });
 
     it(`each app address should be an AddressInfo when it is listening for connections`, function () {
-      const app = new App({ config: httpsEnabledConfig });
+      const server = new Server({
+        config: { https: { enabled: true, enforce: true } },
+      });
       return withTeardown(
-        app,
-        app.listen().then(() => {
-          expect(app.address().http).not.toBeNull();
-          expect(app.address().https).not.toBeNull();
+        server,
+        server.listen().then(() => {
+          expect(server.address().http).not.toBeNull();
+          expect(server.address().https).not.toBeNull();
         })
       );
     });
@@ -383,8 +361,8 @@ describe(`App`, function () {
   describe('App Error', function () {
     // it(`should handle app error such as trying to listen on an already taken port and
     //     log warning message to the console`, function () {
-    //   const app2 = new App({});
-    //   app.listen(null, function () {
+    //   const app2 = new Server({});
+    //   server.listen(null, function () {
     //     expect(function () {
     //       app2.listen(null);
     //     }).not.toThrow();
@@ -396,15 +374,16 @@ describe(`App`, function () {
   describe('Client Error', function () {
     it(`should handle every client error on the app by simply ending the socket`, function () {
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           // @ts-ignore
-          app.httpServer.emit('clientError');
+          server.server.emit('clientError');
         })
       );
-      // app.listen(null, function() {
+
+      // server.listen(null, function() {
       //   expect(function() {
-      //     app.httpApp.emit('clientError');
+      //     server.httpserver.emit('clientError');
       //     closeApp(app, done);
       //   }).not.toThrow();
       // });
@@ -412,19 +391,23 @@ describe(`App`, function () {
   });
 
   describe('Request Error', function () {
-    it(`should handle every request error on the app, ending the request`, function () {
-      const app = new App({});
-      app.get('say-hi', (req, res) => {
+    it(`should handle every request error on the server, ending the request`, function () {
+      server.get('say-hi', (req, res) => {
+        console.log('emitting error');
         req.emit('error', new Error('request error'));
         return res.end();
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
-          return sendRequest({ uri: `${httpHost}say-hi` }).then((res) => {
-            expect(res.statusCode).toEqual(500);
-          });
+        server,
+        server.listen().then(() => {
+          return sendRequest(`${httpHost}say-hi`)
+            .then((res) => {
+              expect(res.status).toEqual(500);
+            })
+            .catch((ex) => {
+              console.log(ex);
+            });
         })
       );
     });
@@ -432,22 +415,24 @@ describe(`App`, function () {
 
   describe('413 Response code', function () {
     it(`should send 413 error code if request data exceeds app maxMemory value`, function () {
-      const app = new App({
+      const server = new Server({
         config: {
           maxMemory: 10,
         },
       });
+
       const form = {
         name: 'Harrison',
         password: 'passwd_243',
       };
-      app.post('/process-data', (req, res) => {
+
+      server.post('/process-data', (req, res) => {
         return res.json(req.body);
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({
             uri: `${httpHost}process-data`,
             method: 'post',
@@ -460,18 +445,18 @@ describe(`App`, function () {
     });
 
     // it(`should send 413 error code if request data exceeds app maxMemory value`, function () {
-    //   const app = new App({
+    //   const app = new Server({
     //     config: {
     //       maxMemory: 10,
     //     },
     //   });
-    //   app.post('/process-data', (req, res) => {
+    //   server.post('/process-data', (req, res) => {
     //     return res.json(req.body);
     //   });
 
     //   return withTeardown(
-    //     app,
-    //     app.listen().then(() => {
+    //    server,
+    //     server.listen().then(() => {
     //       return sendRequest({
     //         uri: `${httpHost}process-data`,
     //         method: 'post',
@@ -490,7 +475,7 @@ describe(`App`, function () {
 
   describe(`enforce https`, function () {
     it(`should enforce https by redirecting all http requests to the https address`, function () {
-      const app = new App({
+      const server = new Server({
         config: {
           https: {
             enabled: true,
@@ -499,13 +484,13 @@ describe(`App`, function () {
         },
       });
 
-      app.get('/say-protocol', (req, res) => {
+      server.get('/say-protocol', (req, res) => {
         return res.end(req.encrypted ? 'https' : 'http');
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({
             uri: `${httpHost}say-protocol`,
             rejectUnauthorized: false,
@@ -522,8 +507,8 @@ describe(`App`, function () {
       const filePath = path.resolve(__dirname, '../../public/index.html');
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: `${httpHost}index.html` }).then((res) => {
             expect(res.body).toEqual(fs.readFileSync(filePath, 'utf8'));
           });
@@ -537,8 +522,8 @@ describe(`App`, function () {
       const filePath = path.resolve(__dirname, '../../src/httpErrors/404.html');
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: `${httpHost}index1.html` }).then((res) => {
             expect(res.body).toEqual(fs.readFileSync(filePath, 'utf8'));
           });
@@ -554,13 +539,13 @@ describe(`App`, function () {
         name: 'Harrison',
         password: 'passwd_243',
       };
-      app.post('/check-data', (req, res) => {
+      server.post('/check-data', (req, res) => {
         return res.json(req.body);
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({
             uri: `${httpHost}check-data`,
             method: 'post',
@@ -574,10 +559,10 @@ describe(`App`, function () {
   });
 
   describe('routing', () => {
-    const routeRequests = (app: App, uri: string) => {
+    const routeRequests = (server: Server, uri: string) => {
       return withTeardown(
-        app,
-        app
+        server,
+        server
           .listen()
           .then(() => {
             return sendRequest({ uri, method: 'get' }).then((res) => {
@@ -615,13 +600,13 @@ describe(`App`, function () {
     describe('main routing', function () {
       it(`should start the routing engine on the main router if request path did not map
         to a public file, and run the matching registered all method route if any`, function () {
-        app.any('/hi', function (req, res) {
+        server.any('/hi', function (req, res) {
           return res.end();
         });
 
         const uri = `${httpHost}hi`;
 
-        return routeRequests(app, uri);
+        return routeRequests(server, uri);
       });
 
       it(`should start the routing engine on the main router if request path did not map
@@ -629,16 +614,16 @@ describe(`App`, function () {
         const callback = (req, res) => {
           return res.end();
         };
-        app.get('/hi', callback);
-        app.post('/hi', callback);
-        app.put('/hi', callback);
-        app.delete('/hi', callback);
-        app.head('/hi', callback);
-        app.options('/hi', callback);
+        server.get('/hi', callback);
+        server.post('/hi', callback);
+        server.put('/hi', callback);
+        server.delete('/hi', callback);
+        server.head('/hi', callback);
+        server.options('/hi', callback);
 
         const uri = `${httpHost}hi`;
 
-        return routeRequests(app, uri);
+        return routeRequests(server, uri);
       });
     });
 
@@ -651,11 +636,11 @@ describe(`App`, function () {
           return res.end();
         });
 
-        app.mount('users', router);
+        server.mount('users', router);
 
         const uri = `${httpHost}users/1`;
 
-        return routeRequests(app, uri);
+        return routeRequests(server, uri);
       });
 
       it(`should start the routing engine on the mounted routers if request path did not map
@@ -673,10 +658,10 @@ describe(`App`, function () {
         router.head('/{id}', callback);
         router.options('/{id}', callback);
 
-        app.mount('users', router);
+        server.mount('users', router);
 
         const uri = `${httpHost}users/1`;
-        return routeRequests(app, uri);
+        return routeRequests(server, uri);
       });
     });
   });

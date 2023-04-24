@@ -1,12 +1,11 @@
-import { Method, Routes } from '../@types';
+import { Method, Routes, ServerResponse } from '../@types';
 import { EntityTooLargeException } from '../Exceptions/EntityTooLargeException';
 import { isString, makeArray } from '@teclone/utils';
 import { ROUTE_KEYS } from './Constants';
-import type { Response } from './Response';
 
 export const handleError = (
   err: Error | string,
-  response: Response,
+  response: ServerResponse,
   code?: number
 ): Promise<boolean> => {
   const request = response.req;
@@ -34,12 +33,12 @@ export const handleError = (
   return response.jsonError({
     statusCode: code || 500,
     message: 'internal server error',
-    data: null,
-    // response.config.env === 'production'
-    //   ? null
-    //   : {
-    //       errorStack: err?.stack || '',
-    //     },
+    data:
+      process.env.NODE_ENV === 'production'
+        ? null
+        : {
+            errorStack: err?.stack || '',
+          },
   });
 };
 

@@ -1,11 +1,11 @@
 import type { IncomingHttpHeaders } from 'http';
+import { ServerResponse } from 'http';
 import { isString, isCallable } from '@teclone/utils';
-import { FileServer } from './FileServer';
-import type { Request } from './Http2Request';
-import { ErrorCallback, RServerConfig } from '../@types';
+import type { FileServer } from './FileServer';
+import { ErrorCallback } from '../@types';
 import type { Logger } from './Logger';
 import { handleError } from './Utils';
-import { Http2ServerResponse, ServerHttp2Stream } from 'http2';
+import type { Http1Request } from './Http1Request';
 
 export interface RouteResponse<ResponseData = {}> {
   status?: 'success' | 'error';
@@ -28,27 +28,31 @@ export interface APIExecutor<RequestBody, ResponseData> {
   apiName?: string;
 }
 
-export class Response extends Http2ServerResponse {
-  config: RServerConfig = {} as RServerConfig;
+export class Http1Response extends ServerResponse {
+  req: Http1Request;
 
-  req: Request;
+  logger: Logger;
 
-  logger: Logger = {} as Logger;
+  fileServer: FileServer;
 
   errorCallback: ErrorCallback | null = null;
 
-  startedAt: Date = {} as Date;
+  startedAt: Date;
 
-  endedAt: Date = {} as Date;
+  endedAt: Date;
 
-  constructor(stream: ServerHttp2Stream) {
-    super(stream);
+  constructor(req) {
+    super(req);
+    this.req = req;
   }
 
+  // @ts-ignore
   end(cb?: () => void): Promise<boolean>;
 
+  // @ts-ignore
   end(data?: any, cb?: () => void): Promise<boolean>;
 
+  // @ts-ignore
   end(
     data?: any,
     encoding?: string | (() => void),
@@ -60,6 +64,7 @@ export class Response extends Http2ServerResponse {
    * @param data optional data to send. either string or buffer
    * @param encoding data encoding if not buffer
    */
+  // @ts-ignore
   end(
     data,
     encoding?: BufferEncoding | (() => void),
@@ -185,8 +190,7 @@ export class Response extends Http2ServerResponse {
    * @param filename - suggested file download name
    */
   download(filePath: string, filename?: string): Promise<boolean> {
-    const fileServer = new FileServer(this.config, this.req, this);
-    return fileServer.serveDownload(filePath, filename);
+    return this.fileServer.serveDownload(filePath, this, filename);
   }
 
   /**
@@ -233,7 +237,7 @@ export class Response extends Http2ServerResponse {
   /**
    * waits for the given time
    */
-  wait(time: number): Promise<Response> {
+  wait(time: number): Promise<Http1Response> {
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve(this);

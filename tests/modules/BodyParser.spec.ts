@@ -4,12 +4,13 @@ import {
   multipartBoundary,
   multipartLogFileNoBoundary,
 } from '../helpers';
-import { rServerConfig } from '../../src/.server';
 import { encodeData } from '@teclone/utils';
 import * as fs from 'fs';
+import { join } from 'path';
 
 describe('BodyParser', function () {
-  let bodyParser: BodyParser = null;
+  let bodyParser: BodyParser;
+
   const data = {
     username: 'harrison',
     password1: 'random_243',
@@ -20,7 +21,10 @@ describe('BodyParser', function () {
   const buffer = Buffer.from(encodeData(data));
 
   beforeEach(function () {
-    bodyParser = new BodyParser(rServerConfig);
+    bodyParser = new BodyParser({
+      encoding: 'latin1',
+      tempDir: join(process.cwd(), 'tmp'),
+    });
   });
 
   describe(`#constructor(entryPath: string, config: RServerConfig)`, function () {

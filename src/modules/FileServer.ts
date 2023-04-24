@@ -1,16 +1,15 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { RServerConfig, Url, Headers, Range } from '../@types';
-import type { Request } from './Request';
-import type { Response } from './Response';
-import {
-  isNull,
-  copy,
-  isUndefined,
-  isString,
-  stripSlashes,
-} from '@teclone/utils';
+import type {
+  RServerConfig,
+  Url,
+  Headers,
+  Range,
+  ServerResponse,
+} from '../@types';
+
+import { isUndefined, isString, stripSlashes } from '@teclone/utils';
 import { IncomingHttpHeaders } from 'http';
 import mime from 'mime-types';
 import { ALLOWED_METHODS } from './Constants';
@@ -19,45 +18,35 @@ import { resolve } from 'path';
 
 export class FileServer {
   private config: RServerConfig;
+  private rootDir: string;
 
-  private request: Request;
-
-  private response: Response;
-
-  constructor(config: RServerConfig, request: Request, response: Response) {
+  constructor(rootDir: string, config: RServerConfig) {
+    this.rootDir = rootDir;
     this.config = config;
-    this.request = request;
-    this.response = response;
   }
 
   /**
-   * ends the response.
+   * streams a file to client
    */
-  private endResponse(status: number, headers: Headers, data?: any) {
-    return this.response.status(status).setHeaders(headers).end(data);
-  }
-
-  /**
-   * ends the streaming response
-   */
-  private endStream(
+  private streamFile(
     filePath: string,
+    response: ServerResponse,
     status: number,
     headers: Headers,
     options?: object
   ) {
     const readStream = fs.createReadStream(filePath, options);
-    this.response.status(status).setHeaders(headers);
+    response.status(status).setHeaders(headers);
 
     return new Promise((resolve, reject) => {
       readStream.on('error', (err) => reject(err));
       readStream.on('end', () => resolve(true));
-      readStream.pipe(this.response as any, { end: false });
+      readStream.pipe(response as any, { end: false });
     })
-      .then(() => this.response.end())
+      .then(() => response.end())
       .catch((err) => {
         readStream.close();
-        return handleError(err, this.response);
+        return handleError(err, response);
       });
   }
 
@@ -131,9 +120,9 @@ export class FileServer {
   }
 
   /**
-   * check if file is not modified
+   * check if file is  modified
    */
-  private fileNotModified(
+  private isFileModified(
     headers: IncomingHttpHeaders,
     eTag: string,
     fileMTime: string
@@ -142,15 +131,15 @@ export class FileServer {
       !isUndefined(headers['if-none-match']) &&
       headers['if-none-match'] === eTag
     ) {
-      return true;
+      return false;
     } else if (
       !isUndefined(headers['if-modified-since']) &&
       headers['if-modified-since'] === fileMTime
     ) {
-      return true;
-    } else {
       return false;
     }
+
+    return true;
   }
 
   /**
@@ -166,7 +155,7 @@ export class FileServer {
   /**
    * returns default response headers
    */
-  private getDefaultHeaders(filePath: string) {
+  private getFileDefaultHeaders(filePath: string) {
     const stat = fs.statSync(filePath);
     return {
       'Content-Type':
@@ -184,24 +173,25 @@ export class FileServer {
    */
   private process(
     filePath: string,
-    status: number = 200,
-    headers: Headers = {}
+    requestMethod: string,
+    requestHeaders: IncomingHttpHeaders,
+    response: ServerResponse
   ) {
-    const method = this.request.method;
-    if (method === 'options') {
-      return this.endResponse(200, {
-        Allow: ALLOWED_METHODS.join(','),
-      });
+    requestMethod = requestMethod.toLowerCase();
+    if (requestMethod === 'options') {
+      return response
+        .status(200)
+        .setHeaders({
+          Allow: ALLOWED_METHODS.join(','),
+        })
+        .end();
     }
 
-    const resHeaders = copy(
-      {},
-      this.getDefaultHeaders(filePath) as Headers,
-      headers
-    );
-    if (method === 'head') {
+    const resHeaders = this.getFileDefaultHeaders(filePath);
+
+    if (requestMethod === 'head') {
       resHeaders['Accept-Ranges'] = 'bytes';
-      return this.endResponse(200, resHeaders);
+      return response.status(200).setHeaders(resHeaders).end();
     }
 
     const eTag = resHeaders['ETag'];
@@ -209,16 +199,16 @@ export class FileServer {
     const fileSize = Number.parseInt(resHeaders['Content-Length']);
 
     //if it is not a range request, negotiate content
-    if (isUndefined(this.request.headers['range'])) {
-      if (this.fileNotModified(this.request.headers, eTag, lastModified)) {
-        return this.endResponse(304, {});
+    if (isUndefined(requestHeaders['range'])) {
+      if (!this.isFileModified(requestHeaders, eTag, lastModified)) {
+        return response.status(304).end();
       } else {
-        return this.endStream(filePath, 200, resHeaders);
+        return this.streamFile(filePath, response, 200, resHeaders);
       }
     } else {
       //we are dealing with range request
       const { statusCode, ranges } = this.validateRangeRequest(
-        this.request.headers,
+        requestHeaders,
         eTag,
         lastModified,
         fileSize
@@ -226,15 +216,19 @@ export class FileServer {
 
       //we are sending everything
       if (statusCode === 200) {
-        return this.endStream(filePath, 200, resHeaders);
+        return this.streamFile(filePath, response, 200, resHeaders);
       }
 
-      //range request is not satisfiable
       delete resHeaders['Content-Disposition'];
+
+      //range request is not satisfiable
       if (ranges.length === 0) {
-        return this.endResponse(416, {
-          'Content-Range': `bytes */${fileSize}`,
-        });
+        return response
+          .status(416)
+          .setHeaders({
+            'Content-Range': `bytes */${fileSize}`,
+          })
+          .end();
       }
 
       //single range request
@@ -242,7 +236,7 @@ export class FileServer {
         const { start, end, length } = ranges[0];
         resHeaders['Content-Length'] = length.toString();
         resHeaders['Content-Range'] = `bytes ${start}-${end}/${fileSize}`;
-        return this.endStream(filePath, 206, resHeaders, {
+        return this.streamFile(filePath, response, 206, resHeaders, {
           start,
           end,
         });
@@ -251,7 +245,8 @@ export class FileServer {
       //multi range request. for now, we dont support multipart range. send everything
       resHeaders['Content-Length'] = fileSize.toString();
       resHeaders['Content-Range'] = `bytes ${0}-${fileSize - 1}/${fileSize}`;
-      return this.endStream(filePath, 206, resHeaders);
+
+      return this.streamFile(filePath, response, 206, resHeaders);
     }
   }
 
@@ -272,14 +267,14 @@ export class FileServer {
    * matches the request url
    */
   private validateRequest(url: Url, method: string): string | null {
-    if (!['head', 'get', 'options'].includes(method)) {
+    if (!['head', 'get', 'options'].includes(method.toLowerCase())) {
       return null;
     }
 
     url = url.replace(/[#?].*/, '').replace(/\.\./g, '');
 
     for (const publicPath of this.config.publicPaths) {
-      const testPath = path.resolve(this.config.entryPath, publicPath, url);
+      const testPath = path.resolve(this.rootDir, publicPath, url);
       if (fs.existsSync(testPath)) {
         const stat = fs.statSync(testPath);
         if (stat.isFile()) {
@@ -299,54 +294,73 @@ export class FileServer {
   /**
    * serves a static file response back to the client
    */
-  serve(url: Url): Promise<boolean> {
+  serve(
+    requestPath: string,
+    requestMethod: string,
+    requestHeaders: IncomingHttpHeaders,
+    response: ServerResponse
+  ): Promise<boolean> {
+    requestMethod = requestMethod.toLowerCase();
     const filePath = this.validateRequest(
-      stripSlashes(url),
-      this.request.method
+      stripSlashes(requestPath),
+      requestMethod
     );
 
-    if (isNull(filePath)) {
-      return Promise.resolve(false);
-    } else {
-      return this.process(filePath);
+    if (filePath) {
+      return this.process(filePath, requestMethod, requestHeaders, response);
     }
+    return Promise.resolve(false);
   }
 
   /**
    * serves server http error files. such as 504, 404, etc
    */
-  serveHttpErrorFile(status: number): Promise<boolean> {
+  serveHttpErrorFile(
+    errorStatusCode: number,
+    response: ServerResponse
+  ): Promise<boolean> {
     const httpErrors = this.config.httpErrors;
     let filePath = '';
 
-    if (httpErrors[status]) {
+    const errorStatusCodeStr = errorStatusCode.toString();
+
+    if (httpErrors[errorStatusCodeStr]) {
       filePath = resolve(
-        this.config.entryPath,
+        this.rootDir,
         httpErrors.baseDir,
-        httpErrors[status]
+        httpErrors[errorStatusCode]
       );
     } else {
-      filePath = resolve(__dirname, `../httpErrors/${status}.html`);
+      filePath = resolve(__dirname, `../httpErrors/${errorStatusCode}.html`);
     }
 
     if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-      return this.response.status(status).end();
+      return response.status(errorStatusCode).end();
     } else {
-      return this.endStream(filePath, status, this.getDefaultHeaders(filePath));
+      return this.streamFile(
+        filePath,
+        response,
+        errorStatusCode,
+        this.getFileDefaultHeaders(filePath)
+      );
     }
   }
 
   /**
    * serves file intended for download to the client
    */
-  serveDownload(filePath: string, filename?: string): Promise<boolean> {
+  serveDownload(
+    filePath: string,
+    response: ServerResponse,
+    filename?: string
+  ): Promise<boolean> {
     let found = true;
-    let absPath = resolve(this.config.entryPath, filePath);
+    let absPath = resolve(this.rootDir, filePath);
 
     if (!fs.existsSync(absPath) || fs.statSync(absPath).isDirectory()) {
       found = false;
       for (const current of this.config.publicPaths) {
-        absPath = resolve(this.config.entryPath, current, filePath);
+        absPath = resolve(this.rootDir, current, filePath);
         if (fs.existsSync(absPath) && fs.statSync(absPath).isFile()) {
           found = true;
           break;
@@ -355,10 +369,10 @@ export class FileServer {
     }
 
     if (!found) {
-      return Promise.reject(new Error(filePath + ' does not exist'));
+      return response.status(404).end(`${filePath} not found`);
     } else {
       filename = isString(filename) ? filename : path.parse(absPath).base;
-      return this.process(absPath, 200, {
+      return this.streamFile(absPath, response, 200, {
         'Content-Disposition': `attachment; filename="${filename}"`,
       });
     }

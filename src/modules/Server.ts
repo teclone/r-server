@@ -1,20 +1,23 @@
-import { rServerConfig as defaultConfig } from '../.server';
+import { rServerConfig as defaultConfig } from '../.server.config';
 import { BodyParser } from './BodyParser';
 import { Engine } from './Engine';
 import { FileServer } from './FileServer';
 import { Logger } from './Logger';
 import { Router } from './Router';
 import * as fs from 'fs';
-import { Server as HttpServer, createServer as createHttpServer } from 'http';
+
 import {
-  Server as HttpsServer,
-  createServer as createHttpsServer,
-} from 'https';
+  Http2SecureServer,
+  createSecureServer as createHttp2SecureServer,
+  ServerHttp2Session,
+} from 'http2';
+
+import { createServer as createHttp1SecureServer } from 'https';
+import type { Server as HttpServer } from 'http';
+import { createServer } from 'http';
 import * as path from 'path';
-import { Response } from './Response';
-import { Request } from './Request';
+
 import {
-  Config,
   RServerConfig,
   RouteInstance,
   MiddlewareInstance,
@@ -28,6 +31,8 @@ import {
   MiddlewareId,
   ErrorCallback,
   Env,
+  ServerResponse,
+  ServerRequest,
 } from '../@types';
 import { copy, scopeCallback, expandToNumeric, isObject } from '@teclone/utils';
 import { AddressInfo } from 'net';
@@ -37,22 +42,38 @@ import { config } from 'dotenv';
 import { join } from 'path';
 import { handleError } from './Utils';
 
-export interface AppConstructorOptions<
-  Rq extends Request = Request,
-  Rs extends Response = Response
+import { Http2Request } from './Http2Request';
+import { Http1Request } from './Http1Request';
+
+import { Http1Response } from './Http1Response';
+import { Http2Response } from './Http2Response';
+import { DEFAULT_CONFIG_FILE } from './Constants';
+
+export interface ServerConstructorOptions<
+  Http1Rq extends typeof Http1Request,
+  Http2Rq extends typeof Http2Request,
+  Http1Rs extends typeof Http1Response,
+  Http2Rs extends typeof Http2Response
 > {
   configFile?: string;
-  config?: Config;
-  Request?: Rs;
-  Response?: Rq;
+  config?: RServerConfig;
+
+  Http1ServerRequest?: Http1Rq;
+  Http2ServerRequest?: Http2Rq;
+
+  Http1ServerResponse?: Http1Rs;
+  Http2ServerResponse?: Http2Rs;
 }
 
-export class App<Rq extends Request = Request, Rs extends Response = Response> {
-  private constructOptions: AppConstructorOptions<Rq, Rs>;
+export class Server<
+  Http1Rq extends typeof Http1Request = typeof Http1Request,
+  Http2Rq extends typeof Http2Request = typeof Http2Request,
+  Http1Rs extends typeof Http1Response = typeof Http1Response,
+  Http2Rs extends typeof Http2Response = typeof Http2Response
+> {
+  private server: HttpServer | null = null;
 
-  private httpServer: HttpServer | null = null;
-
-  private httpsServer: HttpsServer | null = null;
+  private secureServer: HttpServer | Http2SecureServer | null = null;
 
   private entryPath: string = '';
 
@@ -66,63 +87,155 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
 
   private bodyParser: BodyParser;
 
+  private fileServer: FileServer;
+
   private errorCallback: ErrorCallback | null = null;
 
-  constructor(options?: AppConstructorOptions<Rq, Rs>) {
+  readonly env: Env;
+
+  constructor(
+    options?: ServerConstructorOptions<Http1Rq, Http2Rq, Http1Rs, Http2Rs>
+  ) {
     const { configFile, config = {} } = options || {};
 
-    this.constructOptions = options || {};
-
     this.entryPath = process.cwd();
-    this.config = this.resolveConfig(this.entryPath, configFile, config);
-
-    this.loadEnv(this.entryPath, this.config.env);
-
-    this.logger = new Logger(this.config);
-    this.bodyParser = new BodyParser(this.config);
-
-    this.createServers();
-  }
-
-  createServers() {
-    const {
-      Request: RequestToUse = Request,
-      Response: ResponseToUse = Response,
-    } = this.constructOptions;
-
-    this.httpServer = createHttpServer(
-      {
-        ServerResponse: ResponseToUse,
-        IncomingMessage: RequestToUse,
-      } as any,
-      null
+    this.config = this.resolveConfig(
+      this.entryPath,
+      configFile || DEFAULT_CONFIG_FILE,
+      config
     );
 
-    //setup https server if it is enabled
-    const httpsConfig = this.config.https;
-    if (httpsConfig.enabled) {
-      const options: object = {
-        ServerResponse: ResponseToUse,
-        IncomingMessage: RequestToUse,
-      };
+    this.env = (process.env.NODE_ENV || 'development') as Env;
 
-      Object.entries(httpsConfig.credentials).reduce((result, [key, value]) => {
-        result[key] =
-          key === 'passphrase'
-            ? key
-            : fs.readFileSync(path.resolve(this.entryPath, value));
-        return result;
-      }, options);
+    this.loadEnv(this.entryPath, this.env);
 
-      this.httpsServer = createHttpsServer(options, null);
+    this.logger = new Logger({
+      accessLogFile: this.config.accessLog,
+      errorLogFile: this.config.errorLog,
+    });
+
+    this.bodyParser = new BodyParser({
+      encoding: this.config.encoding,
+      tempDir: this.config.tempDir,
+    });
+
+    this.fileServer = new FileServer(this.entryPath, this.config);
+
+    this.createServers(options);
+  }
+
+  /**
+   * resolves and merges the configuration objects
+   */
+  private resolveConfig(
+    entryPath: string,
+    configFile: string,
+    config?: RServerConfig
+  ): RServerConfig {
+    let configFromFile: RServerConfig;
+
+    try {
+      const absPath = path.resolve(entryPath, configFile);
+      configFromFile = require(absPath);
+    } catch (ex) {
+      console.log(
+        `Failed to load server configuration at ${configFile}. proceeding without it`
+      );
+    }
+
+    const resolvedConfig = copy(
+      {},
+      defaultConfig,
+      configFromFile,
+      config
+    ) as RServerConfig;
+
+    // resolve to numeric value
+    resolvedConfig.maxMemory = expandToNumeric(resolvedConfig.maxMemory);
+
+    const directoriesToResolve: Array<keyof RServerConfig> = [
+      'accessLog',
+      'errorLog',
+      'tempDir',
+    ];
+    directoriesToResolve.forEach((key) => {
+      resolvedConfig[key as any] = path.resolve(
+        entryPath,
+        resolvedConfig[key as any]
+      );
+    });
+
+    return resolvedConfig;
+  }
+
+  private createServers(
+    opts: ServerConstructorOptions<Http1Rq, Http2Rq, Http1Rs, Http2Rs>
+  ) {
+    const { https } = this.config;
+
+    // create a non secure server if https is not enabled or
+    // if we should redirect http to https
+    if (!https.enabled || https.enforce) {
+      this.server = createServer(
+        {
+          IncomingMessage: opts?.Http1ServerRequest || Http1Request,
+          // @ts-ignore
+          ServerResponse: opts?.Http1ServerResponse || Http1Response,
+        },
+        null
+      );
+    }
+
+    // create secure server if enabled
+    if (https.enabled) {
+      const credentials = Object.keys(https.credentials).reduce(
+        (result, key) => {
+          const value = https.credentials[key];
+          result[key] =
+            key === 'passphrase'
+              ? value
+              : fs.readFileSync(path.resolve(this.entryPath, value));
+          return result;
+        },
+        {}
+      );
+
+      switch (https.version) {
+        case '1':
+          // @ts-ignore
+          this.secureServer = createHttp1SecureServer(
+            {
+              ...credentials,
+              IncomingMessage: opts?.Http1ServerRequest || Http1Request,
+              // @ts-ignore
+              ServerResponse: opts?.Http1ServerResponse || Http1Response,
+            },
+            null
+          );
+          break;
+
+        default:
+          this.secureServer = createHttp2SecureServer(
+            {
+              ...credentials,
+
+              Http2ServerRequest: opts?.Http2ServerRequest || Http2Request,
+              // @ts-ignore
+              Http2ServerResponse: opts?.Http2ServerResponse || Http2Response,
+
+              allowHTTP1: true,
+            },
+            null
+          );
+      }
     }
   }
 
   /**
-   * returns the env variable
+   * server root directory
    */
-  get env() {
-    return this.config.env;
+  get rootDir() {
+    return this.entryPath;
   }
 
   /**
@@ -138,56 +251,14 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
   }
 
   /**
-   * resolves and merges the configuration objects
-   */
-  private resolveConfig(
-    entryPath: string,
-    configFile?: string,
-    config?: Config
-  ): RServerConfig {
-    let configFromFile: RServerConfig;
-
-    if (configFile) {
-      const absPath = path.resolve(entryPath, configFile);
-      if (fs.existsSync(absPath)) {
-        configFromFile = require(absPath);
-      }
-    }
-
-    const resolvedConfig = copy(
-      {},
-      defaultConfig,
-      configFromFile,
-      config
-    ) as RServerConfig;
-
-    resolvedConfig.env =
-      resolvedConfig.env || (process.env.NODE_ENV as Env) || 'development';
-
-    // resolve to numeric value
-    resolvedConfig.maxMemory = expandToNumeric(resolvedConfig.maxMemory);
-
-    // resolve ports
-    if (!resolvedConfig.port) {
-      resolvedConfig.port = Number.parseInt(process.env.PORT || '8000');
-    }
-
-    if (!resolvedConfig.https.port) {
-      resolvedConfig.https.port = Number.parseInt(
-        process.env.HTTPS_PORT || '9000'
-      );
-    }
-
-    resolvedConfig.entryPath = entryPath;
-    return resolvedConfig;
-  }
-
-  /**
    * returns server intro
    */
-  private getServerIntro(server: HttpServer | HttpsServer) {
+  private getServerIntro(
+    server: HttpServer | Http2SecureServer,
+    isSecureServer?: boolean
+  ) {
     const result = {
-      name: server instanceof HttpsServer ? 'Https' : 'Http',
+      name: isSecureServer ? 'https' : 'http',
       address: '',
     };
 
@@ -223,8 +294,8 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
   private async cordinateRoutes(
     url: Url,
     method: string,
-    request: Request,
-    response: Response
+    request: ServerRequest,
+    response: ServerResponse
   ) {
     method = method.toLowerCase();
 
@@ -258,7 +329,7 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
   /**
    * perform house keeping
    */
-  private onResponseFinish(request: Request, response: Response) {
+  private onResponseFinish(request: ServerRequest, response: ServerResponse) {
     response.endedAt = new Date();
     this.bodyParser.cleanUpTempFiles(request.files);
     this.logger.profile(request, response);
@@ -267,7 +338,7 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
   /**
    * parse all request data
    */
-  private parseRequestData(request: Request, url: Url) {
+  private parseRequestData(request: ServerRequest, url: Url) {
     //parse query
     request.query = this.bodyParser.parseQueryString(url);
 
@@ -284,45 +355,49 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
       request.body = result.body;
       request.files = result.files;
     }
+
     copy(request.data, request.query, request.body);
   }
 
   /**
    * handle onrequest end event
    */
-  private onRequestEnd(request: Request, response: Response) {
+  private onRequestEnd(request: ServerRequest, response: ServerResponse) {
     if (request.error) {
       return;
     }
 
     request.endedAt = response.startedAt = new Date();
+    const { url } = request;
 
-    let { url, method } = request;
+    this.parseRequestData(request, url);
+    const method = request.method.toLowerCase() as Method;
 
-    this.parseRequestData(request, url as string);
-    return this.cordinateRoutes(
-      url as string,
-      method as string,
-      request,
-      response
-    ).then((status) => {
-      if (!status) {
-        const fileServer = new FileServer(this.config, request, response);
-        return fileServer.serve(url as string).then((status) => {
-          if (!status) {
-            return fileServer.serveHttpErrorFile(404);
-          }
-          return true;
-        });
+    return this.cordinateRoutes(url, method, request, response).then(
+      (status) => {
+        if (!status) {
+          return this.fileServer
+            .serve(url, method, request.headers, response)
+            .then((status) => {
+              if (!status) {
+                return this.fileServer.serveHttpErrorFile(404, response);
+              }
+              return true;
+            });
+        }
+        return true;
       }
-      return true;
-    });
+    );
   }
 
   /**
    * handle on request error event
    */
-  private onRequestError(err: Error, request: Request, response: Response) {
+  private onRequestError(
+    err: Error,
+    request: ServerRequest,
+    response: ServerResponse
+  ) {
     request.error = true;
     handleError(err, response);
   }
@@ -330,10 +405,11 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
   /**
    * handle request data event
    */
-  private onRequestData(chunk: Buffer, request: Request, response: Response) {
+  private onRequestData(chunk: Buffer, request: ServerRequest) {
     if (!request.entityTooLarge) {
       const newEntityLength = request.buffer.length + chunk.length;
-      if (!this.config.maxMemory || newEntityLength <= this.config.maxMemory) {
+      const maxMemory = this.config.maxMemory as number;
+      if (!maxMemory || newEntityLength <= maxMemory) {
         request.buffer = Buffer.concat([request.buffer, chunk]);
       } else {
         request.entityTooLarge = true;
@@ -346,28 +422,28 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
    * handles onrequest events
    */
   private onRequest(
-    request: Request,
-    response: Response,
-    server: HttpServer | HttpsServer
+    request: ServerRequest,
+    response: ServerResponse,
+    isSecureServer: boolean
   ) {
-    request.method = request.method.toLowerCase() as any;
     request.startedAt = new Date();
+    request.encrypted = isSecureServer;
 
-    request.hostname = (request.headers['host'] as string).replace(/:\d+$/, '');
-    request.encrypted = server instanceof HttpsServer;
-
-    response.config = this.config;
+    response.fileServer = this.fileServer;
     response.logger = this.logger;
     response.req = request;
+
     response.errorCallback = this.errorCallback;
+
+    request.init(isSecureServer);
 
     //enforce https if set
     const httpsConfig = this.config.https;
     if (httpsConfig.enabled && !request.encrypted && httpsConfig.enforce) {
       response.redirect(
         `https://${path.join(
-          request.hostname + ':' + httpsConfig.port,
-          request.url as string
+          request.hostname + ':' + this.address().https.port,
+          request.url
         )}`
       );
     } else {
@@ -400,10 +476,14 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
   /**
    * binds all event handlers on the server
    */
-  private closeServer(server: HttpServer | HttpsServer, resolve, reject) {
+  private closeServer(server: HttpServer | Http2SecureServer, resolve, reject) {
     if (server && server.listening) {
       server.close((err) => {
-        resolve(true);
+        if (err) {
+          reject(err);
+        } else {
+          resolve(true);
+        }
       });
     } else {
       resolve(true);
@@ -413,11 +493,28 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
   /**
    * binds all event handlers on the server
    */
-  private initServer(server: HttpServer | HttpsServer, resolve, reject) {
-    //handle error event
+  private initServer(
+    server: HttpServer | Http2SecureServer,
+    isSecureServer: boolean,
+    resolve,
+    reject
+  ) {
+    const activeSessions = new Set<ServerHttp2Session>();
+
+    if (!server) {
+      return resolve();
+    }
+
+    // store active sessions
     server
+      .on('session', (session) => {
+        activeSessions.add(session);
+        session.on('close', () => activeSessions.delete(session));
+      })
+
+      //handle error event
       .on('error', (err: any) => {
-        const intro = this.getServerIntro(server);
+        const intro = this.getServerIntro(server, isSecureServer);
         this.logger.warn(
           `${intro.name} Server Error: ${err.code} ${err.message}`
         );
@@ -425,7 +522,7 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
       })
 
       // handle client error
-      .on('clientError', (err, socket) => {
+      .on('clientError', (err: any, socket) => {
         if ((err && err.code === 'ECONNRESET') || !socket || !socket.writable) {
           return;
         }
@@ -434,29 +531,30 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
 
       //handle server listening event
       .on('listening', () => {
-        const intro = this.getServerIntro(server);
+        const intro = this.getServerIntro(server, isSecureServer);
         this.logger.info(`${intro.name} server started at ${intro.address}`);
         resolve(true);
       })
 
       // handle close event
       .on('close', () => {
-        const intro = this.getServerIntro(server);
+        // destroy all active sessions
+        activeSessions.forEach((session) => session.close());
+        activeSessions.clear();
+
+        const intro = this.getServerIntro(server, isSecureServer);
         this.logger.info(`${intro.name} connection closed successfully`);
       })
 
       //handle server request
-      .on('request', scopeCallback(this.onRequest, this, server));
+      .on('request', scopeCallback(this.onRequest, this, isSecureServer));
   }
 
   /**
    * returns boolean indicating if the server is listening
    */
   get listening() {
-    return (
-      (this.httpsServer && this.httpsServer.listening) ||
-      this.httpServer.listening
-    );
+    return Boolean(this.server?.listening || this.secureServer?.listening);
   }
 
   /**
@@ -477,7 +575,7 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
    * returns the resolved server config object
    */
   getConfig() {
-    return this.config;
+    return this.config as Required<RServerConfig>;
   }
 
   /**
@@ -690,8 +788,6 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
       return Promise.resolve(true);
     }
 
-    this.createServers();
-
     let resolvedPortConfig: { httpPort?: number; httpsPort?: number } = {};
     if (isObject(port)) {
       resolvedPortConfig = port;
@@ -702,18 +798,21 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
     const { httpPort = this.config.port, httpsPort = this.config.https.port } =
       resolvedPortConfig;
 
-    return new Promise((resolve, reject) => {
-      this.initServer(this.httpServer, resolve, reject);
-      this.httpServer.listen(httpPort);
-    }).then(() => {
-      if (this.httpsServer !== null) {
-        return new Promise((resolve, reject) => {
-          this.initServer(this.httpsServer, resolve, reject);
-          this.httpsServer.listen(httpsPort);
-        });
-      }
-      return true;
-    });
+    return Promise.all([
+      this.server
+        ? new Promise((resolve, reject) => {
+            this.initServer(this.server, false, resolve, reject);
+            this.server.listen(httpPort || 8000);
+          })
+        : Promise.resolve(null),
+
+      this.secureServer
+        ? new Promise((resolve, reject) => {
+            this.initServer(this.secureServer, true, resolve, reject);
+            this.secureServer.listen(httpsPort || 9000);
+          })
+        : Promise.resolve(null),
+    ]).then(() => true);
   }
 
   /**
@@ -724,13 +823,12 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
     if (!this.listening) {
       return Promise.resolve(true);
     }
-
     return Promise.all([
       new Promise((resolve, reject) => {
-        this.closeServer(this.httpServer, resolve, reject);
+        this.closeServer(this.server, resolve, reject);
       }),
       new Promise((resolve, reject) => {
-        this.closeServer(this.httpsServer, resolve, reject);
+        this.closeServer(this.secureServer, resolve, reject);
       }),
     ]).then(() => true);
   }
@@ -744,12 +842,13 @@ export class App<Rq extends Request = Request, Rs extends Response = Response> {
       https: null,
     };
 
-    if (this.httpServer.listening) {
-      result.http = this.httpServer.address() as AddressInfo;
+    if (this.server?.listening) {
+      result.http = this.server.address() as AddressInfo;
     }
-    if (this.httpsServer && this.httpsServer.listening) {
-      result.https = this.httpsServer.address() as AddressInfo;
+    if (this.secureServer?.listening) {
+      result.https = this.secureServer.address() as AddressInfo;
     }
+
     return result;
   }
 }

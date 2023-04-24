@@ -1,6 +1,5 @@
 import { FileServer } from '../../src/modules/FileServer';
-import { App } from '../../src/modules/App';
-import { Logger } from '../../src/modules/Logger';
+import { Server } from '../../src/modules/Server';
 import {
   httpHost,
   resolvePath,
@@ -11,28 +10,26 @@ import { readFileSync, statSync } from 'fs';
 import { ALLOWED_METHODS } from '../../src/modules/Constants';
 
 describe(`FileServer`, function () {
-  let app: App;
-  let logger: Logger;
-
-  const createFileServer = (req, res) => {
-    return new FileServer(app.getConfig(), req, res);
-  };
+  let server: Server;
+  let fileServer: FileServer;
 
   beforeEach(function () {
-    app = new App({});
-    logger = new Logger(app.getConfig());
+    server = new Server({});
+    const configs = server.getConfig();
+    fileServer = new FileServer(server.rootDir, configs);
   });
 
   describe(`serve(url: Url, method: Method, request: Request,
         response: Response): Promise<boolean>`, function () {
     it(`should respond to get requests made on public static files, serving such file
             back to the client`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/index.html');
+      server.get('/', (req, res) => {
+        return fileServer.serve('/index.html', req.method, req.headers, res);
       });
+
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost }).then((res) => {
             expect(res.body).toEqual(
               readFileSync(resolvePath('public/index.html'), 'utf8')
@@ -44,12 +41,12 @@ describe(`FileServer`, function () {
 
     it(`should respond to options requests made on public static files, responding with
             allow header`, function () {
-      app.options('/', (req, res) => {
-        return createFileServer(req, res).serve('/index.html');
+      server.options('/', (req, res) => {
+        return fileServer.serve('/index.html', req.method, req.headers, res);
       });
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost, method: 'options' }).then(
             (res) => {
               expect(res.headers).toHaveProperty(
@@ -64,13 +61,13 @@ describe(`FileServer`, function () {
 
     it(`should respond to head requests made on public static files, responding with
             header information about the file`, function () {
-      app.head('/', (req, res) => {
-        return createFileServer(req, res).serve('/index.html');
+      server.head('/', (req, res) => {
+        return fileServer.serve('/index.html', req.method, req.headers, res);
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost, method: 'head' }).then((res) => {
             expect(res.headers).toHaveProperty('content-type', 'text/html');
             expect(res.headers).toHaveProperty('accept-ranges', 'bytes');
@@ -83,13 +80,12 @@ describe(`FileServer`, function () {
     });
 
     it(`should search for a default document if specified path maps to a folder`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/');
+      server.get('/', (req, res) => {
+        return fileServer.serve('/', req.method, req.headers, res);
       });
-
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost, method: 'get' }).then((res) => {
             expect(res.body).toEqual(
               readFileSync(resolvePath('public/index.html'), 'utf8')
@@ -101,9 +97,9 @@ describe(`FileServer`, function () {
 
     it(`should do nothing and resolve to false if request method is neither get, head nor options
             method`, function () {
-      app.post('/', (req, res) => {
-        return createFileServer(req, res)
-          .serve('/index.html')
+      server.post('/', (req, res) => {
+        return fileServer
+          .serve('/index.html', req.method, req.headers, res)
           .then((status) => {
             if (status === false) {
               return res.end('correct');
@@ -114,8 +110,8 @@ describe(`FileServer`, function () {
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost, method: 'post' }).then((res) => {
             expect(res.body).toEqual('correct');
           });
@@ -125,9 +121,9 @@ describe(`FileServer`, function () {
 
     it(`should do nothing and resolve to false if specified file does not exist or if it
             maps to a folder that has no default document`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res)
-          .serve('/media')
+      server.get('/', (req, res) => {
+        return fileServer
+          .serve('/media', req.method, req.headers, res)
           .then((status) => {
             if (status === false) {
               return res.end('correct');
@@ -138,8 +134,8 @@ describe(`FileServer`, function () {
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost, method: 'get' }).then((res) => {
             expect(res.body).toEqual('correct');
           });
@@ -150,13 +146,13 @@ describe(`FileServer`, function () {
     it(`should respond with 304 response header to get requests made on public static files,
             if file is not modified since it was last served to the client using the sent
             if-none-match header`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/index.html');
+      server.get('/', (req, res) => {
+        return fileServer.serve('/index.html', req.method, req.headers, res);
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost }).then((res) => {
             expect(res.statusCode).toEqual(200);
             const headers = {
@@ -174,13 +170,13 @@ describe(`FileServer`, function () {
     it(`should respond with 304 response header to get requests made on public static files,
             if file is not modified since it was last served to the client using the sent
             if-modified-since header`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/index.html');
+      server.get('/', (req, res) => {
+        return fileServer.serve('/index.html', req.method, req.headers, res);
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost }).then((res) => {
             expect(res.statusCode).toEqual(200);
             const headers = {
@@ -200,7 +196,7 @@ describe(`FileServer`, function () {
         response: Response, status: number): Promise<boolean>`, function () {
     it(`should serve the user defined http error file for the given status code`, function () {
       const file = 'tests/helpers/404.html';
-      app = new App({
+      server = new Server({
         config: {
           httpErrors: {
             404: file,
@@ -208,16 +204,17 @@ describe(`FileServer`, function () {
         },
       });
 
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serveHttpErrorFile(404);
+      fileServer = new FileServer(server.rootDir, server.getConfig());
+
+      server.get('/', (req, res) => {
+        return fileServer.serveHttpErrorFile(404, res);
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost }).then((res) => {
             expect(res.statusCode).toEqual(404);
-
             expect(res.body).toEqual(readFileSync(resolvePath(file), 'utf8'));
           });
         })
@@ -226,13 +223,13 @@ describe(`FileServer`, function () {
 
     it(`should default to its internal http error file if there is none defined for the
             given status code by the user`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serveHttpErrorFile(404);
+      server.get('/', (req, res) => {
+        return fileServer.serveHttpErrorFile(404, res);
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost }).then((res) => {
             expect(res.statusCode).toEqual(404);
 
@@ -246,13 +243,13 @@ describe(`FileServer`, function () {
 
     it(`should simply end the response with no data sent if there is no http file for the
             given status code`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serveHttpErrorFile(500);
+      server.get('/', (req, res) => {
+        return fileServer.serveHttpErrorFile(500, res);
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost }).then((res) => {
             expect(res.statusCode).toEqual(500);
 
@@ -269,13 +266,13 @@ describe(`FileServer`, function () {
             the file as download attachment to the client`, function () {
       const file = 'public/media/image.jpg';
 
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serveDownload(file, 'preview.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serveDownload(file, res, 'preview.jpg');
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost }).then((res) => {
             expect(res.headers).toHaveProperty(
               'content-disposition',
@@ -288,13 +285,13 @@ describe(`FileServer`, function () {
 
     it(`should generate a download suggested filename if not given, based on the file name`, function () {
       const file = 'public/media/image.jpg';
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serveDownload(file);
+      server.get('/', (req, res) => {
+        return fileServer.serveDownload(file, res);
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost }).then((res) => {
             expect(res.headers).toHaveProperty(
               'content-disposition',
@@ -308,13 +305,13 @@ describe(`FileServer`, function () {
     it(`should search public folders for the given files if file could not be
             resolved`, function () {
       const file = 'media/image.jpg';
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serveDownload(file, 'preview.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serveDownload(file, res, 'preview.jpg');
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost }).then((res) => {
             expect(res.headers).toHaveProperty(
               'content-disposition',
@@ -325,22 +322,17 @@ describe(`FileServer`, function () {
       );
     });
 
-    it(`should reject with error if given file could not be found`, function () {
+    it(`should reject and return 404 if given file could not be found`, function () {
       const file = 'media/unknown.jpg';
-      app.get('/', (req, res) => {
-        return createFileServer(req, res)
-          .serveDownload(file, 'preview.jpg')
-          .catch((ex) => {
-            res.end('correct');
-            return true;
-          });
+      server.get('/', (req, res) => {
+        return fileServer.serveDownload(file, res, 'preview.jpg');
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.body).toEqual('correct');
+            expect(res.statusCode).toEqual(404);
           });
         })
       );
@@ -353,13 +345,18 @@ describe(`FileServer`, function () {
 
     it(`should respond and handle range requests, responding appropriately with the requested
         range of data`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/media/image.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serve(
+          '/media/image.jpg',
+          req.method,
+          req.headers,
+          res
+        );
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({
             uri: httpHost,
             headers: {
@@ -378,13 +375,18 @@ describe(`FileServer`, function () {
 
     it(`should respond and handle range requests, sending the last suffix bytes as indicated
             by the given suffix-byte-range`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/media/image.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serve(
+          '/media/image.jpg',
+          req.method,
+          req.headers,
+          res
+        );
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({
             uri: httpHost,
             headers: {
@@ -403,13 +405,18 @@ describe(`FileServer`, function () {
 
     it(`should respond and handle range requests, sending the whole bytes if the given
             suffix-byte-range is not less than the file size`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/media/image.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serve(
+          '/media/image.jpg',
+          req.method,
+          req.headers,
+          res
+        );
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({
             uri: httpHost,
             headers: {
@@ -428,13 +435,18 @@ describe(`FileServer`, function () {
 
     it(`should respond and handle range requests, sending from the given beginning byte to the
             end of the file if there is no end byte specified`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/media/image.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serve(
+          '/media/image.jpg',
+          req.method,
+          req.headers,
+          res
+        );
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({
             uri: httpHost,
             headers: {
@@ -456,13 +468,18 @@ describe(`FileServer`, function () {
 
     it(`should respond and reject the range, if the ending range byte is less than the
             beginning byte`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/media/image.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serve(
+          '/media/image.jpg',
+          req.method,
+          req.headers,
+          res
+        );
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({
             uri: httpHost,
             headers: {
@@ -481,13 +498,18 @@ describe(`FileServer`, function () {
 
     it(`should respond and reject the range, if the given suffix range byte is a zero length
             byte`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/media/image.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serve(
+          '/media/image.jpg',
+          req.method,
+          req.headers,
+          res
+        );
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({
             uri: httpHost,
             headers: {
@@ -506,13 +528,18 @@ describe(`FileServer`, function () {
 
     it(`should respond and reject the range, if the beginning range byte is not
             less than file size`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/media/image.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serve(
+          '/media/image.jpg',
+          req.method,
+          req.headers,
+          res
+        );
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({
             uri: httpHost,
             headers: {
@@ -530,13 +557,18 @@ describe(`FileServer`, function () {
     });
 
     it(`should respond and reject the range, if the given range is not in valid format`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/media/image.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serve(
+          '/media/image.jpg',
+          req.method,
+          req.headers,
+          res
+        );
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({
             uri: httpHost,
             headers: {
@@ -555,13 +587,18 @@ describe(`FileServer`, function () {
 
     it(`should send everything for valid multi range requests, as we don't support
             it yet`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/media/image.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serve(
+          '/media/image.jpg',
+          req.method,
+          req.headers,
+          res
+        );
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({
             uri: httpHost,
             headers: {
@@ -581,13 +618,18 @@ describe(`FileServer`, function () {
 
     it(`should respond to if-range conditional request, sending the range if content
             negotiation succeeds`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/media/image.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serve(
+          '/media/image.jpg',
+          req.method,
+          req.headers,
+          res
+        );
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost }).then((res) => {
             expect(res.statusCode).toEqual(200);
             const headers = {
@@ -609,13 +651,18 @@ describe(`FileServer`, function () {
 
     it(`should respond to if-range conditional request, sending the whole content on a 200
             status code if content negotiation fails`, function () {
-      app.get('/', (req, res) => {
-        return createFileServer(req, res).serve('/media/image.jpg');
+      server.get('/', (req, res) => {
+        return fileServer.serve(
+          '/media/image.jpg',
+          req.method,
+          req.headers,
+          res
+        );
       });
 
       return withTeardown(
-        app,
-        app.listen().then(() => {
+        server,
+        server.listen().then(() => {
           return sendRequest({ uri: httpHost }).then((res) => {
             expect(res.statusCode).toEqual(200);
             const headers = {

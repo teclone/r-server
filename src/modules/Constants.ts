@@ -13,7 +13,7 @@ export const ERROR_LEVELS = {
   FATAL: 'FATAL',
 };
 
-export const ALLOWED_METHODS = ['OPTIONS', 'HEAD', 'GET', 'POST'];
+export const ALLOWED_METHODS = ['OPTIONS', 'HEAD', 'GET', 'POST', 'PUT'];
 
 export const CRLF = '\r\n';
 
@@ -34,3 +34,5 @@ export const ROUTE_KEYS: Array<keyof Routes> = [
   'put',
   'delete',
 ];
+
+export const DEFAULT_CONFIG_FILE = '.server.config.js';
