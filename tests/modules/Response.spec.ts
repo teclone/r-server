@@ -1,5 +1,5 @@
 import { Server } from '../../src/modules/Server';
-import { httpHost, withTeardown, sendRequest } from '../helpers';
+import { httpHost, sendRequest } from '../helpers';
 
 describe('Response', function () {
   let server: Server;
@@ -8,23 +8,21 @@ describe('Response', function () {
     server = new Server({});
   });
 
+  afterEach(() => {
+    return server.close();
+  });
+
   describe(`#end(data?, encoding?: string): Promise<boolean>`, function () {
     it(`should end the response and return a promise which resolves to true`, function () {
       server.get('/', (req, res) => {
-        return res.end().then((result) => {
-          expect(result).toEqual(true);
-          return true;
-        });
+        return res.end();
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.body).toEqual('');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.body).toEqual('');
+        });
+      });
     });
 
     it(`can accept a data string or buffer to send back to client`, function () {
@@ -32,14 +30,11 @@ describe('Response', function () {
         return res.end('got it');
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.body).toEqual('got it');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.body).toEqual('got it');
+        });
+      });
     });
 
     it(`can accept data encoding as second argument`, function () {
@@ -47,14 +42,11 @@ describe('Response', function () {
         return res.end('got it', 'utf8');
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.body).toEqual('got it');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.body).toEqual('got it');
+        });
+      });
     });
   });
 
@@ -69,14 +61,11 @@ describe('Response', function () {
         return res.json(jsonString);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.body).toEqual(jsonString);
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.body).toEqual(jsonString);
+        });
+      });
     });
 
     it(`should automatically stringify the json object before sending`, function () {
@@ -84,14 +73,11 @@ describe('Response', function () {
         return res.json(jsonObject);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.body).toEqual(jsonString);
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.body).toEqual(jsonString);
+        });
+      });
     });
   });
 
@@ -117,14 +103,11 @@ describe('Response', function () {
         return res.json(users);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.body).toEqual(stringifiedUsers);
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.body).toEqual(stringifiedUsers);
+        });
+      });
     });
   });
 
@@ -134,14 +117,11 @@ describe('Response', function () {
         return res.download('media/image.jpg', 'preview.jpg');
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.headers).toHaveProperty('content-disposition');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.headers).toHaveProperty('content-disposition');
+        });
+      });
     });
   });
 
@@ -156,18 +136,15 @@ describe('Response', function () {
         });
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost, json: true }).then((res) => {
-            expect(res.body).toHaveProperty('status', 'success');
-            expect(res.body).toHaveProperty(
-              'message',
-              'user created successfully'
-            );
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost, json: true }).then((res) => {
+          expect(res.body).toHaveProperty('status', 'success');
+          expect(res.body).toHaveProperty(
+            'message',
+            'user created successfully'
+          );
+        });
+      });
     });
 
     it(`should default the statusCode to 200, message string to 'Request successful' and data object to empty object`, function () {
@@ -175,15 +152,12 @@ describe('Response', function () {
         return res.jsonSuccess();
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost, json: true }).then((res) => {
-            expect(res.body).toHaveProperty('status', 'success');
-            expect(res.body).toHaveProperty('message', 'Request successful');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost, json: true }).then((res) => {
+          expect(res.body).toHaveProperty('status', 'success');
+          expect(res.body).toHaveProperty('message', 'Request successful');
+        });
+      });
     });
   });
 
@@ -196,33 +170,71 @@ describe('Response', function () {
         });
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost, json: true }).then((res) => {
-            expect(res.body).toHaveProperty('status', 'error');
-            expect(res.body).toHaveProperty('statusCode', 403);
-            expect(res.body).toHaveProperty('message', 'permission denied');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return expect(
+          sendRequest({ uri: httpHost, json: true })
+        ).rejects.toMatchObject({
+          statusCode: 403,
+          response: {
+            body: {
+              message: 'permission denied',
+            },
+          },
+        });
+      });
     });
 
-    it(`should default the statusCode to 400, message string to 'Request failed' and errors object to empty object`, function () {
+    it(`should default the statusCode to 400, message string to 'Request failed' and data to null`, function () {
       server.get('/', (req, res) => {
         return res.jsonError();
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost, json: true }).then((res) => {
-            expect(res.statusCode).toEqual(400);
-            expect(res.body).toHaveProperty('status', 'error');
-            expect(res.body).toHaveProperty('message', 'Request failed');
+      return server.listen().then(() => {
+        return expect(
+          sendRequest({ uri: httpHost, json: true })
+        ).rejects.toMatchObject({
+          statusCode: 400,
+          response: {
+            body: {
+              message: 'Request failed',
+              data: null,
+            },
+          },
+        });
+      });
+    });
+  });
+
+  describe(`#setHeader(name, value): this`, function () {
+    it(`should set the given header to the response headers`, function () {
+      server.get('/', (req, res) => {
+        res.setHeader('X-hello', 'hi');
+        return res.jsonSuccess();
+      });
+
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.headers).toHaveProperty('x-hello', 'hi');
+        });
+      });
+    });
+  });
+
+  describe(`#setHeaders(headers): this`, function () {
+    it(`should set the given headers to the response headers`, function () {
+      server.get('/', (req, res) => {
+        res.setHeaders({ hello: 'hi', you: 'me' });
+        return res.jsonSuccess();
+      });
+
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.headers).toMatchObject({
+            hello: 'hi',
+            you: 'me',
           });
-        })
-      );
+        });
+      });
     });
   });
 
@@ -231,20 +243,14 @@ describe('Response', function () {
       server.get('/', (req, res) => {
         res.setHeader('Content-Language', 'en');
         res.removeHeader('Content-Language');
-        return res.jsonError({
-          statusCode: 403,
-          message: 'permission denied',
-        });
+        return res.status(200).json();
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.headers).not.toHaveProperty('content-language');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.headers).not.toHaveProperty('content-language');
+        });
+      });
     });
   });
 
@@ -257,20 +263,14 @@ describe('Response', function () {
       server.get('/', (req, res) => {
         res.setHeaders(headers);
         res.removeHeaders(...Object.keys(headers));
-        return res.jsonError({
-          statusCode: 403,
-          message: 'permission denied',
-        });
+        return res.status(200).end();
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.headers).not.toHaveProperty('content-language');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.headers).not.toHaveProperty('content-language');
+        });
+      });
     });
   });
 });

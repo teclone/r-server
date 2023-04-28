@@ -1,7 +1,7 @@
 const { createConfig } = require('./build/cjs');
 module.exports = createConfig({
   https: {
-    enabled: true,
+    enabled: false,
     enforce: true,
     credentials: {
       key: '.cert/server.key',

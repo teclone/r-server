@@ -57,7 +57,7 @@ export class FileServer {
   private validateRangeRequest(
     headers: IncomingHttpHeaders,
     eTag: string,
-    fileMTime: string,
+    lastModified: Date,
     fileSize: number
   ) {
     const result: {
@@ -72,7 +72,7 @@ export class FileServer {
     const ifRange = headers['if-range'];
 
     //check if we should send everything
-    if (!isUndefined(ifRange) && ifRange !== eTag && ifRange !== fileMTime) {
+    if (ifRange && ifRange !== eTag) {
       result.statusCode = 200;
       result.ranges.push({ start: 0, end: fileSize - 1, length: fileSize });
       return result;
@@ -122,21 +122,45 @@ export class FileServer {
   /**
    * check if file is  modified
    */
-  private isFileModified(
+  private doesClientNeedContent(
     headers: IncomingHttpHeaders,
-    eTag: string,
-    fileMTime: string
+    contentTag: string,
+    contentLastModified: Date
   ): boolean {
+    if (!contentTag && !contentLastModified) {
+      return true;
+    }
+
     if (
-      !isUndefined(headers['if-none-match']) &&
-      headers['if-none-match'] === eTag
+      !headers['if-none-match'] &&
+      !headers['if-match'] &&
+      !headers['if-modified-since'] &&
+      !headers['if-unmodified-since']
     ) {
-      return false;
-    } else if (
-      !isUndefined(headers['if-modified-since']) &&
-      headers['if-modified-since'] === fileMTime
-    ) {
-      return false;
+      return true;
+    }
+
+    // check if match conditions
+    if (headers['if-match']) {
+      return contentTag === headers['if-match'];
+    }
+
+    if (headers['if-none-match']) {
+      return contentTag !== headers['if-none-match'];
+    }
+
+    if (headers['if-modified-since']) {
+      return (
+        !contentLastModified ||
+        contentLastModified > new Date(headers['if-modified-since'])
+      );
+    }
+
+    if (headers['if-unmodified-since']) {
+      return (
+        !contentLastModified ||
+        contentLastModified <= new Date(headers['if-unmodified-since'])
+      );
     }
 
     return true;
@@ -157,14 +181,27 @@ export class FileServer {
    */
   private getFileDefaultHeaders(filePath: string) {
     const stat = fs.statSync(filePath);
+    const eTag = this.computeETag(stat.mtime);
+
+    const lastModified = stat.mtime;
+
+    // it is important to remove milliseconds
+    // to match date time format of last-modified header
+    lastModified.setUTCMilliseconds(0);
+
     return {
-      'Content-Type':
-        mime.lookup(path.parse(filePath).ext.substring(1)) ||
-        'application/octet-stream',
-      'Last-Modified': stat.mtime.toString(),
-      'Content-Length': stat.size.toString(),
-      ETag: this.computeETag(stat.mtime),
-      'Cache-Control': this.config.cacheControl,
+      lastModified,
+      eTag,
+      fileSize: stat.size,
+      headers: {
+        'Content-Type':
+          mime.lookup(path.parse(filePath).ext.substring(1)) ||
+          'application/octet-stream',
+        'Last-Modified': lastModified.toUTCString(),
+        'Content-Length': stat.size.toString(),
+        ETag: eTag,
+        'Cache-Control': this.config.cacheControl,
+      },
     };
   }
 
@@ -187,20 +224,21 @@ export class FileServer {
         .end();
     }
 
-    const resHeaders = this.getFileDefaultHeaders(filePath);
+    const {
+      headers: resHeaders,
+      eTag,
+      lastModified,
+      fileSize,
+    } = this.getFileDefaultHeaders(filePath);
 
     if (requestMethod === 'head') {
       resHeaders['Accept-Ranges'] = 'bytes';
       return response.status(200).setHeaders(resHeaders).end();
     }
 
-    const eTag = resHeaders['ETag'];
-    const lastModified = resHeaders['Last-Modified'];
-    const fileSize = Number.parseInt(resHeaders['Content-Length']);
-
     //if it is not a range request, negotiate content
     if (isUndefined(requestHeaders['range'])) {
-      if (!this.isFileModified(requestHeaders, eTag, lastModified)) {
+      if (!this.doesClientNeedContent(requestHeaders, eTag, lastModified)) {
         return response.status(304).end();
       } else {
         return this.streamFile(filePath, response, 200, resHeaders);
@@ -305,10 +343,10 @@ export class FileServer {
       stripSlashes(requestPath),
       requestMethod
     );
-
     if (filePath) {
       return this.process(filePath, requestMethod, requestHeaders, response);
     }
+
     return Promise.resolve(false);
   }
 
@@ -341,7 +379,7 @@ export class FileServer {
         filePath,
         response,
         errorStatusCode,
-        this.getFileDefaultHeaders(filePath)
+        this.getFileDefaultHeaders(filePath).headers
       );
     }
   }
@@ -369,7 +407,9 @@ export class FileServer {
     }
 
     if (!found) {
-      return response.status(404).end(`${filePath} not found`);
+      return Promise.reject(
+        new Error(`Could not locate download file at ${filePath}`)
+      );
     } else {
       filename = isString(filename) ? filename : path.parse(absPath).base;
       return this.streamFile(absPath, response, 200, {

@@ -5,8 +5,7 @@ import { Method } from '../../src/@types';
 
 describe('Wrapper', function () {
   const url = '/user';
-  let wrapper: Wrapper = null,
-    router: Router = null;
+  let wrapper: Wrapper, router: Router;
 
   beforeEach(function () {
     router = new Router(false);

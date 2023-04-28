@@ -28,7 +28,7 @@ export class Logger {
    * log warning message to the console
    */
   warn(message: string): this {
-    console.log('\x1b[1m\x1b[31m%s\x1b[0m', message);
+    console.log('\x1b[1m\x1b[33m%s\x1b[0m', message);
     return this;
   }
 
@@ -104,7 +104,7 @@ export class Logger {
         res.statusCode,
         requestTime,
         responseTime,
-        req.headers['user-agent']
+        req.headers['user-agent'] || 'unknown-ua'
       );
     }
     return this;
