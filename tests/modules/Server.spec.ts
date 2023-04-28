@@ -3,7 +3,6 @@ import {
   dummyCallback,
   dummyMiddleware,
   httpsEnabledConfig,
-  withTeardown,
   sendRequest,
 } from '../helpers';
 import * as path from 'path';
@@ -38,6 +37,10 @@ describe(`Server`, function () {
 
   beforeEach(function () {
     server = new Server();
+  });
+
+  afterEach(() => {
+    return server.close();
   });
 
   describe('#constructor(options?: ServerConstructorOptions<Rq, Rs>)', function () {
@@ -250,77 +253,59 @@ describe(`Server`, function () {
 
   describe('#listen(port?: number | null)', function () {
     it(`should start the application at the given port, returning a promise`, function () {
-      return withTeardown(
-        server,
-        server.listen(3000).then(() => {
-          expect(server.address().http?.port).toEqual(3000);
-        })
-      );
+      return server.listen(3000).then(() => {
+        expect(server.address().http?.port).toEqual(3000);
+      });
     });
 
     it(`should start up the https app if enabled at a default port of 9000`, function () {
-      const server = new Server({ config: httpsEnabledConfig });
-      return withTeardown(
-        server,
-        server.listen(3000).then(() => {
-          const address = server.address();
-          expect(address.https?.port).toEqual(9000);
-        })
-      );
+      server = new Server({ config: httpsEnabledConfig });
+      return server.listen(3000).then(() => {
+        const address = server.address();
+        expect(address.https?.port).toEqual(9000);
+      });
     });
 
     it(`should default http port parameter to 8000 if no port is set`, function () {
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          expect(server.address().http?.port).toEqual(8000);
-        })
-      );
+      return server.listen().then(() => {
+        expect(server.address().http?.port).toEqual(8000);
+      });
     });
 
     it(`should do nothing if app is already listening`, function () {
-      return withTeardown(
-        server,
-        server
-          .listen()
-          .then(() => server.listen())
-          .then((result) => {
-            expect(result).toEqual(true);
-          })
-      );
+      return server
+        .listen()
+        .then(() => server.listen())
+        .then((result) => {
+          expect(result).toEqual(true);
+        });
     });
   });
 
   describe('#close()', function () {
     it(`should close and stop apps from listening for further connections`, function () {
       const server = new Server({ config: httpsEnabledConfig });
-      return withTeardown(
-        server,
-        server
-          .listen()
-          .then(() => {
-            expect(server.listening).toBeTruthy();
-            return server.close();
-          })
-          .then(() => {
-            expect(server.listening).toBeFalsy();
-          })
-      );
+      return server
+        .listen()
+        .then(() => {
+          expect(server.listening).toBeTruthy();
+          return server.close();
+        })
+        .then(() => {
+          expect(server.listening).toBeFalsy();
+        });
     });
 
     it(`should skip closing https app if it is not enabled`, function () {
-      return withTeardown(
-        server,
-        server
-          .listen()
-          .then(() => {
-            expect(server.listening).toBeTruthy();
-            return server.close();
-          })
-          .then(() => {
-            expect(server.listening).toBeFalsy();
-          })
-      );
+      return server
+        .listen()
+        .then(() => {
+          expect(server.listening).toBeTruthy();
+          return server.close();
+        })
+        .then(() => {
+          expect(server.listening).toBeFalsy();
+        });
     });
 
     it(`should do nothing if app is not listening`, function () {
@@ -345,77 +330,57 @@ describe(`Server`, function () {
     });
 
     it(`each app address should be an AddressInfo when it is listening for connections`, function () {
-      const server = new Server({
+      server = new Server({
         config: { https: { enabled: true, enforce: true } },
       });
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          expect(server.address().http).not.toBeNull();
-          expect(server.address().https).not.toBeNull();
-        })
-      );
+      return server.listen().then(() => {
+        expect(server.address().http).not.toBeNull();
+        expect(server.address().https).not.toBeNull();
+      });
     });
   });
 
-  describe('App Error', function () {
-    // it(`should handle app error such as trying to listen on an already taken port and
-    //     log warning message to the console`, function () {
-    //   const app2 = new Server({});
-    //   server.listen(null, function () {
-    //     expect(function () {
-    //       app2.listen(null);
-    //     }).not.toThrow();
-    //     closeApp(app, done);
-    //   });
-    // });
-  });
+  describe('Listen Errors', function () {
+    it(`should reject with error if listen operation fails for any reason`, function () {
+      const server2 = new Server({});
 
-  describe('Client Error', function () {
-    it(`should handle every client error on the app by simply ending the socket`, function () {
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          // @ts-ignore
-          server.server.emit('clientError');
+      return server
+        .listen()
+        .then(() => {
+          expect(server.listening).toBeTruthy();
+          return expect(server2.listen()).rejects.toThrow();
         })
-      );
+        .then(() => {
+          expect(server2.listening).toEqual(false);
+        });
+    });
 
-      // server.listen(null, function() {
-      //   expect(function() {
-      //     server.httpserver.emit('clientError');
-      //     closeApp(app, done);
-      //   }).not.toThrow();
-      // });
+    it(`should avoid listening again if server is already listening, and log warning to console (dev mode only)`, function () {
+      return server.listen().then(() => {
+        expect(server.listening).toBeTruthy();
+        return expect(server.listen()).resolves.toEqual(true);
+      });
     });
   });
 
   describe('Request Error', function () {
     it(`should handle every request error on the server, ending the request`, function () {
       server.get('say-hi', (req, res) => {
-        console.log('emitting error');
         req.emit('error', new Error('request error'));
         return res.end();
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest(`${httpHost}say-hi`)
-            .then((res) => {
-              expect(res.status).toEqual(500);
-            })
-            .catch((ex) => {
-              console.log(ex);
-            });
-        })
-      );
+      return server.listen().then(async () => {
+        return expect(
+          sendRequest({ uri: `${httpHost}say-hi` })
+        ).rejects.toHaveProperty('statusCode', 400);
+      });
     });
   });
 
   describe('413 Response code', function () {
     it(`should send 413 error code if request data exceeds app maxMemory value`, function () {
-      const server = new Server({
+      server = new Server({
         config: {
           maxMemory: 10,
         },
@@ -430,52 +395,23 @@ describe(`Server`, function () {
         return res.json(req.body);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({
+      return server.listen().then(async () => {
+        return expect(
+          sendRequest({
             uri: `${httpHost}process-data`,
             method: 'post',
             form,
-          }).then((res) => {
-            expect(res.statusCode).toEqual(413);
-          });
-        })
-      );
+          })
+        ).rejects.toMatchObject({
+          statusCode: 413,
+        });
+      });
     });
-
-    // it(`should send 413 error code if request data exceeds app maxMemory value`, function () {
-    //   const app = new Server({
-    //     config: {
-    //       maxMemory: 10,
-    //     },
-    //   });
-    //   server.post('/process-data', (req, res) => {
-    //     return res.json(req.body);
-    //   });
-
-    //   return withTeardown(
-    //    server,
-    //     server.listen().then(() => {
-    //       return sendRequest({
-    //         uri: `${httpHost}process-data`,
-    //         method: 'post',
-    //         formData: {
-    //           cv: fs.createReadStream(
-    //             path.resolve(__dirname, '../helpers/multipart.log')
-    //           ),
-    //         },
-    //       }).then((res) => {
-    //         expect(res.statusCode).toEqual(413);
-    //       });
-    //     })
-    //   );
-    // });
   });
 
   describe(`enforce https`, function () {
     it(`should enforce https by redirecting all http requests to the https address`, function () {
-      const server = new Server({
+      server = new Server({
         config: {
           https: {
             enabled: true,
@@ -488,47 +424,40 @@ describe(`Server`, function () {
         return res.end(req.encrypted ? 'https' : 'http');
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({
-            uri: `${httpHost}say-protocol`,
-            rejectUnauthorized: false,
-          }).then((res) => {
-            expect(res.body).toEqual('https');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({
+          uri: `${httpHost}say-protocol`,
+          rejectUnauthorized: false,
+        }).then((res) => {
+          expect(res.body).toEqual('https');
+        });
+      });
     });
   });
 
   describe(`serve static file`, function () {
     it(`should serve static public file if file exists`, function () {
       const filePath = path.resolve(__dirname, '../../public/index.html');
-
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: `${httpHost}index.html` }).then((res) => {
-            expect(res.body).toEqual(fs.readFileSync(filePath, 'utf8'));
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: `${httpHost}index.html` }).then((res) => {
+          expect(res.body).toEqual(fs.readFileSync(filePath, 'utf8'));
+        });
+      });
     });
   });
 
   describe(`serve 404 http error file`, function () {
     it(`should serve 404 http error file if request path does not exist`, function () {
       const filePath = path.resolve(__dirname, '../../src/httpErrors/404.html');
-
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: `${httpHost}index1.html` }).then((res) => {
-            expect(res.body).toEqual(fs.readFileSync(filePath, 'utf8'));
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return expect(
+          sendRequest({ uri: `${httpHost}index1.html` })
+        ).rejects.toMatchObject({
+          response: {
+            body: fs.readFileSync(filePath, { encoding: 'utf-8' }),
+          },
+        });
+      });
     });
   });
 
@@ -543,58 +472,52 @@ describe(`Server`, function () {
         return res.json(req.body);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({
-            uri: `${httpHost}check-data`,
-            method: 'post',
-            form,
-          }).then((res) => {
-            expect(JSON.parse(res.body)).toEqual(form);
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({
+          uri: `${httpHost}check-data`,
+          method: 'post',
+          form,
+        }).then((res) => {
+          expect(JSON.parse(res.body)).toEqual(form);
+        });
+      });
     });
   });
 
   describe('routing', () => {
-    const routeRequests = (server: Server, uri: string) => {
-      return withTeardown(
-        server,
-        server
-          .listen()
-          .then(() => {
-            return sendRequest({ uri, method: 'get' }).then((res) => {
-              expect(res.statusCode).toEqual(200);
-            });
-          })
-          .then(() => {
-            return sendRequest({ uri, method: 'post' }).then((res) => {
-              expect(res.statusCode).toEqual(200);
-            });
-          })
-          .then(() => {
-            return sendRequest({ uri, method: 'put' }).then((res) => {
-              expect(res.statusCode).toEqual(200);
-            });
-          })
-          .then(() => {
-            return sendRequest({ uri, method: 'head' }).then((res) => {
-              expect(res.statusCode).toEqual(200);
-            });
-          })
-          .then(() => {
-            return sendRequest({ uri, method: 'delete' }).then((res) => {
-              expect(res.statusCode).toEqual(200);
-            });
-          })
-          .then(() => {
-            return sendRequest({ uri, method: 'options' }).then((res) => {
-              expect(res.statusCode).toEqual(200);
-            });
-          })
-      );
+    const routeRequests = (uri: string) => {
+      return server
+        .listen()
+        .then(() => {
+          return sendRequest({ uri, method: 'get' }).then((res) => {
+            expect(res.statusCode).toEqual(200);
+          });
+        })
+        .then(() => {
+          return sendRequest({ uri, method: 'post' }).then((res) => {
+            expect(res.statusCode).toEqual(200);
+          });
+        })
+        .then(() => {
+          return sendRequest({ uri, method: 'put' }).then((res) => {
+            expect(res.statusCode).toEqual(200);
+          });
+        })
+        .then(() => {
+          return sendRequest({ uri, method: 'head' }).then((res) => {
+            expect(res.statusCode).toEqual(200);
+          });
+        })
+        .then(() => {
+          return sendRequest({ uri, method: 'delete' }).then((res) => {
+            expect(res.statusCode).toEqual(200);
+          });
+        })
+        .then(() => {
+          return sendRequest({ uri, method: 'options' }).then((res) => {
+            expect(res.statusCode).toEqual(200);
+          });
+        });
     };
 
     describe('main routing', function () {
@@ -606,7 +529,7 @@ describe(`Server`, function () {
 
         const uri = `${httpHost}hi`;
 
-        return routeRequests(server, uri);
+        return routeRequests(uri);
       });
 
       it(`should start the routing engine on the main router if request path did not map
@@ -623,7 +546,7 @@ describe(`Server`, function () {
 
         const uri = `${httpHost}hi`;
 
-        return routeRequests(server, uri);
+        return routeRequests(uri);
       });
     });
 
@@ -640,7 +563,7 @@ describe(`Server`, function () {
 
         const uri = `${httpHost}users/1`;
 
-        return routeRequests(server, uri);
+        return routeRequests(uri);
       });
 
       it(`should start the routing engine on the mounted routers if request path did not map
@@ -661,7 +584,7 @@ describe(`Server`, function () {
         server.mount('users', router);
 
         const uri = `${httpHost}users/1`;
-        return routeRequests(server, uri);
+        return routeRequests(uri);
       });
     });
   });

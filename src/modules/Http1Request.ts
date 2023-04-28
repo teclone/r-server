@@ -30,6 +30,8 @@ export class Http1Request extends IncomingMessage {
 
   protocol: HttpProtocol;
 
+  method: string = '';
+
   private initialized = false;
 
   constructor(socket) {

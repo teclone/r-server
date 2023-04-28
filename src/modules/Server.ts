@@ -219,6 +219,10 @@ export class Server<
             {
               ...credentials,
 
+              Http1IncomingMessage: opts?.Http1ServerRequest || Http1Request,
+              // @ts-ignore
+              Http1ServerResponse: opts?.Http1ServerResponse || Http1Response,
+
               Http2ServerRequest: opts?.Http2ServerRequest || Http2Request,
               // @ts-ignore
               Http2ServerResponse: opts?.Http2ServerResponse || Http2Response,
@@ -391,18 +395,6 @@ export class Server<
   }
 
   /**
-   * handle on request error event
-   */
-  private onRequestError(
-    err: Error,
-    request: ServerRequest,
-    response: ServerResponse
-  ) {
-    request.error = true;
-    handleError(err, response);
-  }
-
-  /**
    * handle request data event
    */
   private onRequestData(chunk: Buffer, request: ServerRequest) {
@@ -426,16 +418,13 @@ export class Server<
     response: ServerResponse,
     isSecureServer: boolean
   ) {
-    request.startedAt = new Date();
-    request.encrypted = isSecureServer;
+    request.init(isSecureServer);
 
     response.fileServer = this.fileServer;
     response.logger = this.logger;
     response.req = request;
 
     response.errorCallback = this.errorCallback;
-
-    request.init(isSecureServer);
 
     //enforce https if set
     const httpsConfig = this.config.https;
@@ -448,10 +437,10 @@ export class Server<
       );
     } else {
       //handle on request error
-      request.on(
-        'error',
-        scopeCallback(this.onRequestError, this, [request, response])
-      );
+      request.on('error', (err) => {
+        request.error = true;
+        handleError(err, response, 400);
+      });
 
       //handle on data event
       request.on(

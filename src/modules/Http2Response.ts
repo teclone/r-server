@@ -144,7 +144,7 @@ export class Http2Response extends Http2ServerResponse {
    * sends json response back to the client.
    * @param data - the json string or json object which will be stringified
    */
-  json(data: object | string): Promise<boolean> {
+  json(data?: object | string): Promise<boolean> {
     if (!isString(data)) {
       data = JSON.stringify(data || '');
     }
@@ -171,7 +171,13 @@ export class Http2Response extends Http2ServerResponse {
    * sends json error data back to the client
    */
   jsonError(response?: RouteResponse): Promise<boolean> {
-    const { statusCode = 400, headers, message, data, ttl } = response || {};
+    const {
+      statusCode = 400,
+      headers,
+      message,
+      data = null,
+      ttl,
+    } = response || {};
 
     if (statusCode < 300) {
       return this.jsonSuccess(response);
@@ -192,7 +198,13 @@ export class Http2Response extends Http2ServerResponse {
    * sends json success data back to the client
    */
   jsonSuccess(response?: RouteResponse): Promise<boolean> {
-    const { statusCode = 200, headers, message, data, ttl } = response || {};
+    const {
+      statusCode = 200,
+      headers,
+      message,
+      data = null,
+      ttl,
+    } = response || {};
     if (statusCode >= 300) {
       return this.jsonError(response);
     }

@@ -1,6 +1,5 @@
 import { Callback, Middleware, RServerConfig } from '../../src/@types';
 import * as path from 'path';
-import { Server } from '../../src/modules/Server';
 import request from 'request-promise';
 
 export const dummyCallback: Callback = (req, res) => Promise.resolve(true);
@@ -28,19 +27,47 @@ export const httpsEnabledConfig: RServerConfig = {
   },
 };
 
-export const withTeardown = (server: Server, test: Promise<void>) => {
-  return test
-    .then(() => server.close())
-    .catch((ex) => {
-      return server.close().then(() => {
-        throw ex;
-      });
-    });
-};
-
 // @ts-ignore
 export const sendRequest: typeof request = (args) => {
-  return request({ resolveWithFullResponse: true, simple: false, ...args });
+  return request({
+    resolveWithFullResponse: true,
+    rejectUnauthorized: false,
+    ...args,
+  });
+};
+
+const me = new Promise(() => {});
+
+export const withReject = async (callback: () => Promise<any>) => {
+  let ex;
+  let thrown = false;
+  try {
+    await callback();
+  } catch (exception) {
+    ex = exception;
+    thrown = true;
+  }
+
+  if (!thrown) {
+    throw new Error('Expected callback to throw but did not');
+  }
+
+  return ex;
+};
+
+export const withResolve = async (callback: () => Promise<any>) => {
+  let ex;
+  let thrown = false;
+  try {
+    const res = await callback();
+    return res;
+  } catch (exception) {}
+
+  if (thrown) {
+    throw new Error('Expected callback to not throw but it did');
+  }
+
+  return;
 };
 
 export const resolvePath = (filePath: string) => {

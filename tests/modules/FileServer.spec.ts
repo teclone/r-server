@@ -1,11 +1,6 @@
 import { FileServer } from '../../src/modules/FileServer';
 import { Server } from '../../src/modules/Server';
-import {
-  httpHost,
-  resolvePath,
-  withTeardown,
-  sendRequest,
-} from '../helpers/index';
+import { httpHost, resolvePath, sendRequest } from '../helpers/index';
 import { readFileSync, statSync } from 'fs';
 import { ALLOWED_METHODS } from '../../src/modules/Constants';
 
@@ -19,6 +14,10 @@ describe(`FileServer`, function () {
     fileServer = new FileServer(server.rootDir, configs);
   });
 
+  afterEach(() => {
+    return server.close();
+  });
+
   describe(`serve(url: Url, method: Method, request: Request,
         response: Response): Promise<boolean>`, function () {
     it(`should respond to get requests made on public static files, serving such file
@@ -27,16 +26,13 @@ describe(`FileServer`, function () {
         return fileServer.serve('/index.html', req.method, req.headers, res);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.body).toEqual(
-              readFileSync(resolvePath('public/index.html'), 'utf8')
-            );
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.body).toEqual(
+            readFileSync(resolvePath('public/index.html'), 'utf8')
+          );
+        });
+      });
     });
 
     it(`should respond to options requests made on public static files, responding with
@@ -44,19 +40,14 @@ describe(`FileServer`, function () {
       server.options('/', (req, res) => {
         return fileServer.serve('/index.html', req.method, req.headers, res);
       });
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost, method: 'options' }).then(
-            (res) => {
-              expect(res.headers).toHaveProperty(
-                'allow',
-                ALLOWED_METHODS.join(',')
-              );
-            }
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost, method: 'options' }).then((res) => {
+          expect(res.headers).toHaveProperty(
+            'allow',
+            ALLOWED_METHODS.join(',')
           );
-        })
-      );
+        });
+      });
     });
 
     it(`should respond to head requests made on public static files, responding with
@@ -65,34 +56,28 @@ describe(`FileServer`, function () {
         return fileServer.serve('/index.html', req.method, req.headers, res);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost, method: 'head' }).then((res) => {
-            expect(res.headers).toHaveProperty('content-type', 'text/html');
-            expect(res.headers).toHaveProperty('accept-ranges', 'bytes');
-            expect(res.headers).toHaveProperty('content-length');
-            expect(res.headers).toHaveProperty('etag');
-            expect(res.headers).toHaveProperty('last-modified');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost, method: 'head' }).then((res) => {
+          expect(res.headers).toHaveProperty('content-type', 'text/html');
+          expect(res.headers).toHaveProperty('accept-ranges', 'bytes');
+          expect(res.headers).toHaveProperty('content-length');
+          expect(res.headers).toHaveProperty('etag');
+          expect(res.headers).toHaveProperty('last-modified');
+        });
+      });
     });
 
     it(`should search for a default document if specified path maps to a folder`, function () {
       server.get('/', (req, res) => {
         return fileServer.serve('/', req.method, req.headers, res);
       });
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost, method: 'get' }).then((res) => {
-            expect(res.body).toEqual(
-              readFileSync(resolvePath('public/index.html'), 'utf8')
-            );
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost, method: 'get' }).then((res) => {
+          expect(res.body).toEqual(
+            readFileSync(resolvePath('public/index.html'), 'utf8')
+          );
+        });
+      });
     });
 
     it(`should do nothing and resolve to false if request method is neither get, head nor options
@@ -109,14 +94,11 @@ describe(`FileServer`, function () {
           });
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost, method: 'post' }).then((res) => {
-            expect(res.body).toEqual('correct');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost, method: 'post' }).then((res) => {
+          expect(res.body).toEqual('correct');
+        });
+      });
     });
 
     it(`should do nothing and resolve to false if specified file does not exist or if it
@@ -133,14 +115,11 @@ describe(`FileServer`, function () {
           });
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost, method: 'get' }).then((res) => {
-            expect(res.body).toEqual('correct');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost, method: 'get' }).then((res) => {
+          expect(res.body).toEqual('correct');
+        });
+      });
     });
 
     it(`should respond with 304 response header to get requests made on public static files,
@@ -150,21 +129,20 @@ describe(`FileServer`, function () {
         return fileServer.serve('/index.html', req.method, req.headers, res);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.statusCode).toEqual(200);
-            const headers = {
-              'if-none-match': res.headers['etag'],
-            };
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.statusCode).toEqual(200);
+          const headers = {
+            'if-none-match': res.headers['etag'],
+          };
 
-            return sendRequest({ uri: httpHost, headers }).then((res) => {
-              expect(res.statusCode).toEqual(304);
-            });
+          return expect(
+            sendRequest({ uri: httpHost, headers })
+          ).rejects.toMatchObject({
+            statusCode: 304,
           });
-        })
-      );
+        });
+      });
     });
 
     it(`should respond with 304 response header to get requests made on public static files,
@@ -174,21 +152,20 @@ describe(`FileServer`, function () {
         return fileServer.serve('/index.html', req.method, req.headers, res);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.statusCode).toEqual(200);
-            const headers = {
-              'if-modified-since': res.headers['last-modified'],
-            };
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.statusCode).toEqual(200);
+          const headers = {
+            'if-modified-since': res.headers['last-modified'],
+          };
 
-            return sendRequest({ uri: httpHost, headers }).then((res) => {
-              expect(res.statusCode).toEqual(304);
-            });
+          return expect(
+            sendRequest({ uri: httpHost, headers })
+          ).rejects.toMatchObject({
+            statusCode: 304,
           });
-        })
-      );
+        });
+      });
     });
   });
 
@@ -210,15 +187,14 @@ describe(`FileServer`, function () {
         return fileServer.serveHttpErrorFile(404, res);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.statusCode).toEqual(404);
-            expect(res.body).toEqual(readFileSync(resolvePath(file), 'utf8'));
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return expect(sendRequest({ uri: httpHost })).rejects.toMatchObject({
+          statusCode: 404,
+          response: {
+            body: readFileSync(resolvePath(file), 'utf8'),
+          },
+        });
+      });
     });
 
     it(`should default to its internal http error file if there is none defined for the
@@ -227,36 +203,30 @@ describe(`FileServer`, function () {
         return fileServer.serveHttpErrorFile(404, res);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.statusCode).toEqual(404);
-
-            expect(res.body).toEqual(
-              readFileSync(resolvePath('src/httpErrors/404.html'), 'utf8')
-            );
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return expect(sendRequest({ uri: httpHost })).rejects.toMatchObject({
+          statusCode: 404,
+          response: {
+            body: readFileSync(resolvePath('src/httpErrors/404.html'), 'utf8'),
+          },
+        });
+      });
     });
 
-    it(`should simply end the response with no data sent if there is no http file for the
+    it(`should simply end the response with no data sent if there is no http error file for the
             given status code`, function () {
       server.get('/', (req, res) => {
         return fileServer.serveHttpErrorFile(500, res);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.statusCode).toEqual(500);
-
-            expect(res.body).toEqual('');
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return expect(sendRequest({ uri: httpHost })).rejects.toMatchObject({
+          statusCode: 500,
+          response: {
+            body: '',
+          },
+        });
+      });
     });
   });
 
@@ -270,17 +240,14 @@ describe(`FileServer`, function () {
         return fileServer.serveDownload(file, res, 'preview.jpg');
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.headers).toHaveProperty(
-              'content-disposition',
-              'attachment; filename="preview.jpg"'
-            );
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.headers).toHaveProperty(
+            'content-disposition',
+            'attachment; filename="preview.jpg"'
+          );
+        });
+      });
     });
 
     it(`should generate a download suggested filename if not given, based on the file name`, function () {
@@ -289,17 +256,14 @@ describe(`FileServer`, function () {
         return fileServer.serveDownload(file, res);
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.headers).toHaveProperty(
-              'content-disposition',
-              'attachment; filename="image.jpg"'
-            );
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.headers).toHaveProperty(
+            'content-disposition',
+            'attachment; filename="image.jpg"'
+          );
+        });
+      });
     });
 
     it(`should search public folders for the given files if file could not be
@@ -309,33 +273,34 @@ describe(`FileServer`, function () {
         return fileServer.serveDownload(file, res, 'preview.jpg');
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.headers).toHaveProperty(
-              'content-disposition',
-              'attachment; filename="preview.jpg"'
-            );
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.headers).toHaveProperty(
+            'content-disposition',
+            'attachment; filename="preview.jpg"'
+          );
+        });
+      });
     });
 
-    it(`should reject and return 404 if given file could not be found`, function () {
+    it(`should reject with error if the given file could not be found`, function () {
       const file = 'media/unknown.jpg';
       server.get('/', (req, res) => {
-        return fileServer.serveDownload(file, res, 'preview.jpg');
+        return fileServer
+          .serveDownload(file, res, 'preview.jpg')
+          .then(() => {
+            return res.end('failed to reject');
+          })
+          .catch(() => {
+            return res.end('successfully rejected');
+          });
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.statusCode).toEqual(404);
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.body).toEqual('successfully rejected');
+        });
+      });
     });
   });
 
@@ -354,23 +319,20 @@ describe(`FileServer`, function () {
         );
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({
-            uri: httpHost,
-            headers: {
-              Range: `0-999`,
-            },
-          }).then((res) => {
-            expect(res.headers).toHaveProperty(
-              'content-range',
-              `bytes 0-999/${size}`
-            );
-            expect(res.headers).toHaveProperty('content-length', `1000`);
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({
+          uri: httpHost,
+          headers: {
+            Range: `0-999`,
+          },
+        }).then((res) => {
+          expect(res.headers).toHaveProperty(
+            'content-range',
+            `bytes 0-999/${size}`
+          );
+          expect(res.headers).toHaveProperty('content-length', `1000`);
+        });
+      });
     });
 
     it(`should respond and handle range requests, sending the last suffix bytes as indicated
@@ -384,23 +346,20 @@ describe(`FileServer`, function () {
         );
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({
-            uri: httpHost,
-            headers: {
-              Range: `-1000`,
-            },
-          }).then((res) => {
-            expect(res.headers).toHaveProperty(
-              'content-range',
-              `bytes ${size - 1000}-${size - 1}/${size}`
-            );
-            expect(res.headers).toHaveProperty('content-length', `1000`);
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({
+          uri: httpHost,
+          headers: {
+            Range: `-1000`,
+          },
+        }).then((res) => {
+          expect(res.headers).toHaveProperty(
+            'content-range',
+            `bytes ${size - 1000}-${size - 1}/${size}`
+          );
+          expect(res.headers).toHaveProperty('content-length', `1000`);
+        });
+      });
     });
 
     it(`should respond and handle range requests, sending the whole bytes if the given
@@ -414,23 +373,20 @@ describe(`FileServer`, function () {
         );
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({
-            uri: httpHost,
-            headers: {
-              Range: `-${size + 1000}`,
-            },
-          }).then((res) => {
-            expect(res.headers).toHaveProperty(
-              'content-range',
-              `bytes 0-${size - 1}/${size}`
-            );
-            expect(res.headers).toHaveProperty('content-length', `${size}`);
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({
+          uri: httpHost,
+          headers: {
+            Range: `-${size + 1000}`,
+          },
+        }).then((res) => {
+          expect(res.headers).toHaveProperty(
+            'content-range',
+            `bytes 0-${size - 1}/${size}`
+          );
+          expect(res.headers).toHaveProperty('content-length', `${size}`);
+        });
+      });
     });
 
     it(`should respond and handle range requests, sending from the given beginning byte to the
@@ -444,26 +400,23 @@ describe(`FileServer`, function () {
         );
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({
-            uri: httpHost,
-            headers: {
-              Range: `1000-`,
-            },
-          }).then((res) => {
-            expect(res.headers).toHaveProperty(
-              'content-range',
-              `bytes 1000-${size - 1}/${size}`
-            );
-            expect(res.headers).toHaveProperty(
-              'content-length',
-              `${size - 1000}`
-            );
-          });
-        })
-      );
+      return server.listen().then(() => {
+        return sendRequest({
+          uri: httpHost,
+          headers: {
+            Range: `1000-`,
+          },
+        }).then((res) => {
+          expect(res.headers).toHaveProperty(
+            'content-range',
+            `bytes 1000-${size - 1}/${size}`
+          );
+          expect(res.headers).toHaveProperty(
+            'content-length',
+            `${size - 1000}`
+          );
+        });
+      });
     });
 
     it(`should respond and reject the range, if the ending range byte is less than the
@@ -477,23 +430,23 @@ describe(`FileServer`, function () {
         );
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({
+      return server.listen().then(() => {
+        return expect(
+          sendRequest({
             uri: httpHost,
             headers: {
               Range: `1000-500`,
             },
-          }).then((res) => {
-            expect(res.statusCode).toEqual(416);
-            expect(res.headers).toHaveProperty(
-              'content-range',
-              `bytes */${size}`
-            );
-          });
-        })
-      );
+          })
+        ).rejects.toMatchObject({
+          statusCode: 416,
+          response: {
+            headers: {
+              'content-range': `bytes */${size}`,
+            },
+          },
+        });
+      });
     });
 
     it(`should respond and reject the range, if the given suffix range byte is a zero length
@@ -507,23 +460,23 @@ describe(`FileServer`, function () {
         );
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({
+      return server.listen().then(() => {
+        return expect(
+          sendRequest({
             uri: httpHost,
             headers: {
               Range: `-0`,
             },
-          }).then((res) => {
-            expect(res.statusCode).toEqual(416);
-            expect(res.headers).toHaveProperty(
-              'content-range',
-              `bytes */${size}`
-            );
-          });
-        })
-      );
+          })
+        ).rejects.toMatchObject({
+          statusCode: 416,
+          response: {
+            headers: {
+              'content-range': `bytes */${size}`,
+            },
+          },
+        });
+      });
     });
 
     it(`should respond and reject the range, if the beginning range byte is not
@@ -537,23 +490,23 @@ describe(`FileServer`, function () {
         );
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({
+      return server.listen().then(() => {
+        return expect(
+          sendRequest({
             uri: httpHost,
             headers: {
               Range: `${size}-`,
             },
-          }).then((res) => {
-            expect(res.statusCode).toEqual(416);
-            expect(res.headers).toHaveProperty(
-              'content-range',
-              `bytes */${size}`
-            );
-          });
-        })
-      );
+          })
+        ).rejects.toMatchObject({
+          statusCode: 416,
+          response: {
+            headers: {
+              'content-range': `bytes */${size}`,
+            },
+          },
+        });
+      });
     });
 
     it(`should respond and reject the range, if the given range is not in valid format`, function () {
@@ -566,23 +519,23 @@ describe(`FileServer`, function () {
         );
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({
+      return server.listen().then(() => {
+        return expect(
+          sendRequest({
             uri: httpHost,
             headers: {
               Range: `a-`,
             },
-          }).then((res) => {
-            expect(res.statusCode).toEqual(416);
-            expect(res.headers).toHaveProperty(
-              'content-range',
-              `bytes */${size}`
-            );
-          });
-        })
-      );
+          })
+        ).rejects.toMatchObject({
+          statusCode: 416,
+          response: {
+            headers: {
+              'content-range': `bytes */${size}`,
+            },
+          },
+        });
+      });
     });
 
     it(`should send everything for valid multi range requests, as we don't support
@@ -596,24 +549,21 @@ describe(`FileServer`, function () {
         );
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({
-            uri: httpHost,
-            headers: {
-              Range: `0-999, 2000-2999`,
-            },
-          }).then((res) => {
-            expect(res.statusCode).toEqual(206);
+      return server.listen().then(() => {
+        return sendRequest({
+          uri: httpHost,
+          headers: {
+            Range: `0-999, 2000-2999`,
+          },
+        }).then((res) => {
+          expect(res.statusCode).toEqual(206);
 
-            expect(res.headers).toHaveProperty(
-              'content-range',
-              `bytes 0-${size - 1}/${size}`
-            );
-          });
-        })
-      );
+          expect(res.headers).toHaveProperty(
+            'content-range',
+            `bytes 0-${size - 1}/${size}`
+          );
+        });
+      });
     });
 
     it(`should respond to if-range conditional request, sending the range if content
@@ -627,26 +577,21 @@ describe(`FileServer`, function () {
         );
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.statusCode).toEqual(200);
-            const headers = {
-              'If-Range': res.headers.etag,
-              Range: '0-999',
-            };
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.statusCode).toEqual(200);
+          const headers = {
+            'If-Range': res.headers.etag,
+            Range: '0-999',
+          };
 
-            return sendRequest({ uri: httpHost, headers }).then((res) => {
-              expect(res.statusCode).toEqual(206);
-              expect(res.headers['content-range']).toEqual(
-                `bytes 0-999/${size}`
-              );
-              expect(res.headers['content-length']).toEqual(`1000`);
-            });
+          return sendRequest({ uri: httpHost, headers }).then((res) => {
+            expect(res.statusCode).toEqual(206);
+            expect(res.headers['content-range']).toEqual(`bytes 0-999/${size}`);
+            expect(res.headers['content-length']).toEqual(`1000`);
           });
-        })
-      );
+        });
+      });
     });
 
     it(`should respond to if-range conditional request, sending the whole content on a 200
@@ -660,24 +605,21 @@ describe(`FileServer`, function () {
         );
       });
 
-      return withTeardown(
-        server,
-        server.listen().then(() => {
-          return sendRequest({ uri: httpHost }).then((res) => {
-            expect(res.statusCode).toEqual(200);
-            const headers = {
-              'If-Range': 'unknown',
-              Range: '0-999',
-            };
+      return server.listen().then(() => {
+        return sendRequest({ uri: httpHost }).then((res) => {
+          expect(res.statusCode).toEqual(200);
+          const headers = {
+            'If-Range': 'unknown',
+            Range: '0-999',
+          };
 
-            return sendRequest({ uri: httpHost, headers }).then((res) => {
-              expect(res.statusCode).toEqual(200);
-              expect(res.headers['content-range']).toBeUndefined();
-              expect(res.headers['content-length']).toEqual(`${size}`);
-            });
+          return sendRequest({ uri: httpHost, headers }).then((res) => {
+            expect(res.statusCode).toEqual(200);
+            expect(res.headers['content-range']).toBeUndefined();
+            expect(res.headers['content-length']).toEqual(`${size}`);
           });
-        })
-      );
+        });
+      });
     });
   });
 });
