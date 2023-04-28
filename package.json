@@ -5,8 +5,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "main": "build/cjs",
-  "typings": "build/cjs",
+  "main": "build/cjs/index",
+  "typings": "build/cjs/index",
   "bin": {
     "start": "./bin/start.js",
     "serve": "./bin/serve.js"
