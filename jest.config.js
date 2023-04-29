@@ -2,7 +2,7 @@ module.exports = {
   testEnvironment: 'node',
   collectCoverage: true,
   transform: {
-    '^.+\\.tsx?$': 'babel-jest'
+    '^.+\\.tsx?$': 'babel-jest',
   },
-  testRegex: '\\.spec\\.ts'
+  testRegex: '\\.spec\\.ts',
 };

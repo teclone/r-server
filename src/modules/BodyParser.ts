@@ -123,7 +123,10 @@ export class BodyParser {
     for (let i = 0; i < headers.length; i++) {
       const header = headers[i];
       if (header !== '') {
-        let [name, value] = header.split(/\s*:\s*/);
+        const headerPair = header.split(/\s*:\s*/);
+        const name = headerPair[0];
+        let value = headerPair[1];
+
         switch (name.toLowerCase()) {
           case 'content-disposition':
             //capture file name

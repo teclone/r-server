@@ -172,12 +172,12 @@
     </div>
   </body>
   <script type="text/javascript">
-    document.addEventListener('DOMContentLoaded', function() {
-      document.forms['frm-test'].addEventListener('submit', function(e) {
+    document.addEventListener('DOMContentLoaded', function () {
+      document.forms['frm-test'].addEventListener('submit', function (e) {
         e.preventDefault();
         let xhr = new XMLHttpRequest();
 
-        xhr.onloadend = function() {
+        xhr.onloadend = function () {
           document.getElementById(
             'result'
           ).innerHTML = `<div><h1>Result as Processed</h1><p>Note: note that multi field values are stored in array</p><code id="result">${xhr.responseText}</code></div>`;

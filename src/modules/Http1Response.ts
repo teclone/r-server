@@ -180,7 +180,7 @@ export class Http1Response extends ServerResponse {
   /**
    * Redirect client to the given url
    */
-  redirect(path: string, status: number = 302): Promise<boolean> {
+  redirect(path: string, status = 302): Promise<boolean> {
     return this.status(status).setHeader('Location', path).end();
   }
 

@@ -1,10 +1,17 @@
 {
   "parser": "@typescript-eslint/parser",
   "plugins": ["@typescript-eslint"],
-  "extends": ["plugin:@typescript-eslint/recommended", "eslint:recommended"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "prettier"
+  ],
   "parserOptions": {
     "ecmaVersion": 2018,
     "sourceType": "module"
+  },
+  "globals": {
+    "BufferEncoding": "readonly"
   },
   "env": {
     "browser": true,
@@ -14,22 +21,8 @@
     "jest": true
   },
   "rules": {
-    "indent": [
-      "error",
-      4,
-      {
-        "SwitchCase": 1
-      }
-    ],
-    "linebreak-style": ["error", "unix"],
-    "quotes": [
-      "error",
-      "single",
-      {
-        "allowTemplateLiterals": true
-      }
-    ],
-    "semi": ["error", "always"],
-    "no-console": "off"
+    "no-console": "off",
+    "@typescript-eslint/ban-ts-comment": "off",
+    "@typescript-eslint/ban-types": "off"
   }
 }

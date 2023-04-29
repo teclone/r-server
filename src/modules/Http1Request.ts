@@ -2,7 +2,7 @@ import { IncomingMessage } from 'http';
 import { Files, Data, HttpProtocol } from '../@types';
 
 export class Http1Request extends IncomingMessage {
-  error: boolean = false;
+  error = false;
 
   startedAt: Date;
 
@@ -30,7 +30,7 @@ export class Http1Request extends IncomingMessage {
 
   protocol: HttpProtocol;
 
-  method: string = '';
+  method = '';
 
   private initialized = false;
 
