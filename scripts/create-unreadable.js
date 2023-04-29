@@ -7,7 +7,7 @@ fs.writeFileSync(
   'this file is intentionally made not read accessible for testing purposes',
   {
     encoding: 'utf8',
-    mode: '0366'
+    mode: '0366',
   }
 );
 

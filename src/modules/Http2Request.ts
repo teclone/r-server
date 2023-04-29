@@ -6,7 +6,7 @@ import {
 } from 'http2';
 
 export class Http2Request extends Http2ServerRequest {
-  error: boolean = false;
+  error = false;
 
   startedAt: Date;
 

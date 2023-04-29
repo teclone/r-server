@@ -154,7 +154,7 @@ export class Http2Response extends Http2ServerResponse {
   /**
    * Redirect client to the given url
    */
-  redirect(path: string, status: number = 302): Promise<boolean> {
+  redirect(path: string, status = 302): Promise<boolean> {
     return this.status(status).setHeader('Location', path).end();
   }
 
