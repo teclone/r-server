@@ -36,8 +36,6 @@ export const sendRequest: typeof request = (args) => {
   });
 };
 
-const me = new Promise(() => {});
-
 export const withReject = async (callback: () => Promise<any>) => {
   let ex;
   let thrown = false;
@@ -56,12 +54,13 @@ export const withReject = async (callback: () => Promise<any>) => {
 };
 
 export const withResolve = async (callback: () => Promise<any>) => {
-  let ex;
-  let thrown = false;
+  const thrown = false;
   try {
     const res = await callback();
     return res;
-  } catch (exception) {}
+  } catch (exception) {
+    // empty block
+  }
 
   if (thrown) {
     throw new Error('Expected callback to not throw but it did');

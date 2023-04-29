@@ -33,7 +33,7 @@ const generateNext = () => {
 };
 
 export class Engine {
-  private resolved: boolean = false;
+  private resolved = false;
 
   private request: ServerRequest;
 
