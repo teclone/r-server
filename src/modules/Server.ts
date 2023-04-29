@@ -75,7 +75,7 @@ export class Server<
 
   private secureServer: HttpServer | Http2SecureServer | null = null;
 
-  private entryPath: string = '';
+  private entryPath = '';
 
   private config: RServerConfig = {};
 
@@ -251,7 +251,9 @@ export class Server<
       config({
         path: path.resolve(entryPath, `.${env}`),
       });
-    } catch (ex) {}
+    } catch (ex) {
+      // do nothing
+    }
   }
 
   /**

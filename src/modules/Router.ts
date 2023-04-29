@@ -27,7 +27,7 @@ import { getRouteKeys } from './Utils';
 import { join } from 'path';
 
 export class Router {
-  private basePath: string = '';
+  private basePath = '';
 
   private routes: Routes = {
     options: [],
@@ -46,7 +46,7 @@ export class Router {
    *
    * @param inheritMiddlewares - boolean indicating if parent middlewares should be inherited, defaults to true.
    */
-  constructor(inheritMiddlewares: boolean = true) {
+  constructor(inheritMiddlewares = true) {
     this.inheritMiddlewares = inheritMiddlewares;
   }
 

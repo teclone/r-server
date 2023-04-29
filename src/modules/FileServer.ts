@@ -169,7 +169,7 @@ export class FileServer {
   /**
    * computes and returns a files eTag
    */
-  private computeETag(fileMTime: Date, length: number = 16) {
+  private computeETag(fileMTime: Date, length = 16) {
     const hash = crypto.createHash('sha256');
     hash.update(fileMTime.toString());
 
