@@ -1,18 +1,11 @@
-import { AddressInfo } from 'net';
-import type { Http1Request } from '../modules/Http1Request';
-import type { Http2Request } from '../modules/Http2Request';
-
-import type { Http1Response } from '../modules/Http1Response';
-import type { Http2Response } from '../modules/Http2Response';
+import { ServerRequest } from '../modules/Request';
+import { ServerResponse } from '../modules/Response';
 
 export type Env = 'development' | 'production' | 'test';
 
 export type HttpsVersion = '1' | '2';
 
 export type HttpProtocol = 'http' | 'https';
-
-export type ServerRequest = Http1Request | Http2Request;
-export type ServerResponse = Http1Response | Http2Response;
 
 export interface ObjectOfAny {
   [p: string]: any;

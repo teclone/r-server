@@ -31,8 +31,6 @@ import {
   MiddlewareId,
   ErrorCallback,
   Env,
-  ServerResponse,
-  ServerRequest,
 } from '../@types';
 import { copy, scopeCallback, expandToNumeric, isObject } from '@teclone/utils';
 import { AddressInfo } from 'net';
@@ -42,11 +40,9 @@ import { config } from 'dotenv';
 import { join } from 'path';
 import { handleError } from './Utils';
 
-import { Http2Request } from './Http2Request';
-import { Http1Request } from './Http1Request';
+import { Http1Response, Http2Response, ServerResponse } from './Response';
+import { Http1Request, Http2Request, ServerRequest } from './Request';
 
-import { Http1Response } from './Http1Response';
-import { Http2Response } from './Http2Response';
 import { DEFAULT_CONFIG_FILE } from './Constants';
 
 export interface ServerConstructorOptions<

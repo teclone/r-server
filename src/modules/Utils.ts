@@ -1,7 +1,8 @@
-import { Method, Routes, ServerResponse } from '../@types';
+import { Method, Routes } from '../@types';
 import { EntityTooLargeException } from '../Exceptions/EntityTooLargeException';
 import { isString, makeArray } from '@teclone/utils';
 import { ROUTE_KEYS } from './Constants';
+import { ServerResponse } from './Response';
 
 export const handleError = (
   err: Error | string,
