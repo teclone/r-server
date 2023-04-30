@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import { mkDirSync } from '@teclone/node-utils';
 import { EOL } from 'os';
-import { ServerRequest, ServerResponse } from '../@types';
+import { ServerRequest } from './Request';
+import { ServerResponse } from './Response';
 
 export interface LoggerOpts {
   errorLogFile: string;

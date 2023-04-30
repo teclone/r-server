@@ -1,13 +1,7 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import type {
-  RServerConfig,
-  Url,
-  Headers,
-  Range,
-  ServerResponse,
-} from '../@types';
+import type { RServerConfig, Url, Headers, Range } from '../@types';
 
 import { isUndefined, isString, stripSlashes } from '@teclone/utils';
 import { IncomingHttpHeaders } from 'http';
@@ -15,6 +9,7 @@ import mime from 'mime-types';
 import { ALLOWED_METHODS } from './Constants';
 import { handleError } from './Utils';
 import { resolve } from 'path';
+import { ServerResponse } from './Response';
 
 export class FileServer {
   private config: RServerConfig;
