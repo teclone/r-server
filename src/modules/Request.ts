@@ -1,28 +1,6 @@
 import { IncomingMessage } from 'http';
 import { Http2ServerRequest } from 'http2';
 import { Data, Files, HttpProtocol, Method } from '../@types';
-import { IncomingHttpHeaders } from 'http';
-
-export interface RouteResponse<ResponseData = {}> {
-  status?: 'success' | 'error';
-  statusCode?: number;
-  message?: string;
-  data?: ResponseData;
-  headers?: IncomingHttpHeaders;
-  ttl?: number;
-}
-
-export interface APIExecutor<RequestBody, ResponseData> {
-  (arg: {
-    body: RequestBody;
-    headers: IncomingHttpHeaders;
-  }): Promise<RouteResponse<ResponseData> | null>;
-
-  /**
-   * assigned name of the handler
-   */
-  apiName?: string;
-}
 
 export type ServerRequest<
   T extends typeof IncomingMessage | typeof Http2ServerRequest =

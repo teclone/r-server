@@ -4,6 +4,11 @@ export { Server } from './modules/Server';
 export { Router } from './modules/Router';
 
 export { Http1Request, Http2Request } from './modules/Request';
-export { Http1Response, Http2Response } from './modules/Response';
+export {
+  Http1Response,
+  Http2Response,
+  RouteResponse,
+  APIExecutor,
+} from './modules/Response';
 
 export const createConfig = (config: RServerConfig) => config;
