@@ -7,7 +7,7 @@
     "noImplicitAny": false,
     "downlevelIteration": true,
     "sourceMap": true,
-    "noImplicitThis": false,
+    "noImplicitThis": true,
     "alwaysStrict": true,
     "skipLibCheck": true,
     "noUnusedLocals": true,
