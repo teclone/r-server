@@ -110,7 +110,7 @@ export type Callback<
 > = (
   request: Rq,
   response: Rs,
-  options: { pathParams: PathParameters } & Record<string, any>
+  options: { pathParams: PathParameters }
 ) => Promise<boolean>;
 
 export type ErrorCallback<
@@ -130,7 +130,7 @@ export type Middleware<
   request: Rq,
   response: Rs,
   next: Next,
-  options: { pathParams: PathParameters } & Record<string, any>
+  options: { pathParams: PathParameters }
 ) => Promise<boolean> | boolean;
 
 export type ListenerCallback = () => void;
