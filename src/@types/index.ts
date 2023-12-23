@@ -261,7 +261,7 @@ export interface APIExecutor<RequestBody, ResponseData> {
     /**
      * request path parameters, as contained in the routing path
      */
-    pathParams: PathParameters;
+    pathParams?: PathParameters;
   }): Promise<RouteResponse<ResponseData> | null>;
 
   /**
