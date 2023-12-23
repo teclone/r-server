@@ -1,3 +1,4 @@
+import { IncomingHttpHeaders } from 'http';
 import { ServerRequest } from '../modules/Request';
 import { ServerResponse } from '../modules/Response';
 
@@ -89,7 +90,7 @@ export type Method =
   | 'delete'
   | '*';
 
-export type Url = string;
+export type Path = string;
 
 export type RouteId = number;
 
@@ -99,7 +100,7 @@ export type Parameter = string | number | boolean;
 
 export interface Next {
   (): true;
-  reset: () => boolean;
+  reset: () => void;
   status: () => boolean;
 }
 
@@ -109,8 +110,7 @@ export type Callback<
 > = (
   request: Rq,
   response: Rs,
-  params: ObjectOfAny,
-  options?: ObjectOfAny
+  options: { pathParams: PathParameters } & Record<string, any>
 ) => Promise<boolean>;
 
 export type ErrorCallback<
@@ -130,44 +130,18 @@ export type Middleware<
   request: Rq,
   response: Rs,
   next: Next,
-  params: ObjectOfAny,
-  options?: ObjectOfAny
+  options: { pathParams: PathParameters } & Record<string, any>
 ) => Promise<boolean> | boolean;
 
 export type ListenerCallback = () => void;
 
-export interface CallbackOptions {
-  use: Middleware | Middleware[];
-  options?: ObjectOfAny;
-}
-
-export interface MiddlewareOptions {
-  method: Method | Method[];
-  options?: ObjectOfAny;
-}
-
-export interface ResolvedCallbackOptions {
-  use: Middleware[];
-  options?: ObjectOfAny;
-}
-
-export interface ResolvedMiddlewareOptions {
-  method: Method[];
-  options?: ObjectOfAny;
-}
-
-export type RouteInstance = [
-  RouteId,
-  Url,
-  Callback,
-  null | ResolvedCallbackOptions
-];
+export type RouteInstance = [RouteId, Path, Callback, Middleware[]];
 
 export type MiddlewareInstance = [
   MiddlewareId,
-  Url,
+  Path,
   Middleware[],
-  null | ResolvedMiddlewareOptions
+  Set<Method>
 ];
 
 export interface FileEntry {
@@ -232,6 +206,11 @@ export interface Data {
   [propName: string]: string | string[];
 }
 
+export type PathParameters<T extends string = string> = Record<
+  T,
+  string | number | boolean
+>;
+
 export interface Headers {
   [propName: string]: string;
 }
@@ -256,11 +235,37 @@ export interface RouteParameter {
   value: string | number | boolean;
 }
 
-export interface Routes {
-  options: RouteInstance[];
-  head: RouteInstance[];
-  get: RouteInstance[];
-  post: RouteInstance[];
-  put: RouteInstance[];
-  delete: RouteInstance[];
+export type Routes = Record<Exclude<Method, '*'>, RouteInstance[]>;
+
+export interface RouteResponse<ResponseData = {}> {
+  status?: 'success' | 'error';
+  statusCode?: number;
+  message?: string;
+  data?: ResponseData;
+  headers?: IncomingHttpHeaders;
+  ttl?: number;
+}
+
+export interface APIExecutor<RequestBody, ResponseData> {
+  (arg: {
+    /**
+     * request body, should be a combination of parsed post body and url search params
+     */
+    body: RequestBody;
+
+    /**
+     * request http headers
+     */
+    headers: IncomingHttpHeaders;
+
+    /**
+     * request path parameters, as contained in the routing path
+     */
+    pathParams: PathParameters;
+  }): Promise<RouteResponse<ResponseData> | null>;
+
+  /**
+   * assigned name of the handler
+   */
+  apiName?: string;
 }

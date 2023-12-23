@@ -1,18 +1,18 @@
 import type {
-  Url,
   MiddlewareInstance,
   RouteInstance,
-  ResolvedCallbackOptions,
   RouteParameter,
   Middleware,
   Next,
-  ServerResponse,
-  ServerRequest,
+  Method,
+  PathParameters,
 } from '../@types';
-import { fillArray, isObject, stripSlashes } from '@teclone/utils';
+import { fillArray, stripSlashes } from '@teclone/utils';
 import { replace } from '@teclone/regex';
 import { DOUBLE_TOKEN_REGEX, SINGLE_TOKEN_REGEX } from './Constants';
-import { handleError } from './Utils';
+
+import { ServerRequest } from './Request';
+import { ServerResponse } from './Response';
 
 const generateNext = () => {
   let status = false;
@@ -26,7 +26,7 @@ const generateNext = () => {
   };
 
   next.reset = () => {
-    return !(status = false);
+    status = false;
   };
 
   return next;
@@ -39,25 +39,22 @@ export class Engine {
 
   private response: ServerResponse;
 
-  private middlewares: MiddlewareInstance[];
+  private method: Method;
 
-  private method: string;
-
-  private url: Url;
+  private path: string;
 
   constructor(
-    url: Url,
-    method: string,
+    path: string,
+    method: Method,
     request: ServerRequest,
     response: ServerResponse
   ) {
     this.resolved = false;
     this.request = request;
     this.response = response;
-    this.middlewares = [];
 
-    this.url = stripSlashes(url.replace(/[#?].*$/, ''));
-    this.method = method.toLowerCase();
+    this.path = stripSlashes(path);
+    this.method = method;
   }
 
   /**
@@ -65,7 +62,7 @@ export class Engine {
    */
   private captureParameter(
     routeToken: string,
-    urlToken: string,
+    pathToken: string,
     parameters: RouteParameter[]
   ): RouteParameter[] {
     const processToken = (token: string, value: string) => {
@@ -116,194 +113,152 @@ export class Engine {
       const separator = RegExp.$2;
       const token2 = RegExp.$3;
 
-      const values = urlToken ? urlToken.split(separator) : ['', ''];
+      const values = pathToken ? pathToken.split(separator) : ['', ''];
       parameters.push(processToken(token1, values[0]));
       parameters.push(processToken(token2, values[1]));
     } else if (SINGLE_TOKEN_REGEX.test(routeToken)) {
       const token = RegExp.$1;
-      parameters.push(processToken(token, urlToken));
+      parameters.push(processToken(token, pathToken));
     }
-    return parameters;
-  }
 
-  /**
-   * reduce parameters to object value
-   * @param parameters
-   */
-  private reduceParams(parameters: RouteParameter[]) {
-    return parameters.reduce((acc, current) => {
-      acc[current.name] = current.value;
-      return acc;
-    }, {});
+    return parameters;
   }
 
   /**
    * runs through the route, and captures parameters
    */
-  private captureParameters(routeUrl: string): RouteParameter[] {
+  private captureParameters(routePath: string) {
+    routePath = stripSlashes(routePath);
+
     const parameters: RouteParameter[] = [];
 
-    const removeEmpty = (arg: string) => arg !== '';
-
     //split the tokens.
-    const routeTokens = routeUrl.split('/').filter(removeEmpty);
-    const urlTokens = this.url.split('/').filter(removeEmpty);
+    const routeTokens = routePath.split('/');
+    const pathTokens = this.path.split('/');
 
-    // if the route tokens is greater than the url tokens, fill with empty string
+    // if the route tokens is greater than the path tokens, fill with empty string
     const len = routeTokens.length;
-    fillArray(urlTokens, len, '');
+    fillArray(pathTokens, len, '');
 
     let i = -1;
     while (++i < len) {
-      const urlToken = urlTokens[i];
+      const pathToken = pathTokens[i];
       const routeToken = routeTokens[i];
 
       // if it is final route token, store remaining url
       if (routeToken === '*' && i + 1 === len) {
         parameters.push({
-          name: 'rest',
+          name: '__rest',
           dataType: 'string',
-          value: urlTokens.slice(i).join('/'),
+          value: pathTokens.slice(i).join('/'),
         });
         break;
       } else {
-        this.captureParameter(routeToken, urlToken, parameters);
+        this.captureParameter(routeToken, pathToken, parameters);
       }
     }
-    return parameters;
+
+    return parameters.reduce((acc, current) => {
+      acc[current.name] = current.value;
+      return acc;
+    }, {} as PathParameters);
   }
 
   /**
    * check if route url matches request url
    */
-  private matchUrl(routeUrl: Url): boolean {
+  private matchPath(routePath: string): boolean {
+    routePath = stripSlashes(routePath);
+
     /* create matching regular expression */
-    const tokens = routeUrl ? routeUrl.split('/') : [];
+    const tokens = routePath ? routePath.split('/') : [];
     const max = tokens.length - 1;
 
     const pattern = tokens
       .map((token, index) => {
+        // if it is the last token and it is optional, put it inside an optional regex pattern
         if (index === max && /[^)]\?$/.test(token)) {
           token = `(${token.substring(0, token.length - 1)})?`;
         }
+
         if (token === '*') {
           return '.*';
         } else {
           token = replace(DOUBLE_TOKEN_REGEX, '[^/]+$:2[^/]+', token);
           token = replace(SINGLE_TOKEN_REGEX, '[^/]+', token);
         }
+
         return token;
       })
       .join('/');
 
     const regex = new RegExp('^' + pattern + '$', 'i'); //regex is case insensitive
-    return regex.test(this.url) || regex.test(this.url + '/');
-  }
 
-  /**
-   * asynchronously runs the middleware
-   */
-  private async runMiddlewares(
-    middlewares: Middleware[],
-    parameters: RouteParameter[]
-  ) {
-    const next = generateNext();
-
-    for (let i = 0; i < middlewares.length; i++) {
-      const middleware = middlewares[i];
-      next.reset();
-      await middleware(this.request, this.response, next, {
-        params: this.reduceParams(parameters),
-      });
-
-      if (next.status() === false) {
-        break;
-      }
-    }
-
-    if (
-      next.status() === false &&
-      (!this.response.writableFinished || !this.response.finished)
-    ) {
-      this.response.end();
-    }
-
-    return next.status();
-  }
-
-  /**
-   * asynchronously runs the matching route
-   */
-  private async runRoute(route: RouteInstance, parameters: RouteParameter[]) {
-    for (let i = 0; i < this.middlewares.length; i++) {
-      const [, url, middlewares, options] = this.middlewares[i];
-      const middlewareUrl = stripSlashes(url);
-
-      const methods = options.method;
-
-      if (
-        methods.length === 0 ||
-        !methods.includes(this.method as any) ||
-        !this.matchUrl(middlewareUrl)
-      ) {
-        continue;
-      }
-
-      const middlewareParameters = this.captureParameters(middlewareUrl);
-
-      const shouldContinue = await this.runMiddlewares(
-        middlewares,
-        middlewareParameters
-      );
-
-      if (!shouldContinue) {
-        return;
-      }
-    }
-
-    const [, , callback, routeOptions] = route;
-
-    //run localised middlewares if any
-    if (isObject<ResolvedCallbackOptions>(routeOptions)) {
-      if (!(await this.runMiddlewares(routeOptions.use, parameters))) {
-        return;
-      }
-    }
-
-    return callback(this.request, this.response, {
-      params: this.reduceParams(parameters),
-    });
+    // the second test is necessary to capture optional path
+    return regex.test(this.path) || regex.test(this.path + '/');
   }
 
   /**
    * processes the route
    */
-  async process(route: RouteInstance) {
-    const routeUrl = stripSlashes(route[1]);
+  async process(
+    routeInstances: RouteInstance[],
+    middlewareInstances: MiddlewareInstance[] = []
+  ) {
+    const method = this.method;
     if (this.resolved) {
       return true;
     }
 
-    if (!this.matchUrl(routeUrl)) {
+    const routeInstance = routeInstances.find((routeInstance) =>
+      this.matchPath(routeInstance[1])
+    );
+
+    if (!routeInstance) {
       return false;
     }
 
-    this.resolved = true;
-    const parameters = this.captureParameters(routeUrl);
+    const [, routePath, routeCallback, routeMiddlewares] = routeInstance;
 
-    try {
-      await this.runRoute(route, parameters);
-    } catch (ex) {
-      handleError(ex, this.response);
+    const matchingMiddlewares: Array<[string, Middleware[]]> =
+      middlewareInstances
+        .filter(([, middlewarePath, , methods]) => {
+          return methods.has(method) && this.matchPath(middlewarePath);
+        })
+        .map(([, middlewarePath, middleware]) => [middlewarePath, middleware]);
+
+    if (routeMiddlewares.length) {
+      matchingMiddlewares.push([routePath, routeMiddlewares]);
     }
-    return true;
-  }
 
-  /**
-   * sets or overrides the existing middlewares
-   */
-  use(middlewares: MiddlewareInstance[]): this {
-    this.middlewares = middlewares;
-    return this;
+    // execute middlewares
+    const next = generateNext();
+
+    for (const [middlewarePath, middlewares] of matchingMiddlewares) {
+      const pathParams = this.captureParameters(middlewarePath);
+      for (const middleware of middlewares) {
+        next.reset();
+
+        await middleware(this.request, this.response, next, {
+          pathParams,
+        });
+
+        if (!next.status()) {
+          break;
+        }
+      }
+
+      // stop executing and return true
+      if (!next.status()) {
+        return true;
+      }
+    }
+
+    const routePathParams = this.captureParameters(routePath);
+    await routeCallback(this.request, this.response, {
+      pathParams: routePathParams,
+    });
+
+    return true;
   }
 }

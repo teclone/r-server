@@ -33,19 +33,15 @@ describe('BodyParser', function () {
     });
   });
 
-  describe(`#parseQueryString(url: string)`, function () {
-    it(`should extract and parse the query portion of the given url`, function () {
-      const url = '/index?' + encodeData(data);
-      expect(bodyParser.parseQueryString(url)).toEqual(data);
-    });
-
-    it(`should default query parameters with no value to empty string`, function () {
-      expect(bodyParser.parseQueryString('/index?name')).toEqual({ name: '' });
-    });
-
-    it(`should return empty object if url has no query portion`, function () {
-      expect(bodyParser.parseQueryString('/index')).toEqual({});
-      expect(bodyParser.parseQueryString('/index?')).toEqual({});
+  describe(`#urlSearchParamsToObject(searchParams: URLSearchParams)`, function () {
+    it(`should convert the search params to object of key value pairs`, function () {
+      const urlSearchParams = new URLSearchParams('key1=value1&key2=value2');
+      expect(bodyParser.urlSearchParamsToObject(urlSearchParams)).toMatchObject(
+        {
+          key1: 'value1',
+          key2: 'value2',
+        }
+      );
     });
   });
 

@@ -1,12 +1,14 @@
 import { IncomingMessage } from 'http';
 import { Http2ServerRequest } from 'http2';
-import { Data, Files, HttpProtocol, Method } from '../@types';
+import { Data, Files, Method } from '../@types';
 
 export type ServerRequest<
   T extends typeof IncomingMessage | typeof Http2ServerRequest =
     | typeof IncomingMessage
     | typeof Http2ServerRequest
 > = Omit<InstanceType<T>, 'method'> & {
+  parsedUrl: URL;
+
   error: boolean;
 
   startedAt: Date;
@@ -27,25 +29,11 @@ export type ServerRequest<
 
   encrypted: boolean;
 
-  host: string;
-
-  port: number;
-
-  hostname: string;
-
-  protocol: HttpProtocol;
-
   method: Method;
 
   initialized: boolean;
 
   init: (this: ServerRequest<T>, encrypted: boolean) => void;
-};
-
-type ServerRequestConstructor<
-  T extends typeof IncomingMessage | typeof Http2ServerRequest
-> = Omit<T, 'prototype'> & {
-  new (...args: ConstructorParameters<T>): ServerRequest<T>;
 
   prototype: ServerRequest<T>;
 };
@@ -57,15 +45,12 @@ const createRequestClass = <
   opts: {
     init: (this: ServerRequest<T>, encrypted: boolean) => void;
   }
-) => {
+): T => {
   const { init } = opts;
 
-  const newClass: ServerRequestConstructor<T> = function _constructor(
-    this: ServerRequest<T>,
-    ...args
-  ) {
-    BaseRequestClass.call(this, ...args);
+  const RequestClass = BaseRequestClass as any as ServerRequest<T>;
 
+  RequestClass.prototype.init = function (encrypted) {
     this.buffer = Buffer.alloc(0);
 
     this.files = {};
@@ -74,56 +59,48 @@ const createRequestClass = <
 
     // data is a merge of query and body
     this.data = {};
-  } as unknown as ServerRequestConstructor<T>;
 
-  Object.setPrototypeOf(newClass.prototype, BaseRequestClass.prototype);
+    if (init) {
+      init.call(this, encrypted);
+    }
+  };
 
-  // end
-  newClass.prototype.init =
-    init ||
-    function () {
-      // do nothing
-    };
-
-  return newClass;
+  return RequestClass as any as T;
 };
 
-export const Http1Request = createRequestClass(IncomingMessage, {
+// HTTP1Request
+class Http1BaseRequest extends IncomingMessage {}
+export const Http1Request = createRequestClass(Http1BaseRequest, {
   init(encrypted) {
     if (!this.initialized) {
       this.startedAt = new Date();
       this.entityTooLarge = false;
 
+      this.method = this.method.toLowerCase() as Method;
+      const host = this.headers['host'];
+      const protocol = encrypted ? 'https' : 'http';
+
       this.encrypted = encrypted;
-      this.protocol = encrypted ? 'https' : 'http';
-
-      this.host = this.headers['host'];
-
-      const [hostname, port] = this.host.split(':');
-
-      this.hostname = hostname;
-      this.port = Number.parseInt(port);
+      this.parsedUrl = new URL(this.url, `${protocol}://${host}`);
 
       this.initialized = true;
     }
   },
 });
 
-export const Http2Request = createRequestClass(Http2ServerRequest, {
+// HTTP2Request
+class Http2BaseRequest extends Http2ServerRequest {}
+export const Http2Request = createRequestClass(Http2BaseRequest, {
   init(encrypted) {
     this.startedAt = new Date();
-
     this.entityTooLarge = false;
 
+    const host = this.authority;
+    const protocol = encrypted ? 'https' : 'http';
+    this.method = this.method.toLowerCase() as Method;
+
     this.encrypted = encrypted;
-    this.protocol = encrypted ? 'https' : 'http';
-
-    this.host = this.authority;
-
-    const [hostname, port] = this.authority.split(':');
-
-    this.hostname = hostname;
-    this.port = Number.parseInt(port);
+    this.parsedUrl = new URL(this.url, `${protocol}://${host}`);
 
     this.initialized = true;
   },

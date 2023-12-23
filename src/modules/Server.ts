@@ -9,24 +9,20 @@ import * as fs from 'fs';
 import {
   Http2SecureServer,
   createSecureServer as createHttp2SecureServer,
-  ServerHttp2Session,
 } from 'http2';
 
 import { createServer as createHttp1SecureServer } from 'https';
 import type { Server as HttpServer } from 'http';
 import { createServer } from 'http';
-import * as path from 'path';
+import { resolve } from 'path';
 
 import {
   RServerConfig,
   RouteInstance,
   MiddlewareInstance,
-  Url,
   Method,
   Callback,
   Middleware,
-  CallbackOptions,
-  MiddlewareOptions,
   RouteId,
   MiddlewareId,
   ErrorCallback,
@@ -54,6 +50,11 @@ export interface ServerConstructorOptions<
   configFile?: string;
   config?: RServerConfig;
 
+  /**
+   * routing base path
+   */
+  basePath?: string;
+
   Http1ServerRequest?: Http1Rq;
   Http2ServerRequest?: Http2Rq;
 
@@ -75,7 +76,7 @@ export class Server<
 
   private config: RServerConfig = {};
 
-  private router: Router = new Router(false);
+  private router: Router;
 
   private mountedRouters: Router[] = [];
 
@@ -115,6 +116,11 @@ export class Server<
       tempDir: this.config.tempDir,
     });
 
+    this.router = new Router({
+      inheritMiddlewares: false,
+      basePath: options?.basePath,
+    });
+
     this.fileServer = new FileServer(this.entryPath, this.config);
 
     this.createServers(options);
@@ -131,7 +137,7 @@ export class Server<
     let configFromFile: RServerConfig;
 
     try {
-      const absPath = path.resolve(entryPath, configFile);
+      const absPath = resolve(entryPath, configFile);
       configFromFile = require(absPath);
     } catch (ex) {
       console.log(
@@ -155,7 +161,7 @@ export class Server<
       'tempDir',
     ];
     directoriesToResolve.forEach((key) => {
-      resolvedConfig[key as any] = path.resolve(
+      resolvedConfig[key as any] = resolve(
         entryPath,
         resolvedConfig[key as any]
       );
@@ -178,7 +184,7 @@ export class Server<
           // @ts-ignore
           ServerResponse: opts?.Http1ServerResponse || Http1Response,
         },
-        null
+        scopeCallback(this.onRequest, this, false)
       );
     }
 
@@ -190,7 +196,7 @@ export class Server<
           result[key] =
             key === 'passphrase'
               ? value
-              : fs.readFileSync(path.resolve(this.entryPath, value));
+              : fs.readFileSync(resolve(this.entryPath, value));
           return result;
         },
         {}
@@ -206,7 +212,7 @@ export class Server<
               // @ts-ignore
               ServerResponse: opts?.Http1ServerResponse || Http1Response,
             },
-            null
+            scopeCallback(this.onRequest, this, true)
           );
           break;
 
@@ -225,7 +231,7 @@ export class Server<
 
               allowHTTP1: true,
             },
-            null
+            scopeCallback(this.onRequest, this, true)
           );
       }
     }
@@ -245,7 +251,7 @@ export class Server<
     try {
       config();
       config({
-        path: path.resolve(entryPath, `.${env}`),
+        path: resolve(entryPath, `.${env}`),
       });
     } catch (ex) {
       // do nothing
@@ -278,49 +284,40 @@ export class Server<
   }
 
   /**
-   * runs the array of route instances until a matched route is found
-   */
-  private async runRoutes(method: Method, engine: Engine, router: Router) {
-    const routes = router.getRoutes()[method];
-    for (const route of routes) {
-      if (await engine.process(route)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
    * cordinates how routes are executed, including mounted routes
    */
   private async cordinateRoutes(
-    url: Url,
-    method: string,
+    path: string,
+    method: Method,
     request: ServerRequest,
     response: ServerResponse
   ) {
-    method = method.toLowerCase();
-
     //create the engine
-    const engine = new Engine(url, method, request, response);
+    const engine = new Engine(path, method, request, response);
 
-    //run main router
-    engine.use(this.router.getMiddlewares());
-
-    if (await this.runRoutes(method as Method, engine, this.router)) {
+    // process main route
+    if (
+      await engine.process(
+        this.router.getRoutes()[method],
+        this.router.getMiddlewares()
+      )
+    ) {
       return true;
     }
 
-    //run mounted routers
+    // process mounted routes;
     for (const mountedRouter of this.mountedRouters) {
-      const middlewares = mountedRouter.shouldInheritMiddlewares()
-        ? [...this.router.getMiddlewares(), ...mountedRouter.getMiddlewares()]
+      const middlewareInstances = mountedRouter.shouldInheritMiddlewares()
+        ? this.router.getMiddlewares().concat(mountedRouter.getMiddlewares())
         : mountedRouter.getMiddlewares();
 
-      engine.use(middlewares);
-
       /* istanbul ignore else */
-      if (await this.runRoutes(method as Method, engine, mountedRouter)) {
+      if (
+        await engine.process(
+          mountedRouter.getRoutes()[method],
+          middlewareInstances
+        )
+      ) {
         return true;
       }
     }
@@ -340,25 +337,27 @@ export class Server<
   /**
    * parse all request data
    */
-  private parseRequestData(request: ServerRequest, url: Url) {
+  private parseRequestData(request: ServerRequest) {
     //parse query
-    request.query = this.bodyParser.parseQueryString(url);
+    request.query = this.bodyParser.urlSearchParamsToObject(
+      request.parsedUrl.searchParams
+    );
 
     //parse the request body
     if (request.buffer.length > 0) {
-      let contentType = 'text/plain';
-      /* istanbul ignore else */
-      if (request.headers['content-type']) {
-        contentType = request.headers['content-type'];
-      }
+      const contentType = request.headers['content-type'] || 'text/plain';
 
       //TODO: add support for content encoding
       const result = this.bodyParser.parse(request.buffer, contentType);
+
       request.body = result.body;
       request.files = result.files;
     }
 
-    copy(request.data, request.query, request.body);
+    request.data = {
+      ...request.query,
+      ...request.body,
+    };
   }
 
   /**
@@ -370,24 +369,28 @@ export class Server<
     }
 
     request.endedAt = response.startedAt = new Date();
-    const { url } = request;
+    const pathname = request.parsedUrl.pathname;
 
-    this.parseRequestData(request, url);
-    const method = request.method.toLowerCase() as Method;
+    this.parseRequestData(request);
+    const method = request.method;
 
-    return this.cordinateRoutes(url, method, request, response).then(
-      (status) => {
-        if (!status) {
-          return this.fileServer
-            .serve(url, method, request.headers, response)
-            .then((status) => {
-              if (!status) {
-                return this.fileServer.serveHttpErrorFile(404, response);
-              }
-              return true;
-            });
+    return this.cordinateRoutes(pathname, method, request, response).then(
+      (routeFound) => {
+        if (routeFound) {
+          return true;
         }
-        return true;
+
+        // try serving the file
+        return this.fileServer
+          .serve(pathname, method, request.headers, response)
+          .then((fileServed) => {
+            if (fileServed) {
+              return true;
+            }
+
+            // return 404 response;
+            return this.fileServer.serveHttpErrorFile(404, response);
+          });
       }
     );
   }
@@ -428,36 +431,39 @@ export class Server<
     const httpsConfig = this.config.https;
     if (httpsConfig.enabled && !request.encrypted && httpsConfig.enforce) {
       response.redirect(
-        `https://${path.join(
-          request.hostname + ':' + this.address().https.port,
-          request.url
-        )}`
+        `https://${
+          request.parsedUrl.hostname +
+          ':' +
+          this.address().https.port +
+          request.parsedUrl.pathname +
+          request.parsedUrl.search
+        }`
       );
-    } else {
-      //handle on request error
-      request.on('error', (err) => {
-        request.error = true;
-        handleError(err, response, 400);
-      });
-
-      //handle on data event
-      request.on(
-        'data',
-        scopeCallback(this.onRequestData, this, [request, response])
-      );
-
-      //handle on end event
-      request.on(
-        'end',
-        scopeCallback(this.onRequestEnd, this, [request, response])
-      );
-
-      //clean up resources once the response has been sent out
-      response.on(
-        'finish',
-        scopeCallback(this.onResponseFinish, this, [request, response])
-      );
+      return;
     }
+    //handle on request error
+    request.on('error', (err) => {
+      request.error = true;
+      handleError(err, response, 400);
+    });
+
+    //handle on data event
+    request.on(
+      'data',
+      scopeCallback(this.onRequestData, this, [request, response])
+    );
+
+    //handle on end event
+    request.on(
+      'end',
+      scopeCallback(this.onRequestEnd, this, [request, response])
+    );
+
+    //clean up resources once the response has been sent out
+    response.on(
+      'finish',
+      scopeCallback(this.onResponseFinish, this, [request, response])
+    );
   }
 
   /**
@@ -486,18 +492,11 @@ export class Server<
     resolve,
     reject
   ) {
-    const activeSessions = new Set<ServerHttp2Session>();
-
     if (!server) {
       return resolve();
     }
 
-    // store active sessions
     server
-      .on('session', (session) => {
-        activeSessions.add(session);
-        session.on('close', () => activeSessions.delete(session));
-      })
 
       //handle error event
       .on('error', (err: any) => {
@@ -525,16 +524,9 @@ export class Server<
 
       // handle close event
       .on('close', () => {
-        // destroy all active sessions
-        activeSessions.forEach((session) => session.close());
-        activeSessions.clear();
-
         const intro = this.getServerIntro(server, isSecureServer);
         this.logger.info(`${intro.name} connection closed successfully`);
-      })
-
-      //handle server request
-      .on('request', scopeCallback(this.onRequest, this, isSecureServer));
+      });
   }
 
   /**
@@ -587,12 +579,8 @@ export class Server<
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  options(
-    url: Url,
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ) {
-    return this.router.options(url, callback, options);
+  options(path: string, callback: Callback, use?: Middleware | Middleware[]) {
+    return this.router.options(path, callback, use);
   }
 
   /**
@@ -602,12 +590,8 @@ export class Server<
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  head(
-    url: Url,
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ) {
-    return this.router.head(url, callback, options);
+  head(path: string, callback: Callback, use?: Middleware | Middleware[]) {
+    return this.router.head(path, callback, use);
   }
 
   /**
@@ -617,12 +601,8 @@ export class Server<
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  get(
-    url: Url,
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ) {
-    return this.router.get(url, callback, options);
+  get(path: string, callback: Callback, use?: Middleware | Middleware[]) {
+    return this.router.get(path, callback, use);
   }
 
   /**
@@ -630,14 +610,10 @@ export class Server<
    *
    * @param url - route url
    * @param callback - route callback handler
-   * @param options - route configuration object or middleware or array of middlewares
+   * @param use - route configuration object or middleware or array of middlewares
    */
-  post(
-    url: Url,
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ) {
-    return this.router.post(url, callback, options);
+  post(path: string, callback: Callback, use?: Middleware | Middleware[]) {
+    return this.router.post(path, callback, use);
   }
 
   /**
@@ -646,12 +622,8 @@ export class Server<
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  put(
-    url: Url,
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ) {
-    return this.router.put(url, callback, options);
+  put(path: string, callback: Callback, use?: Middleware | Middleware[]) {
+    return this.router.put(path, callback, use);
   }
 
   /**
@@ -661,12 +633,8 @@ export class Server<
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  delete(
-    url: Url,
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ) {
-    return this.router.delete(url, callback, options);
+  delete(path: string, callback: Callback, use?: Middleware | Middleware[]) {
+    return this.router.delete(path, callback, use);
   }
 
   /**
@@ -676,19 +644,15 @@ export class Server<
    * @param callback - route callback handler
    * @param options - route configuration object or middleware or array of middlewares
    */
-  any(
-    url: Url,
-    callback: Callback,
-    options?: Middleware | Middleware[] | CallbackOptions
-  ) {
-    this.router.any(url, callback, options);
+  any(path: string, callback: Callback, use?: Middleware | Middleware[]) {
+    this.router.any(path, callback, use);
   }
 
   /**
    * returns a route wrapper for the given url
    */
-  route(url: Url): Wrapper {
-    return new Wrapper(this.router, url);
+  route(path: string): Wrapper {
+    return new Wrapper(this.router, path);
   }
 
   /**
@@ -734,20 +698,20 @@ export class Server<
    * that the middleware will run against
    */
   use(
-    url: Url,
+    path: string,
     middleware: Middleware | Middleware[],
-    options?: Method | Method[] | MiddlewareOptions
+    operation?: Method | Method[]
   ) {
-    return this.router.use(url, middleware, options);
+    return this.router.use(path, middleware, operation);
   }
 
   /**
    * mounts a router to the server instance
    */
-  mount(baseUrl: Url, router: Router) {
+  mount(basePath: string, router: Router) {
     const mainRouterBasePath = this.router.getBasePath();
     const resolve = (instance: RouteInstance | MiddlewareInstance) => {
-      instance[1] = join(mainRouterBasePath, baseUrl, instance[1]);
+      instance[1] = join(mainRouterBasePath, basePath, instance[1]);
     };
 
     //resolve all routes, each apiRoutes is of the form [url, callback, options]

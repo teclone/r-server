@@ -109,44 +109,37 @@ describe(`Server`, function () {
   });
 
   describe(
-    `#options(url: Url, callback: Callback,
-        options: Middleware | Middleware[] | CallbackOptions | null = null)`,
+    `#options(url: Url, callback: Callback, use?: Middleware | Middleware[])`,
     getTemplate('options')
   );
 
   describe(
-    `#head(url: Url, callback: Callback,
-        options: Middleware | Middleware[] | CallbackOptions | null = null)`,
+    `#head(url: Url, callback: Callback, use?: Middleware | Middleware[])`,
     getTemplate('head')
   );
 
   describe(
-    `#get(url: Url, callback: Callback,
-        options: Middleware | Middleware[] | CallbackOptions | null = null)`,
+    `#get(url: Url, callback: Callback, use?: Middleware | Middleware[])`,
     getTemplate('get')
   );
 
   describe(
-    `#post(url: Url, callback: Callback,
-        options: Middleware | Middleware[] | CallbackOptions | null = null)`,
+    `#post(url: Url, callback: Callback, use?: Middleware | Middleware[])`,
     getTemplate('post')
   );
 
   describe(
-    `#put(url: Url, callback: Callback,
-        options: Middleware | Middleware[] | CallbackOptions | null = null)`,
+    `#put(url: Url, callback: Callback, use?: Middleware | Middleware[])`,
     getTemplate('put')
   );
 
   describe(
-    `#delete(url: Url, callback: Callback,
-        options: Middleware | Middleware[] | CallbackOptions | null = null)`,
+    `#delete(url: Url, callback: Callback, use?: Middleware | Middleware[])`,
     getTemplate('delete')
   );
 
   describe(
-    `#any(url: Url, callback: Callback,
-        options: Middleware | Middleware[] | CallbackOptions | null = null)`,
+    `#any(url: Url, callback: Callback, use?: Middleware | Middleware[])`,
     getTemplate('any')
   );
 
@@ -174,7 +167,7 @@ describe(`Server`, function () {
       server.setBasePath('api/v1');
       server.get('login', dummyCallback);
 
-      const router = new Router(true);
+      const router = new Router({ inheritMiddlewares: true });
       router.get('/', dummyCallback);
       router.get('{id}', dummyCallback);
       router.get('{id}/posts', dummyCallback);
@@ -202,7 +195,7 @@ describe(`Server`, function () {
     });
 
     it(`should also search in mounted routers, returning true if router is found`, function () {
-      const router = new Router(true);
+      const router = new Router({ inheritMiddlewares: true });
       const routeId = router.get('profile', dummyCallback);
       server.mount('user', router);
 
@@ -210,7 +203,7 @@ describe(`Server`, function () {
     });
 
     it(`should also search in mounted routers, returning false if router is not found`, function () {
-      const router = new Router(true);
+      const router = new Router({ inheritMiddlewares: true });
       router.get('profile', dummyCallback);
       server.mount('user', router);
 
@@ -230,7 +223,7 @@ describe(`Server`, function () {
     });
 
     it(`should also search in mounted routers, returning true if middleware exists`, function () {
-      const router = new Router(true);
+      const router = new Router({ inheritMiddlewares: true });
       const middlewareId = router.use('profile', dummyMiddleware);
       server.mount('user', router);
 
@@ -238,7 +231,7 @@ describe(`Server`, function () {
     });
 
     it(`should also search in mounted routers, returning false if middleware does not exist`, function () {
-      const router = new Router(true);
+      const router = new Router({ inheritMiddlewares: true });
       router.use('profile', dummyMiddleware);
       server.mount('user', router);
 
@@ -572,7 +565,7 @@ describe(`Server`, function () {
         const callback = (req, res) => {
           return res.end();
         };
-        const router = new Router(true);
+        const router = new Router({ inheritMiddlewares: true });
 
         router.get('/{id}', callback);
         router.post('/{id}', callback);

@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { RServerConfig, Url, Headers, Range } from '../@types';
+import type { RServerConfig, Headers, Range } from '../@types';
 
 import { isUndefined, isString, stripSlashes } from '@teclone/utils';
 import { IncomingHttpHeaders } from 'http';
@@ -299,7 +299,7 @@ export class FileServer {
    * validates the request method and returns the public file or directory path that
    * matches the request url
    */
-  private validateRequest(url: Url, method: string): string | null {
+  private validateRequest(url: string, method: string): string | null {
     if (!['head', 'get', 'options'].includes(method.toLowerCase())) {
       return null;
     }
