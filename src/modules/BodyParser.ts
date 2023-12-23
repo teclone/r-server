@@ -236,14 +236,16 @@ export class BodyParser {
   }
 
   /**
-   * parse the query parameters in the given url
+   * converts url search parameters to object
+   * @param searchParams
+   * @returns
    */
-  parseQueryString(url: string): Data {
-    if (url.indexOf('?') > -1) {
-      return this.parseUrlEncoded(url.split('?')[1]);
-    } else {
-      return {};
+  urlSearchParamsToObject(searchParams: URLSearchParams) {
+    const result: Data = {};
+    for (const key of searchParams.keys()) {
+      result[key] = searchParams.get(key);
     }
+    return result;
   }
 
   /**

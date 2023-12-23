@@ -1,8 +1,14 @@
-import { Routes } from '../@types';
+import { Method, Routes } from '../@types';
 
+// this matches a route token path in the form of {dataType:pathParameterName} or {pathParameterName}
 const singleToken = '\\{((?:[a-z]+:)?[a-z]+)\\}';
 
+// single token regex
 export const SINGLE_TOKEN_REGEX = new RegExp(singleToken, 'i');
+
+// double token regex, helps capture routh tokens that targets two pairs of from and to values
+// eg {dataType:fromPathParameterName}-{dataType:toPathParameterName}
+// or {dataType:fromPathParameterName}.{dataType:toPathParameterName}
 export const DOUBLE_TOKEN_REGEX = new RegExp(
   singleToken + '([-.])' + singleToken,
   'i'
@@ -26,7 +32,7 @@ export const assignRouteId = () => ++routeId;
 
 export const assignMiddlewareId = () => ++middlewareId;
 
-export const ROUTE_KEYS: Array<keyof Routes> = [
+export const ALL_METHODS: Method[] = [
   'options',
   'head',
   'get',

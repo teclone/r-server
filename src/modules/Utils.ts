@@ -1,7 +1,5 @@
-import { Method, Routes } from '../@types';
 import { EntityTooLargeException } from '../Exceptions/EntityTooLargeException';
-import { isString, makeArray } from '@teclone/utils';
-import { ROUTE_KEYS } from './Constants';
+import { isString } from '@teclone/utils';
 import { ServerResponse } from './Response';
 
 export const handleError = (
@@ -33,7 +31,7 @@ export const handleError = (
 
   return response.jsonError({
     statusCode: code || 500,
-    message: 'internal server error',
+    message: 'Error',
     data:
       process.env.NODE_ENV === 'production'
         ? null
@@ -41,15 +39,4 @@ export const handleError = (
             errorStack: err?.stack || '',
           },
   });
-};
-
-export const getRouteKeys = (
-  method: Method | Method[] = '*'
-): Array<keyof Routes> => {
-  method = makeArray(method);
-  if (method.findIndex((current) => current === '*') > -1) {
-    return ROUTE_KEYS;
-  } else {
-    return method as Array<keyof Routes>;
-  }
 };

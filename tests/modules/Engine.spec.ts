@@ -1,18 +1,15 @@
 import { dummyCallback, dummyMiddleware } from '../helpers';
 import { Engine } from '../../src/modules/Engine';
-import {
-  Method,
-  MiddlewareInstance,
-  ServerRequest,
-  ServerResponse,
-} from '../../src/@types';
+import { Method, MiddlewareInstance } from '../../src/@types';
 import { Logger } from '../../src/modules/Logger';
 import { Server } from '../../src/modules/Server';
+import { ServerResponse } from '../../src/modules/Response';
+import { ServerRequest } from '../../src/modules/Request';
 
 describe('Engine', function () {
   let engine: Engine;
 
-  const createEngine = (url: string, method: Method) => {
+  const createEngine = (path: string, method: Method) => {
     const server = new Server();
     const configs = server.getConfig();
 
@@ -36,7 +33,7 @@ describe('Engine', function () {
     } as ServerResponse;
     response.logger = logger;
 
-    return new Engine(url, method, {} as ServerRequest, response);
+    return new Engine(path, method, {} as ServerRequest, response);
   };
 
   beforeEach(function () {
@@ -50,83 +47,6 @@ describe('Engine', function () {
     });
   });
 
-  describe(`#use(middlewares: MiddlewareInstance[]): this`, function () {
-    it(`should set the given middlewares as registered global middlewares, executing
-        middlewares whose route url and method matches that of the request`, function () {
-      const engine = createEngine('/users', 'get');
-
-      const middleware1 = jest.fn(dummyMiddleware);
-      const middleware2 = jest.fn();
-      const middleware3 = jest.fn();
-
-      const middlewares: MiddlewareInstance[] = [
-        [1, '*', [middleware1], { method: ['get'] }],
-        [2, '/users', [middleware2], { method: ['options'] }],
-        [3, '/users', [middleware3], { method: ['get'] }],
-      ];
-      engine.use(middlewares);
-
-      return engine
-        .process([1, 'users', dummyCallback, null])
-        .then((status) => {
-          expect(status).toBeTruthy();
-          expect(middleware1.mock.calls).toHaveLength(1);
-          expect(middleware2.mock.calls).toHaveLength(0);
-          expect(middleware3.mock.calls).toHaveLength(1);
-        });
-    });
-
-    it(`should stop middleware execution if any of the middlewares fails to execute the
-        next callback`, function () {
-      const engine = createEngine('/users', 'get');
-
-      const middleware1 = jest.fn((req, res, next) => {
-        return false;
-      });
-      const middleware2 = jest.fn(dummyMiddleware);
-
-      const middlewares: MiddlewareInstance[] = [
-        [1, '*', [middleware1], { method: ['post', 'put', 'get'] }],
-        [2, '/users', [middleware2], { method: ['get' as Method] }],
-      ];
-
-      engine.use(middlewares);
-
-      return engine
-        .process([3, 'users', dummyCallback, null])
-        .then((status) => {
-          expect(status).toBeTruthy();
-          expect(middleware1.mock.calls).toHaveLength(1);
-          expect(middleware2.mock.calls).toHaveLength(0);
-        });
-    });
-
-    it(`should stop middleware execution and also end the response if any of the middlewares fails to execute the
-        next callback and also fails to end the response`, function () {
-      const engine = createEngine('/users', 'get');
-
-      const middleware1 = jest.fn((req, res, next) => {
-        return false;
-      });
-      const middleware2 = jest.fn(dummyMiddleware);
-
-      const middlewares: MiddlewareInstance[] = [
-        [1, '*', [middleware1], { method: ['get'] }],
-        [2, '/users', [middleware2], { method: ['get'] }],
-      ];
-
-      engine.use(middlewares);
-
-      return engine
-        .process([3, 'users', dummyCallback, null])
-        .then((status) => {
-          expect(status).toBeTruthy();
-          expect(middleware1.mock.calls).toHaveLength(1);
-          expect(middleware2.mock.calls).toHaveLength(0);
-        });
-    });
-  });
-
   describe(`parameter capturing`, function () {
     it(`should capture route parameters and pass along to route callback
             during execution`, function () {
@@ -134,11 +54,11 @@ describe('Engine', function () {
       const routeCallback = jest.fn(dummyCallback);
 
       return engine
-        .process([1, 'users/{id}', routeCallback, null])
+        .process([[1, 'users/{id}', routeCallback, []]], [])
         .then((status) => {
           expect(status).toBeTruthy();
           expect(routeCallback).toHaveBeenCalledTimes(1);
-          expect(routeCallback.mock.calls[0][2].params).toHaveProperty(
+          expect(routeCallback.mock.calls[0][2].pathParams).toHaveProperty(
             'id',
             '1'
           );
@@ -151,9 +71,9 @@ describe('Engine', function () {
       const routeCallback = jest.fn(dummyCallback);
 
       return engine
-        .process([1, 'flights/{from}-{to}', routeCallback, null])
+        .process([[1, 'flights/{from}-{to}', routeCallback, []]])
         .then((status) => {
-          const params = routeCallback.mock.calls[0][2].params;
+          const params = routeCallback.mock.calls[0][2].pathParams;
           expect(status).toBeTruthy();
 
           expect(routeCallback).toHaveBeenCalledTimes(1);
@@ -169,9 +89,9 @@ describe('Engine', function () {
       const routeCallback = jest.fn(dummyCallback);
 
       return engine
-        .process([1, 'flights/{from}.{to}', routeCallback, null])
+        .process([[1, 'flights/{from}.{to}', routeCallback, []]])
         .then((status) => {
-          const params = routeCallback.mock.calls[0][2].params;
+          const params = routeCallback.mock.calls[0][2].pathParams;
           expect(status).toBeTruthy();
 
           expect(routeCallback).toHaveBeenCalledTimes(1);
@@ -186,9 +106,9 @@ describe('Engine', function () {
       const routeCallback = jest.fn(dummyCallback);
 
       return engine
-        .process([1, 'users/{int:userId}', routeCallback, null])
+        .process([[1, 'users/{int:userId}', routeCallback, []]])
         .then((status) => {
-          const params = routeCallback.mock.calls[0][2].params;
+          const params = routeCallback.mock.calls[0][2].pathParams;
           expect(status).toBeTruthy();
 
           expect(routeCallback).toHaveBeenCalledTimes(1);
@@ -202,9 +122,9 @@ describe('Engine', function () {
       const routeCallback = jest.fn(dummyCallback);
 
       return engine
-        .process([1, 'users/{int:userId}', routeCallback, null])
+        .process([[1, 'users/{int:userId}', routeCallback, []]])
         .then((status) => {
-          const params = routeCallback.mock.calls[0][2].params;
+          const params = routeCallback.mock.calls[0][2].pathParams;
           expect(status).toBeTruthy();
 
           expect(routeCallback).toHaveBeenCalledTimes(1);
@@ -218,9 +138,9 @@ describe('Engine', function () {
       const routeCallback = jest.fn(dummyCallback);
 
       return engine
-        .process([1, 'amount/{float:value}', routeCallback, null])
+        .process([[1, 'amount/{float:value}', routeCallback, []]])
         .then((status) => {
-          const params = routeCallback.mock.calls[0][2].params;
+          const params = routeCallback.mock.calls[0][2].pathParams;
           expect(status).toBeTruthy();
 
           expect(routeCallback).toHaveBeenCalledTimes(1);
@@ -234,9 +154,9 @@ describe('Engine', function () {
       const routeCallback = jest.fn(dummyCallback);
 
       return engine
-        .process([1, 'amount/{numeric:value}', routeCallback, null])
+        .process([[1, 'amount/{numeric:value}', routeCallback, []]])
         .then((status) => {
-          const params = routeCallback.mock.calls[0][2].params;
+          const params = routeCallback.mock.calls[0][2].pathParams;
           expect(status).toBeTruthy();
 
           expect(routeCallback).toHaveBeenCalledTimes(1);
@@ -250,9 +170,9 @@ describe('Engine', function () {
       const routeCallback = jest.fn(dummyCallback);
 
       return engine
-        .process([1, 'amount/{number:value}', routeCallback, null])
+        .process([[1, 'amount/{number:value}', routeCallback, []]])
         .then((status) => {
-          const params = routeCallback.mock.calls[0][2].params;
+          const params = routeCallback.mock.calls[0][2].pathParams;
           expect(status).toBeTruthy();
 
           expect(routeCallback).toHaveBeenCalledTimes(1);
@@ -266,9 +186,9 @@ describe('Engine', function () {
       const routeCallback = jest.fn(dummyCallback);
 
       return engine
-        .process([1, 'agreement/{boolean:value}', routeCallback, null])
+        .process([[1, 'agreement/{boolean:value}', routeCallback, []]])
         .then((status) => {
-          const params = routeCallback.mock.calls[0][2].params;
+          const params = routeCallback.mock.calls[0][2].pathParams;
           expect(status).toBeTruthy();
 
           expect(routeCallback).toHaveBeenCalledTimes(1);
@@ -282,9 +202,9 @@ describe('Engine', function () {
       const routeCallback = jest.fn(dummyCallback);
 
       return engine
-        .process([1, 'agreement/{bool:value}', routeCallback, null])
+        .process([[1, 'agreement/{bool:value}', routeCallback, []]])
         .then((status) => {
-          const params = routeCallback.mock.calls[0][2].params;
+          const params = routeCallback.mock.calls[0][2].pathParams;
           expect(status).toBeTruthy();
 
           expect(routeCallback).toHaveBeenCalledTimes(1);
@@ -296,10 +216,10 @@ describe('Engine', function () {
 
   describe(`pattern matching`, function () {
     it(`should match optional ending routes which are identified by the presence of
-        the question mark character at the end of the route`, function () {
+        the question mark character at the end of the route path`, function () {
       const engine = createEngine('/flights', 'get');
       return engine
-        .process([1, '/flights/{from}-{to}?', dummyCallback, null])
+        .process([[1, '/flights/{from}-{to}?', dummyCallback, []]])
         .then((status) => {
           expect(status).toBeTruthy();
         });
@@ -307,18 +227,17 @@ describe('Engine', function () {
 
     it(`should treat home route as empty string while matching`, function () {
       const engine = createEngine('/', 'get');
-      return engine.process([1, '/', dummyCallback, null]).then((status) => {
+      return engine.process([[1, '/', dummyCallback, []]]).then((status) => {
         expect(status).toBeTruthy();
       });
     });
   });
 
   describe(`routing`, function () {
-    it(`should process the given route and run the route callback if request
-        method and url matches`, function () {
+    it(`should process the given route and run the route callback if any of the routes path match request path`, function () {
       const engine = createEngine('/users', 'options');
       const callback = jest.fn(dummyCallback);
-      return engine.process([1, 'users', callback, null]).then((status) => {
+      return engine.process([[1, 'users', callback, []]]).then((status) => {
         expect(status).toBeTruthy();
         expect(callback.mock.calls).toHaveLength(1);
       });
@@ -336,12 +255,7 @@ describe('Engine', function () {
 
       return engine
         .process([
-          1,
-          'users',
-          callback,
-          {
-            use: [middleware1, middleware2, middleware3],
-          },
+          [1, 'users', callback, [middleware1, middleware2, middleware3]],
         ])
         .then((status) => {
           expect(status).toBeTruthy();
@@ -365,12 +279,7 @@ describe('Engine', function () {
 
       return engine
         .process([
-          1,
-          'users',
-          callback,
-          {
-            use: [middleware1, middleware2, middleware3],
-          },
+          [1, 'users', callback, [middleware1, middleware2, middleware3]],
         ])
         .then((status) => {
           expect(status).toBeTruthy();
@@ -382,15 +291,34 @@ describe('Engine', function () {
         });
     });
 
-    it(`should capture exceptions thrown inside the callback and handle it
-            accordingly`, function () {
-      const engine = createEngine('/users', 'options');
-      const callback = (req, res) => {
-        throw new Error('something went bad');
-      };
-      return engine.process([1, 'users', callback, null]).then((status) => {
-        expect(status).toBeTruthy();
-      });
+    it(`should execute matching
+        middlewares whose route path and method matches that of the request`, function () {
+      const engine = createEngine('/users', 'get');
+
+      const middleware1 = jest.fn(dummyMiddleware);
+      const middleware2 = jest.fn();
+      const middleware3 = jest.fn();
+      const middleware4 = jest.fn();
+
+      const middlewares: MiddlewareInstance[] = [
+        [1, '*', [middleware1], new Set(['get'])],
+        [2, '/users', [middleware2], new Set(['options'])],
+        [3, '/users', [middleware3], new Set(['get'])],
+        [3, '/users', [middleware4], new Set(['get'])],
+      ];
+
+      return engine
+        .process([[1, 'users', dummyCallback, []]], middlewares)
+        .then((status) => {
+          expect(status).toBeTruthy();
+          expect(middleware1.mock.calls).toHaveLength(1);
+          expect(middleware2.mock.calls).toHaveLength(0);
+          expect(middleware3.mock.calls).toHaveLength(1);
+
+          // middleware 4 is not called because middleware 2, despite being executed,
+          // did not call the next callback
+          expect(middleware4.mock.calls).toHaveLength(0);
+        });
     });
   });
 });

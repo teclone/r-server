@@ -3,31 +3,9 @@ import { Http2ServerResponse } from 'http2';
 import { isCallable, isString } from '@teclone/utils';
 import { Logger } from './Logger';
 import { FileServer } from './FileServer';
-import { ErrorCallback } from '../@types';
+import { ErrorCallback, RouteResponse } from '../@types';
 import { handleError } from './Utils';
-import { IncomingHttpHeaders } from 'http';
 import { ServerRequest } from './Request';
-
-export interface RouteResponse<ResponseData = {}> {
-  status?: 'success' | 'error';
-  statusCode?: number;
-  message?: string;
-  data?: ResponseData;
-  headers?: IncomingHttpHeaders;
-  ttl?: number;
-}
-
-export interface APIExecutor<RequestBody, ResponseData> {
-  (arg: {
-    body: RequestBody;
-    headers: IncomingHttpHeaders;
-  }): Promise<RouteResponse<ResponseData> | null>;
-
-  /**
-   * assigned name of the handler
-   */
-  apiName?: string;
-}
 
 export type ServerResponse<
   T extends typeof Http2ServerResponse | typeof Http1ServerResponse =
@@ -37,6 +15,8 @@ export type ServerResponse<
   InstanceType<T>,
   'end' | 'setHeader' | 'setHeaders' | 'removeHeader' | 'removeHeaders'
 > & {
+  prototype: ServerResponse<T>;
+
   req: ServerRequest;
 
   logger: Logger;
@@ -167,41 +147,19 @@ export type ServerResponse<
   ): Promise<boolean>;
 };
 
-type ServerResponseConstructor<
-  T extends typeof Http2ServerResponse | typeof Http1ServerResponse
-> = Omit<T, 'prototype'> & {
-  new (streamOrRequest: ConstructorParameters<T>[0]): ServerResponse<T>;
-
-  prototype: ServerResponse<T>;
-};
-
 const createResponseClass = <
   T extends typeof Http2ServerResponse | typeof Http1ServerResponse
 >(
-  BaseResponseClass: T,
-  opts: {
-    construct?: (
-      this: ServerResponse<T>,
-      streamOrRequest: ConstructorParameters<T>[0]
-    ) => void;
-  }
-) => {
-  const { construct } = opts;
+  BaseResponseClass: T
+): T => {
+  const ResponseClass = BaseResponseClass as any as ServerResponse<T>;
 
-  const newClass: ServerResponseConstructor<T> = function _constructor(
-    this: ServerResponse<T>,
-    streamOrRequest
-  ) {
-    BaseResponseClass.call(this, streamOrRequest);
-    if (construct) {
-      construct.call(this, streamOrRequest);
-    }
-  } as unknown as ServerResponseConstructor<T>;
-
-  Object.setPrototypeOf(newClass.prototype, BaseResponseClass.prototype);
+  const parentEnd = BaseResponseClass.prototype.end;
+  const parentSetHeader = BaseResponseClass.prototype.setHeader;
+  const parentRemoveHeader = BaseResponseClass.prototype.removeHeader;
 
   // end
-  newClass.prototype.end = function (data, encoding?, cb?) {
+  ResponseClass.prototype.end = function (data, encoding?, cb?) {
     let resolvedData: string | Buffer | Uint8Array = '';
     let resolvedEncoding: BufferEncoding | string;
 
@@ -241,52 +199,43 @@ const createResponseClass = <
       };
 
       if (encoding) {
-        BaseResponseClass.prototype.end.call(
-          this,
-          resolvedData,
-          resolvedEncoding,
-          resolvePromise
-        );
+        parentEnd.call(this, resolvedData, resolvedEncoding, resolvePromise);
       } else {
-        BaseResponseClass.prototype.end.call(
-          this,
-          resolvedData,
-          resolvePromise
-        );
+        parentEnd.call(this, resolvedData, resolvePromise);
       }
     });
   };
 
-  newClass.prototype.setHeader = function (name, value) {
-    BaseResponseClass.prototype.setHeader.call(this, name, value);
+  ResponseClass.prototype.setHeader = function (name, value) {
+    parentSetHeader.call(this, name, value);
     return this;
   };
 
-  newClass.prototype.setHeaders = function (headers) {
+  ResponseClass.prototype.setHeaders = function (headers) {
     Object.keys(headers || {}).forEach((key) => {
       this.setHeader(key, headers[key]);
     });
     return this;
   };
 
-  newClass.prototype.removeHeader = function (name) {
-    BaseResponseClass.prototype.removeHeader.call(this, name);
+  ResponseClass.prototype.removeHeader = function (name) {
+    parentRemoveHeader.call(this, name);
     return this;
   };
 
-  newClass.prototype.removeHeaders = function (...names: string[]) {
+  ResponseClass.prototype.removeHeaders = function (...names: string[]) {
     names.forEach((name) => {
       this.removeHeader(name);
     });
     return this;
   };
 
-  newClass.prototype.status = function (code: number) {
+  ResponseClass.prototype.status = function (code: number) {
     this.statusCode = code;
     return this;
   };
 
-  newClass.prototype.json = function (
+  ResponseClass.prototype.json = function (
     data?: object | string
   ): Promise<boolean> {
     if (!isString(data)) {
@@ -295,21 +244,21 @@ const createResponseClass = <
     return this.setHeader('Content-Type', 'application/json').end(data);
   };
 
-  newClass.prototype.redirect = function (
+  ResponseClass.prototype.redirect = function (
     path: string,
     status = 302
   ): Promise<boolean> {
     return this.status(status).setHeader('Location', path).end();
   };
 
-  newClass.prototype.download = function (
+  ResponseClass.prototype.download = function (
     filePath: string,
     filename?: string
   ): Promise<boolean> {
     return this.fileServer.serveDownload(filePath, this, filename);
   };
 
-  newClass.prototype.jsonError = function (
+  ResponseClass.prototype.jsonError = function (
     response?: RouteResponse
   ): Promise<boolean> {
     const {
@@ -335,7 +284,7 @@ const createResponseClass = <
       });
   };
 
-  newClass.prototype.jsonSuccess = function (
+  ResponseClass.prototype.jsonSuccess = function (
     response?: RouteResponse
   ): Promise<boolean> {
     const {
@@ -360,7 +309,7 @@ const createResponseClass = <
       });
   };
 
-  newClass.prototype.wait = function (time: number) {
+  ResponseClass.prototype.wait = function (time: number) {
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve(this);
@@ -368,7 +317,7 @@ const createResponseClass = <
     });
   };
 
-  newClass.prototype.processRouteResponse = function (
+  ResponseClass.prototype.processRouteResponse = function (
     responsePromise,
     options
   ) {
@@ -390,13 +339,19 @@ const createResponseClass = <
       });
   };
 
-  return newClass;
+  return ResponseClass as any as T;
 };
 
-export const Http1Response = createResponseClass(Http1ServerResponse, {
-  construct(req) {
-    this.req = req as any;
-  },
-});
+// HTTP1 Response
+class HTTP1BaseResponse extends Http1ServerResponse {
+  constructor(req) {
+    super(req);
+    // @ts-ignore
+    this.req = req;
+  }
+}
+export const Http1Response = createResponseClass(HTTP1BaseResponse);
 
-export const Http2Response = createResponseClass(Http2ServerResponse, {});
+// HTTP2 Response
+class HTTP2BaseResponse extends Http2ServerResponse {}
+export const Http2Response = createResponseClass(HTTP2BaseResponse);
