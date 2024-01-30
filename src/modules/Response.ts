@@ -137,12 +137,12 @@ export type ServerResponse<
    * @param response
    * @returns
    */
-  processRouteResponse<DataType>(
+  processRouteResponse<Data, Errors>(
     this: ServerResponse<T>,
-    responsePromise: Promise<RouteResponse<DataType>>,
+    responsePromise: Promise<RouteResponse<Data, Errors>>,
     options?: {
-      onSuccess?: (response: RouteResponse<DataType>) => any;
-      onError?: (response: RouteResponse<DataType>) => any;
+      onSuccess?: (response: RouteResponse<Data, Errors>) => void;
+      onError?: (response: RouteResponse<Data, Errors>) => void;
     }
   ): Promise<boolean>;
 };
@@ -235,15 +235,6 @@ const createResponseClass = <
     return this;
   };
 
-  ResponseClass.prototype.json = function (
-    data?: object | string
-  ): Promise<boolean> {
-    if (!isString(data)) {
-      data = JSON.stringify(data || '');
-    }
-    return this.setHeader('Content-Type', 'application/json').end(data);
-  };
-
   ResponseClass.prototype.redirect = function (
     path: string,
     status = 302
@@ -258,6 +249,14 @@ const createResponseClass = <
     return this.fileServer.serveDownload(filePath, this, filename);
   };
 
+  ResponseClass.prototype.json = function (
+    data?: object | string
+  ): Promise<boolean> {
+    const resolvedData =
+      typeof data === 'string' ? data : JSON.stringify(data || '');
+    return this.setHeader('Content-Type', 'application/json').end(resolvedData);
+  };
+
   ResponseClass.prototype.jsonError = function (
     response?: RouteResponse
   ): Promise<boolean> {
@@ -265,8 +264,7 @@ const createResponseClass = <
       statusCode = 400,
       headers,
       message,
-      data = null,
-      ttl,
+      errors = null,
     } = response || {};
 
     if (statusCode < 300) {
@@ -276,24 +274,15 @@ const createResponseClass = <
     return this.status(statusCode)
       .setHeaders(headers)
       .json({
-        status: 'error',
-        statusCode,
         message: message || 'Request failed',
-        data,
-        ttl,
+        errors,
       });
   };
 
   ResponseClass.prototype.jsonSuccess = function (
     response?: RouteResponse
   ): Promise<boolean> {
-    const {
-      statusCode = 200,
-      headers,
-      message,
-      data = null,
-      ttl,
-    } = response || {};
+    const { statusCode = 200, headers, message, data = null } = response || {};
     if (statusCode >= 300) {
       return this.jsonError(response);
     }
@@ -301,11 +290,8 @@ const createResponseClass = <
     return this.status(statusCode)
       .setHeaders(headers)
       .json({
-        status: 'success',
-        statusCode,
         message: message || 'Request successful',
         data,
-        ttl,
       });
   };
 
@@ -323,19 +309,19 @@ const createResponseClass = <
   ) {
     return responsePromise
       .then((response) => {
-        const resolvedResponse = { statusCode: 200, ...response };
-        return this.jsonSuccess(resolvedResponse).then(() =>
-          options?.onSuccess?.(resolvedResponse)
-        );
+        return this.jsonSuccess(response).then(() => {
+          options?.onSuccess?.(response);
+          return true;
+        });
       })
       .catch((err) => {
         if (err instanceof Error) {
           return handleError(err, this);
         }
-        const resolvedResponse = { statusCode: 400, ...err };
-        return this.jsonError(resolvedResponse).then(() =>
-          options?.onError?.(resolvedResponse)
-        );
+        return this.jsonError(err).then(() => {
+          options?.onError?.(err);
+          return true;
+        });
       });
   };
 

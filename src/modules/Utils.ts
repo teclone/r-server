@@ -31,12 +31,11 @@ export const handleError = (
 
   return response.jsonError({
     statusCode: code || 500,
-    message: 'Error',
-    data:
+    errors:
       process.env.NODE_ENV === 'production'
         ? null
         : {
-            errorStack: err?.stack || '',
+            stack: err?.stack || '',
           },
   });
 };

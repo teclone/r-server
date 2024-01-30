@@ -138,7 +138,6 @@ describe('Response', function () {
 
       return server.listen().then(() => {
         return sendRequest({ uri: httpHost, json: true }).then((res) => {
-          expect(res.body).toHaveProperty('status', 'success');
           expect(res.body).toHaveProperty(
             'message',
             'user created successfully'
@@ -154,7 +153,6 @@ describe('Response', function () {
 
       return server.listen().then(() => {
         return sendRequest({ uri: httpHost, json: true }).then((res) => {
-          expect(res.body).toHaveProperty('status', 'success');
           expect(res.body).toHaveProperty('message', 'Request successful');
         });
       });
@@ -193,11 +191,10 @@ describe('Response', function () {
         return expect(
           sendRequest({ uri: httpHost, json: true })
         ).rejects.toMatchObject({
-          statusCode: 400,
           response: {
             body: {
               message: 'Request failed',
-              data: null,
+              errors: null,
             },
           },
         });

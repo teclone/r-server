@@ -237,13 +237,12 @@ export interface RouteParameter {
 
 export type Routes = Record<Exclude<Method, '*'>, RouteInstance[]>;
 
-export interface RouteResponse<ResponseData = {}> {
-  status?: 'success' | 'error';
+export interface RouteResponse<Data = {}, Errors = {}> {
   statusCode?: number;
   message?: string;
-  data?: ResponseData;
+  data?: Data;
+  errors?: Errors;
   headers?: IncomingHttpHeaders;
-  ttl?: number;
 }
 
 export interface APIExecutor<RequestBody, ResponseData> {
@@ -261,7 +260,7 @@ export interface APIExecutor<RequestBody, ResponseData> {
     /**
      * request path parameters, as contained in the routing path
      */
-    pathParams?: PathParameters;
+    pathParams: PathParameters;
   }): Promise<RouteResponse<ResponseData> | null>;
 
   /**
