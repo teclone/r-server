@@ -236,6 +236,17 @@ export class BodyParser {
   }
 
   /**
+   * parse the query parameters in the given url
+   */
+  parseQueryString(url: string): Data {
+    if (url.indexOf('?') > -1) {
+      return this.parseUrlEncoded(url.split('?')[1]);
+    } else {
+      return {};
+    }
+  }
+
+  /**
    * converts url search parameters to object
    * @param searchParams
    * @returns

@@ -43,8 +43,8 @@ export class Router {
    *
    * @param inheritMiddlewares - boolean indicating if parent middlewares should be inherited, defaults to true.
    */
-  constructor(opts: RouterConstructOpts) {
-    this.inheritMiddlewares = opts.inheritMiddlewares ?? true;
+  constructor(opts?: RouterConstructOpts) {
+    this.inheritMiddlewares = opts?.inheritMiddlewares ?? true;
     this.setBasePath(opts?.basePath || '');
   }
 

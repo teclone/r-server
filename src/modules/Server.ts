@@ -339,9 +339,7 @@ export class Server<
    */
   private parseRequestData(request: ServerRequest) {
     //parse query
-    request.query = this.bodyParser.urlSearchParamsToObject(
-      request.parsedUrl.searchParams
-    );
+    request.query = this.bodyParser.parseQueryString(request.url);
 
     //parse the request body
     if (request.buffer.length > 0) {

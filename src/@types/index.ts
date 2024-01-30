@@ -110,7 +110,7 @@ export type Callback<
 > = (
   request: Rq,
   response: Rs,
-  options: { pathParams: PathParameters } & Record<string, any>
+  options: { pathParams: PathParameters }
 ) => Promise<boolean>;
 
 export type ErrorCallback<
@@ -130,7 +130,7 @@ export type Middleware<
   request: Rq,
   response: Rs,
   next: Next,
-  options: { pathParams: PathParameters } & Record<string, any>
+  options: { pathParams: PathParameters }
 ) => Promise<boolean> | boolean;
 
 export type ListenerCallback = () => void;
@@ -237,13 +237,12 @@ export interface RouteParameter {
 
 export type Routes = Record<Exclude<Method, '*'>, RouteInstance[]>;
 
-export interface RouteResponse<ResponseData = {}> {
-  status?: 'success' | 'error';
+export interface RouteResponse<Data = {}, Errors = {}> {
   statusCode?: number;
   message?: string;
-  data?: ResponseData;
+  data?: Data;
+  errors?: Errors;
   headers?: IncomingHttpHeaders;
-  ttl?: number;
 }
 
 export interface APIExecutor<RequestBody, ResponseData> {
