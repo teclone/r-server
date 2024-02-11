@@ -18,6 +18,7 @@ export const rServerConfig: RServerConfig = {
   defaultDocuments: ['index.html', 'index.js', 'index.css'],
 
   httpErrors: {
+    // base dir to all errors
     baseDir: '',
     404: '',
     500: '',
