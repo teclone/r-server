@@ -245,7 +245,7 @@ export interface RouteResponse<Data = {}, Errors = {}> {
   headers?: IncomingHttpHeaders;
 }
 
-export interface APIExecutor<RequestBody, ResponseData> {
+export interface APIExecutor<RequestBody, Data, Errors = {}> {
   (arg: {
     /**
      * request body, should be a combination of parsed post body and url search params
@@ -261,7 +261,7 @@ export interface APIExecutor<RequestBody, ResponseData> {
      * request path parameters, as contained in the routing path
      */
     pathParams: PathParameters;
-  }): Promise<RouteResponse<ResponseData> | null>;
+  }): Promise<RouteResponse<Data, Errors> | null>;
 
   /**
    * assigned name of the handler

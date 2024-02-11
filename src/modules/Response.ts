@@ -7,6 +7,18 @@ import { ErrorCallback, RouteResponse } from '../@types';
 import { handleError } from './Utils';
 import { ServerRequest } from './Request';
 
+export interface AfterResponseCallbacksOpt<Data, Errors> {
+  /**
+   * handler callback after a successful response has been sent to the client
+   */
+  onSuccess?: (response: RouteResponse<Data, Errors>) => void;
+
+  /**
+   * callback is called after an error response is sent back to the client
+   */
+  onError?: (response: RouteResponse<Data, Errors>) => void;
+}
+
 export type ServerResponse<
   T extends typeof Http2ServerResponse | typeof Http1ServerResponse =
     | typeof Http2ServerResponse
@@ -99,6 +111,7 @@ export type ServerResponse<
     path: string,
     status?: number
   ): Promise<boolean>;
+
   /**
    * sends a file download attachment to the client
    * @param filePath - relative or absolute file path
@@ -113,17 +126,19 @@ export type ServerResponse<
   /**
    * sends json error data back to the client
    */
-  jsonError(
+  jsonError<Data, Errors>(
     this: ServerResponse<T>,
-    response?: RouteResponse
+    response?: RouteResponse<Data, Errors>,
+    options?: AfterResponseCallbacksOpt<Data, Errors>
   ): Promise<boolean>;
 
   /**
    * sends json success data back to the client
    */
-  jsonSuccess(
+  jsonSuccess<Data, Errors>(
     this: ServerResponse<T>,
-    response?: RouteResponse
+    response?: RouteResponse<Data, Errors>,
+    options?: AfterResponseCallbacksOpt<Data, Errors>
   ): Promise<boolean>;
 
   /**
@@ -139,11 +154,13 @@ export type ServerResponse<
    */
   processRouteResponse<Data, Errors>(
     this: ServerResponse<T>,
+
+    /**
+     * the response promise
+     */
     responsePromise: Promise<RouteResponse<Data, Errors>>,
-    options?: {
-      onSuccess?: (response: RouteResponse<Data, Errors>) => void;
-      onError?: (response: RouteResponse<Data, Errors>) => void;
-    }
+
+    options?: AfterResponseCallbacksOpt<Data, Errors>
   ): Promise<boolean>;
 };
 
@@ -223,68 +240,59 @@ const createResponseClass = <
     return this;
   };
 
-  ResponseClass.prototype.removeHeaders = function (...names: string[]) {
+  ResponseClass.prototype.removeHeaders = function (...names) {
     names.forEach((name) => {
       this.removeHeader(name);
     });
     return this;
   };
 
-  ResponseClass.prototype.status = function (code: number) {
+  ResponseClass.prototype.status = function (code) {
     this.statusCode = code;
     return this;
   };
 
-  ResponseClass.prototype.redirect = function (
-    path: string,
-    status = 302
-  ): Promise<boolean> {
+  ResponseClass.prototype.redirect = function (path, status = 302) {
     return this.status(status).setHeader('Location', path).end();
   };
 
-  ResponseClass.prototype.download = function (
-    filePath: string,
-    filename?: string
-  ): Promise<boolean> {
+  ResponseClass.prototype.download = function (filePath, filename) {
     return this.fileServer.serveDownload(filePath, this, filename);
   };
 
-  ResponseClass.prototype.json = function (
-    data?: object | string
-  ): Promise<boolean> {
+  ResponseClass.prototype.json = function (data) {
     const resolvedData =
       typeof data === 'string' ? data : JSON.stringify(data || '');
     return this.setHeader('Content-Type', 'application/json').end(resolvedData);
   };
 
-  ResponseClass.prototype.jsonError = function (
-    response?: RouteResponse
-  ): Promise<boolean> {
-    const {
-      statusCode = 400,
-      headers,
-      message,
-      errors = null,
-    } = response || {};
+  ResponseClass.prototype.jsonError = function (response, opts) {
+    const { headers, message, errors = null, statusCode } = response || {};
 
-    if (statusCode < 300) {
-      return this.jsonSuccess(response);
-    }
-
-    return this.status(statusCode)
+    return this.status(statusCode || 400)
       .setHeaders(headers)
       .json({
         message: message || 'Request failed',
         errors,
+      })
+      .finally(() => {
+        if (opts?.onError) {
+          opts.onError(response);
+        }
       });
   };
 
-  ResponseClass.prototype.jsonSuccess = function (
-    response?: RouteResponse
-  ): Promise<boolean> {
-    const { statusCode = 200, headers, message, data = null } = response || {};
-    if (statusCode >= 300) {
-      return this.jsonError(response);
+  ResponseClass.prototype.jsonSuccess = function (response, opts) {
+    const {
+      statusCode = 200,
+      headers,
+      message,
+      data = null,
+      errors,
+    } = response || {};
+
+    if (statusCode >= 300 || errors) {
+      return this.jsonError(response, opts);
     }
 
     return this.status(statusCode)
@@ -292,6 +300,11 @@ const createResponseClass = <
       .json({
         message: message || 'Request successful',
         data,
+      })
+      .finally(() => {
+        if (opts?.onSuccess) {
+          opts.onSuccess(response);
+        }
       });
   };
 
@@ -305,23 +318,18 @@ const createResponseClass = <
 
   ResponseClass.prototype.processRouteResponse = function (
     responsePromise,
-    options
+    opts
   ) {
     return responsePromise
       .then((response) => {
-        return this.jsonSuccess(response).then(() => {
-          options?.onSuccess?.(response);
-          return true;
-        });
+        return this.jsonSuccess(response, opts);
       })
+
       .catch((err) => {
         if (err instanceof Error) {
           return handleError(err, this);
         }
-        return this.jsonError(err).then(() => {
-          options?.onError?.(err);
-          return true;
-        });
+        return this.jsonError(err, opts);
       });
   };
 
