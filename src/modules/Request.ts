@@ -1,6 +1,6 @@
 import { IncomingMessage } from 'http';
 import { Http2ServerRequest } from 'http2';
-import { Data, Files, Method } from '../@types';
+import { Data, Method, Query } from '../@types';
 
 export type ServerRequest<
   T extends typeof IncomingMessage | typeof Http2ServerRequest =
@@ -15,11 +15,7 @@ export type ServerRequest<
 
   endedAt: Date | null;
 
-  files: Files;
-
-  query: Data;
-
-  body: Data;
+  query: Query;
 
   data: Data;
 
@@ -53,9 +49,7 @@ const createRequestClass = <
   RequestClass.prototype.init = function (encrypted) {
     this.buffer = Buffer.alloc(0);
 
-    this.files = {};
     this.query = {};
-    this.body = {};
 
     // data is a merge of query and body
     this.data = {};

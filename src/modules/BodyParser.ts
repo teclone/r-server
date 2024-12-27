@@ -1,4 +1,4 @@
-import { Data, Files, MultipartHeaders, FileEntry } from '../@types/index';
+import { Data, MultipartHeaders, FileEntry, Query } from '../@types/index';
 import { generateRandomText } from '@teclone/utils';
 import { CRLF, BLANK_LINE } from './Constants';
 
@@ -19,30 +19,22 @@ export class BodyParser {
   }
 
   /**
-   * assigns a single field or multi value field value to the body
-   */
-  private assignBodyValue(body: Data, fieldName: string, value: string) {
-    const { name, isMultiValue } = this.resolveFieldName(fieldName);
-
-    let target: string | string[] = value;
-    if (isMultiValue) {
-      target = body[name] || [];
-      (target as string[]).push(value);
-    }
-    body[name] = target;
-  }
-
-  /**
    * stores a file into the given files object
    */
-  private assignFileValue(files: Files, fieldName: string, value: FileEntry) {
+  private assignDataEntry(
+    data: Data,
+    fieldName: string,
+    value: FileEntry | string
+  ) {
     const { name, isMultiValue } = this.resolveFieldName(fieldName);
-    let target: FileEntry | FileEntry[] = value;
-    if (isMultiValue) {
-      target = files[name] || [];
-      (target as FileEntry[]).push(value);
+    if (!isMultiValue) {
+      data[name] = value;
+      return;
     }
-    files[name] = target;
+    if (typeof data[name] === 'undefined') {
+      data[name] = [];
+    }
+    (data[name] as Array<typeof value>).push(value);
   }
 
   /**
@@ -93,14 +85,13 @@ export class BodyParser {
    * parse multipart form data
    *@see https://www.w3.org/Protocols/rfc1341/7_2_Multipart.html
    */
-  private parseMultiPart(string: string, headerBoundary: string | null) {
-    const body = {},
-      files = {};
+  private parseMultiPart(string: string, headerBoundary: string | null): Data {
+    const result: Data = {};
 
     //if boundary is null, detect it using the last encapsulation boundary format
     if (!headerBoundary) {
       if (!/^-{2}(-*[a-z0-9]+)-{2}/gim.test(string)) {
-        return { body, files };
+        return {};
       }
       headerBoundary = RegExp.$1;
     }
@@ -134,18 +125,18 @@ export class BodyParser {
           content,
           headers.type.startsWith('text/') ? 'utf8' : 'binary'
         );
-        this.assignFileValue(files, headers.fieldName, {
+        this.assignDataEntry(result, headers.fieldName, {
           name: headers.fileName.replace(/\.\./g, ''),
           data,
           size: data.byteLength,
           type: headers.type,
         });
       } else if (!headers.isFile) {
-        this.assignBodyValue(body, headers.fieldName, content);
+        this.assignDataEntry(result, headers.fieldName, content);
       }
     });
 
-    return { body, files };
+    return result;
   }
 
   /**
@@ -163,26 +154,26 @@ export class BodyParser {
   /**
    * parse url encoded request body
    */
-  private parseUrlEncoded(string: string): Data {
-    const body: Data = {};
+  private parseUrlEncoded(string: string): Query {
+    const result: Query = {};
     if (string) {
       const pairs = string.split('&');
       pairs.forEach((pair) => {
         const [name, value] = pair.split('=');
-        this.assignBodyValue(
-          body,
+        this.assignDataEntry(
+          result,
           decodeURIComponent(name),
           decodeURIComponent(value || '')
         );
       });
     }
-    return body;
+    return result;
   }
 
   /**
    * parse the query parameters in the given url
    */
-  parseQueryString(url: string): Data {
+  parseQueryString(url: string): Query {
     if (url.indexOf('?') > -1) {
       return this.parseUrlEncoded(url.split('?')[1]);
     } else {
@@ -207,7 +198,7 @@ export class BodyParser {
    *@param {Buffer} buffer - the buffer data
    *@param {string} contentType - the request content type
    */
-  parse(buffer: Buffer, contentType: string): { files: Files; body: Data } {
+  parse(buffer: Buffer, contentType: string): Data {
     const content = buffer.toString('latin1');
     const tokens = contentType.split(/;\s*/);
 
@@ -219,14 +210,14 @@ export class BodyParser {
     switch (tokens[0].toLowerCase()) {
       case 'text/plain':
       case 'application/x-www-form-urlencoded':
-        return { files: {}, body: this.parseUrlEncoded(content) };
+        return this.parseUrlEncoded(content);
 
       case 'text/json':
       case 'application/json':
-        return { files: {}, body: this.parseJSON(content) };
+        return this.parseJSON(content);
 
       default:
-        return { body: {}, files: {} };
+        return {};
     }
   }
 }

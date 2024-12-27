@@ -340,18 +340,13 @@ export class Server<
     //parse the request body
     if (request.buffer.length > 0) {
       const contentType = request.headers['content-type'] || 'text/plain';
+      const data = this.bodyParser.parse(request.buffer, contentType);
 
-      //TODO: add support for content encoding
-      const result = this.bodyParser.parse(request.buffer, contentType);
-
-      request.body = result.body;
-      request.files = result.files;
+      request.data = {
+        ...request.query,
+        ...data,
+      };
     }
-
-    request.data = {
-      ...request.query,
-      ...request.body,
-    };
   }
 
   /**

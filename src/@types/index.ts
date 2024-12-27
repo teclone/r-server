@@ -163,12 +163,12 @@ export interface FileEntry {
   type: string;
 }
 
-export interface Files {
-  [fieldName: string]: FileEntry | Array<FileEntry>;
+export interface Query {
+  [propName: string]: string | string[];
 }
 
 export interface Data {
-  [propName: string]: string | string[];
+  [propName: string]: string | string[] | FileEntry | FileEntry[];
 }
 
 export type PathParameters<T extends string = string> = Record<
@@ -201,31 +201,43 @@ export interface RouteParameter {
 
 export type Routes = Record<Exclude<Method, '*'>, RouteInstance[]>;
 
-export interface RouteResponse<Data = {}, Errors = {}> {
+export interface RouteResponse<DataType = {}, ErrorsType = {}> {
   statusCode?: number;
   message?: string;
-  data?: Data;
-  errors?: Errors;
+  data?: DataType;
+  errors?: ErrorsType;
   headers?: IncomingHttpHeaders;
 }
 
-export interface APIExecutor<RequestBody, Data, Errors = {}> {
-  (arg: {
-    /**
-     * request body, should be a combination of parsed post body and url search params
-     */
-    body: RequestBody;
+export interface ApiExecutorProps<
+  RequestDataType,
+  PathParametersType = Record<string, string | boolean | number>
+> {
+  /**
+   * request data type, a combination of query parameters and request body
+   */
+  data: RequestDataType;
 
-    /**
-     * request http headers
-     */
-    headers: IncomingHttpHeaders;
+  /**
+   * request http headers
+   */
+  headers: IncomingHttpHeaders;
 
-    /**
-     * request path parameters, as contained in the routing path
-     */
-    pathParams: PathParameters;
-  }): Promise<RouteResponse<Data, Errors> | null>;
+  /**
+   * request path parameters, as contained in the routing path
+   */
+  pathParams: PathParametersType;
+}
+
+export interface APIExecutor<
+  RequestDataType = {},
+  PathParametersType = {},
+  ResponseDataType = {},
+  ResponseErrorsType = {}
+> {
+  (
+    arg: ApiExecutorProps<RequestDataType, PathParametersType>
+  ): Promise<RouteResponse<ResponseDataType, ResponseErrorsType> | null>;
 
   /**
    * assigned name of the handler

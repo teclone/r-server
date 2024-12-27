@@ -6,9 +6,14 @@ const server = new Server();
 
 // process form upload from our examples index.html file
 server.post('/', function (req, res) {
-  const result = JSON.stringify(Object.assign({}, req.body, req.files));
+  const result = JSON.stringify(req.data, (key, value) => {
+    if (Buffer.isBuffer(value)) {
+      return undefined;
+    }
+    return value;
+  });
 
-  writeFileSync('./upload.pdf', req.files['file-cv'].data);
+  writeFileSync('./upload.pdf', req.data['file-cv'].data);
   return res.json(jsBeautify.js(result));
 });
 
