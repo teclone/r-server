@@ -63,7 +63,7 @@ export class Logger {
         );
       }
       if (process.env.NODE_ENV !== 'production') {
-        console.error(err);
+        // console.error(err);
       }
     }
     return this;

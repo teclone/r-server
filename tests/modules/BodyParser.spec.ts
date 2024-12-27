@@ -6,7 +6,6 @@ import {
 } from '../helpers';
 import { encodeData } from '@teclone/utils';
 import * as fs from 'fs';
-import { join } from 'path';
 
 describe('BodyParser', function () {
   let bodyParser: BodyParser;
@@ -21,10 +20,7 @@ describe('BodyParser', function () {
   const buffer = Buffer.from(encodeData(data));
 
   beforeEach(function () {
-    bodyParser = new BodyParser({
-      encoding: 'latin1',
-      tempDir: join(process.cwd(), 'tmp'),
-    });
+    bodyParser = new BodyParser();
   });
 
   describe(`#constructor(entryPath: string, config: RServerConfig)`, function () {
@@ -75,7 +71,6 @@ describe('BodyParser', function () {
 
       const result = bodyParser.parse(buffer, contentType);
       expect(result.body).toEqual(data);
-      bodyParser.cleanUpTempFiles(result.files);
     });
 
     it(`should detect the multipart boundary if not given`, function () {
@@ -84,7 +79,6 @@ describe('BodyParser', function () {
 
       const result = bodyParser.parse(buffer, contentType);
       expect(result.body).toEqual(data);
-      bodyParser.cleanUpTempFiles(result.files);
     });
 
     it(`should return empty body and files object if multipart boundary is not given and it
@@ -102,34 +96,6 @@ describe('BodyParser', function () {
       const buffer = Buffer.from(JSON.stringify(data));
       expect(bodyParser.parse(buffer, '').body).toEqual({});
       expect(bodyParser.parse(buffer, '').files).toEqual({});
-    });
-  });
-
-  describe(`#cleanUpTempFiles(files: Files)`, function () {
-    it(`should delete the given temporary files when request-response lifecycle completes`, function () {
-      const buffer = fs.readFileSync(multipartLogFile);
-      const contentType = `multipart/form-data; boundary=${multipartBoundary}`;
-
-      const result = bodyParser.parse(buffer, contentType);
-      const files = result.files;
-
-      expect(fs.existsSync(files['file-cv'].path as string)).toBeTruthy();
-      bodyParser.cleanUpTempFiles(result.files);
-      expect(fs.existsSync(files['file-cv'].path as string)).toBeFalsy();
-    });
-
-    it(`should skip unexisting files at the time of call and do nothing`, function () {
-      const buffer = fs.readFileSync(multipartLogFile);
-      const contentType = `multipart/form-data; boundary=${multipartBoundary}`;
-
-      const result = bodyParser.parse(buffer, contentType);
-      const files = result.files;
-      fs.unlinkSync(files['file-cv'].path as string);
-
-      expect(fs.existsSync(files['file-cv'].path as string)).toBeFalsy();
-      expect(function () {
-        bodyParser.cleanUpTempFiles(result.files);
-      }).not.toThrow();
     });
   });
 });

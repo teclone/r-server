@@ -1,4 +1,4 @@
-import { Method, Routes } from '../@types';
+import { Method } from '../@types';
 
 // this matches a route token path in the form of {dataType:pathParameterName} or {pathParameterName}
 const singleToken = '\\{((?:[a-z]+:)?[a-z]+)\\}';

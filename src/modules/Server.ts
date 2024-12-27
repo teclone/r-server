@@ -34,7 +34,7 @@ import { Wrapper } from './Wrapper';
 import { EntityTooLargeException } from '../Exceptions/EntityTooLargeException';
 import { config } from 'dotenv';
 import { join } from 'path';
-import { handleError } from './Utils';
+import { deCompressBuffer, handleError } from './Utils';
 
 import { Http1Response, Http2Response, ServerResponse } from './Response';
 import { Http1Request, Http2Request, ServerRequest } from './Request';
@@ -111,10 +111,7 @@ export class Server<
       errorLogFile: this.config.errorLog,
     });
 
-    this.bodyParser = new BodyParser({
-      encoding: this.config.encoding,
-      tempDir: this.config.tempDir,
-    });
+    this.bodyParser = new BodyParser();
 
     this.router = new Router({
       inheritMiddlewares: false,
@@ -330,7 +327,6 @@ export class Server<
    */
   private onResponseFinish(request: ServerRequest, response: ServerResponse) {
     response.endedAt = new Date();
-    this.bodyParser.cleanUpTempFiles(request.files);
     this.logger.profile(request, response);
   }
 
@@ -361,7 +357,7 @@ export class Server<
   /**
    * handle onrequest end event
    */
-  private onRequestEnd(request: ServerRequest, response: ServerResponse) {
+  private async onRequestEnd(request: ServerRequest, response: ServerResponse) {
     if (request.error) {
       return;
     }
@@ -369,44 +365,62 @@ export class Server<
     request.endedAt = response.startedAt = new Date();
     const pathname = request.parsedUrl.pathname;
 
-    this.parseRequestData(request);
-    const method = request.method;
+    try {
+      request.buffer = await deCompressBuffer(
+        request.buffer,
+        request.headers['content-encoding']
+      );
+      this.parseRequestData(request);
 
-    return this.cordinateRoutes(pathname, method, request, response).then(
-      (routeFound) => {
-        if (routeFound) {
-          return true;
-        }
+      const method = request.method;
 
-        // try serving the file
-        return this.fileServer
-          .serve(pathname, method, request.headers, response)
-          .then((fileServed) => {
-            if (fileServed) {
-              return true;
-            }
+      const routeFound = await this.cordinateRoutes(
+        pathname,
+        method,
+        request,
+        response
+      );
 
-            // return 404 response;
-            return this.fileServer.serveHttpErrorFile(404, response);
-          });
+      if (routeFound) {
+        return true;
       }
-    );
+
+      const fileServed = await this.fileServer.serve(
+        pathname,
+        method,
+        request.headers,
+        response
+      );
+
+      if (fileServed) {
+        return true;
+      }
+
+      // return 404 response;
+      await this.fileServer.serveHttpErrorFile(404, response);
+    } catch (err) {
+      handleError(err, response);
+    }
   }
 
   /**
    * handle request data event
    */
   private onRequestData(chunk: Buffer, request: ServerRequest) {
-    if (!request.entityTooLarge) {
-      const newEntityLength = request.buffer.length + chunk.length;
-      const maxMemory = this.config.maxMemory as number;
-      if (!maxMemory || newEntityLength <= maxMemory) {
-        request.buffer = Buffer.concat([request.buffer, chunk]);
-      } else {
-        request.entityTooLarge = true;
-        request.emit('error', new EntityTooLargeException());
-      }
+    if (request.entityTooLarge) {
+      return;
     }
+
+    const newEntityLength = request.buffer.length + chunk.length;
+    const maxMemory = this.config.maxMemory as number;
+
+    if (maxMemory && newEntityLength >= maxMemory) {
+      request.entityTooLarge = true;
+      request.emit('error', new EntityTooLargeException());
+      return;
+    }
+
+    request.buffer = Buffer.concat([request.buffer, chunk]);
   }
 
   /**

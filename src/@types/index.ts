@@ -150,18 +150,10 @@ export interface FileEntry {
    */
   name: string;
 
-  /**
-   * generated file name used in storing the file
-   */
-  key: string;
+  data: Buffer;
 
   /**
-   * file absolute path in storage
-   */
-  path: string;
-
-  /**
-   * file size in bytes
+   * file size in bytes, same as the data.byteLength
    */
   size: number;
 
@@ -171,35 +163,8 @@ export interface FileEntry {
   type: string;
 }
 
-export interface FileEntryCollection {
-  /**
-   * file names in user machine as it was uploaded
-   */
-  name: string[];
-
-  /**
-   * generated file names used in storing the file
-   */
-  key: string[];
-
-  /**
-   * file absolute paths in storage
-   */
-  path: string[];
-
-  /**
-   * file sizes in bytes
-   */
-  size: number[];
-
-  /**
-   * file mimes type as supplied by the client
-   */
-  type: string[];
-}
-
 export interface Files {
-  [fieldName: string]: FileEntry | FileEntryCollection;
+  [fieldName: string]: FileEntry | Array<FileEntry>;
 }
 
 export interface Data {
@@ -225,7 +190,6 @@ export interface MultipartHeaders {
   isFile: boolean;
   fileName: string;
   fieldName: string;
-  encoding: string;
   type: string;
 }
 
