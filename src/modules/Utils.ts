@@ -3,6 +3,10 @@ import { isString } from '@teclone/utils';
 import { ServerResponse } from './Response';
 import { brotliDecompress, unzip } from 'node:zlib';
 
+export const noop = () => {
+  // do nothing
+};
+
 export const handleError = (
   err: Error | string,
   response: ServerResponse,

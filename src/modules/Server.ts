@@ -346,6 +346,10 @@ export class Server<
         ...request.query,
         ...data,
       };
+    } else {
+      request.data = {
+        ...request.query,
+      };
     }
   }
 

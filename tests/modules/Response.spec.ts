@@ -125,7 +125,7 @@ describe('Response', function () {
     });
   });
 
-  describe(`#jsonSuccess(statusCode: number = 200, message: string = 'success', data: object = {}): Promise<boolean>`, function () {
+  describe(`#jsonSuccess(statusCode: number = 200, message: string = 'ok', data: object = {}): Promise<boolean>`, function () {
     it(`should send success json data back to the client`, function () {
       server.get('/', (req, res) => {
         return res.jsonSuccess({
@@ -138,22 +138,19 @@ describe('Response', function () {
 
       return server.listen().then(() => {
         return sendRequest({ uri: httpHost, json: true }).then((res) => {
-          expect(res.body).toHaveProperty(
-            'message',
-            'user created successfully'
-          );
+          expect(res.body).toHaveProperty('user', { id: 1 });
         });
       });
     });
 
-    it(`should default the statusCode to 200, message string to 'Request successful' and data object to empty object`, function () {
+    it(`should default the statusCode to 200, and body to empty string`, function () {
       server.get('/', (req, res) => {
         return res.jsonSuccess();
       });
 
       return server.listen().then(() => {
         return sendRequest({ uri: httpHost, json: true }).then((res) => {
-          expect(res.body).toHaveProperty('message', 'Request successful');
+          expect(res.body).toEqual('');
         });
       });
     });
@@ -164,37 +161,20 @@ describe('Response', function () {
       server.get('/', (req, res) => {
         return res.jsonError({
           statusCode: 403,
-          message: 'permission denied',
-        });
-      });
-
-      return server.listen().then(() => {
-        return expect(
-          sendRequest({ uri: httpHost, json: true })
-        ).rejects.toMatchObject({
-          statusCode: 403,
-          response: {
-            body: {
-              message: 'permission denied',
-            },
+          errors: {
+            error: 'permission denied',
           },
         });
       });
-    });
-
-    it(`should default the statusCode to 400, message string to 'Request failed' and data to null`, function () {
-      server.get('/', (req, res) => {
-        return res.jsonError();
-      });
 
       return server.listen().then(() => {
         return expect(
           sendRequest({ uri: httpHost, json: true })
         ).rejects.toMatchObject({
           response: {
+            statusCode: 403,
             body: {
-              message: 'Request failed',
-              errors: null,
+              error: 'permission denied',
             },
           },
         });

@@ -8,7 +8,7 @@ describe('Wrapper', function () {
   let wrapper: Wrapper, router: Router;
 
   beforeEach(function () {
-    router = new Router(false);
+    router = new Router({ inheritMiddlewares: false });
     wrapper = new Wrapper(router, url);
   });
 

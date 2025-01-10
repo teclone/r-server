@@ -385,7 +385,7 @@ describe(`Server`, function () {
       };
 
       server.post('/process-data', (req, res) => {
-        return res.json(req.body);
+        return res.json(req.data);
       });
 
       return server.listen().then(async () => {
@@ -462,7 +462,7 @@ describe(`Server`, function () {
         password: 'passwd_243',
       };
       server.post('/check-data', (req, res) => {
-        return res.json(req.body);
+        return res.json(req.data);
       });
 
       return server.listen().then(() => {
@@ -546,7 +546,7 @@ describe(`Server`, function () {
     describe('mounted routing', function () {
       it(`should start the routing engine on the mounted routers if request path did not map
         to a public file, and did not get resolved by the main router, and run the matching registered all method route if any`, function () {
-        const router = new Router(false);
+        const router = new Router({ inheritMiddlewares: false });
 
         router.any('/{id}', function (req, res) {
           return res.end();

@@ -7,18 +7,6 @@ import { ErrorCallback, RouteResponse } from '../@types';
 import { handleError } from './Utils';
 import { ServerRequest } from './Request';
 
-export interface AfterResponseCallbacksOpt<Data, Errors> {
-  /**
-   * handler callback after a successful response has been sent to the client
-   */
-  onSuccess?: (response: RouteResponse<Data, Errors>) => void;
-
-  /**
-   * callback is called after an error response is sent back to the client
-   */
-  onError?: (response: RouteResponse<Data, Errors>) => void;
-}
-
 export type ServerResponse<
   T extends typeof Http2ServerResponse | typeof Http1ServerResponse =
     | typeof Http2ServerResponse
@@ -92,10 +80,15 @@ export type ServerResponse<
   removeHeaders(this: ServerResponse<T>, ...names: string[]): ServerResponse<T>;
 
   /**
-   * sets response status code
-   * @param code - the response code
+   * sets response http status code and message if given
+   * @param code - the status code
+   * @param message - the http status message to given sent
    */
-  status(this: ServerResponse<T>, code: number): ServerResponse<T>;
+  status(
+    this: ServerResponse<T>,
+    code: number,
+    message?: string
+  ): ServerResponse<T>;
 
   /**
    * sends json response back to the client.
@@ -128,8 +121,7 @@ export type ServerResponse<
    */
   jsonError<Data, Errors>(
     this: ServerResponse<T>,
-    response?: RouteResponse<Data, Errors>,
-    options?: AfterResponseCallbacksOpt<Data, Errors>
+    response?: RouteResponse<Data, Errors>
   ): Promise<boolean>;
 
   /**
@@ -137,8 +129,7 @@ export type ServerResponse<
    */
   jsonSuccess<Data, Errors>(
     this: ServerResponse<T>,
-    response?: RouteResponse<Data, Errors>,
-    options?: AfterResponseCallbacksOpt<Data, Errors>
+    response?: RouteResponse<Data, Errors>
   ): Promise<boolean>;
 
   /**
@@ -158,9 +149,7 @@ export type ServerResponse<
     /**
      * the response promise
      */
-    responsePromise: Promise<RouteResponse<Data, Errors>>,
-
-    options?: AfterResponseCallbacksOpt<Data, Errors>
+    responsePromise: Promise<RouteResponse<Data, Errors>>
   ): Promise<boolean>;
 };
 
@@ -247,8 +236,11 @@ const createResponseClass = <
     return this;
   };
 
-  ResponseClass.prototype.status = function (code) {
+  ResponseClass.prototype.status = function (code, message) {
     this.statusCode = code;
+    if (message) {
+      this.statusMessage = message;
+    }
     return this;
   };
 
@@ -266,23 +258,15 @@ const createResponseClass = <
     return this.setHeader('Content-Type', 'application/json').end(resolvedData);
   };
 
-  ResponseClass.prototype.jsonError = function (response, opts) {
+  ResponseClass.prototype.jsonError = function (response) {
     const { headers, message, errors = null, statusCode } = response || {};
 
-    return this.status(statusCode || 400)
+    return this.status(statusCode || 400, message)
       .setHeaders(headers)
-      .json({
-        message: message || 'Request failed',
-        errors,
-      })
-      .finally(() => {
-        if (opts?.onError) {
-          opts.onError(response);
-        }
-      });
+      .json(errors as any);
   };
 
-  ResponseClass.prototype.jsonSuccess = function (response, opts) {
+  ResponseClass.prototype.jsonSuccess = function (response) {
     const {
       statusCode = 200,
       headers,
@@ -292,20 +276,12 @@ const createResponseClass = <
     } = response || {};
 
     if (statusCode >= 300 || errors) {
-      return this.jsonError(response, opts);
+      return this.jsonError(response);
     }
 
-    return this.status(statusCode)
+    return this.status(statusCode, message)
       .setHeaders(headers)
-      .json({
-        message: message || 'Request successful',
-        data,
-      })
-      .finally(() => {
-        if (opts?.onSuccess) {
-          opts.onSuccess(response);
-        }
-      });
+      .json(data as any);
   };
 
   ResponseClass.prototype.wait = function (time: number) {
@@ -316,20 +292,17 @@ const createResponseClass = <
     });
   };
 
-  ResponseClass.prototype.processRouteResponse = function (
-    responsePromise,
-    opts
-  ) {
+  ResponseClass.prototype.processRouteResponse = function (responsePromise) {
     return responsePromise
       .then((response) => {
-        return this.jsonSuccess(response, opts);
+        return this.jsonSuccess(response);
       })
 
       .catch((err) => {
         if (err instanceof Error) {
           return handleError(err, this);
         }
-        return this.jsonError(err, opts);
+        return this.jsonError(err);
       });
   };
 

@@ -149,18 +149,18 @@ If `https.enabled` is false, the server will listen for http only requests.
 
 It comes with an inbuilt **request body parser**, that supports all forms of http request data such as **urlencoded query strings**, **application/json data**, **application/x-www-form-urlencoded data** and **multipart/form-data**.
 
-Parsed fields and files are made available on the request object via the `query`, `body`, `data` and `files` properties. Uploaded files are stored in a tmp folder, **tmp/uploads**.
+Parsed fields and files are made available on the request object via the `data` properties. `request.data` contains parsed query string and parsed body. Fields from the query string are overwritten by fields in the response body.
 
-The `data` property is a combination of all fields in the `query` and `body` properties, with values in the `body` property winning the battle in case of conflicting field keys.
+`request.query` contains the parsed query parameters.
 
-Multi-value fields are supported as well. They are recognised if the field name ends with the bracket notation `[]`. Note that the brackets are stripped out during the parsing. It uses the same principle like in [PHP](http://php.net/manual/en/tutorial.forms.php).
+Multi-value fields are supported. They are recognised if the field name ends with the bracket notation `[]`. Note that the brackets are stripped out during the parsing.
 
 ```typescript
 const { Server } = require('@teclone/r-server'); // import rserver
 const server = new Server(); // create server instance
 
 server.put('users/{userId}/profile-picture', (req, res) => {
-  const picture = req.files.picture;
+  const picture = req.data.picture;
 
   return res.json({
     status: 'success',
@@ -168,7 +168,7 @@ server.put('users/{userId}/profile-picture', (req, res) => {
     fileSize: picture.size,
     mimeType: picture.type,
     filename: picture.name,
-    fileTempLocation: picture.path,
+    bufferData: picture.data,
   });
 });
 
